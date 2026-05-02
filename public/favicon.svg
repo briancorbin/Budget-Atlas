@@ -1,0 +1,28 @@
+<!--
+  Master icon for The Budget Atlas. Italic Fraunces "A" + circle period,
+  on the cream brand background. All favicon-*.png and apple-touch-icon.png
+  are rendered from this single source via rsvg-convert; see
+  scripts/render-branding.sh.
+
+  Note on viewing this file directly in a browser: the text uses Fraunces,
+  which a browser-loaded SVG won't have access to without an embedded
+  @font-face or outlined paths. The PNG renders are produced through
+  rsvg-convert + system fontconfig (locally installed Fraunces), which
+  does have the font. So this SVG is the editable source of truth — the
+  PNGs are what actually get served.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Google Fonts import so browsers viewing this SVG directly render with
+       Fraunces. rsvg-convert ignores @import and falls back to system
+       fontconfig (where Fraunces is installed locally), so PNG renders
+       remain unaffected. -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,500&amp;display=swap');
+  </style>
+  <rect width="100" height="100" fill="#F4EFE3"/>
+  <text x="42" y="80" text-anchor="middle"
+        font-family="Fraunces"
+        font-size="92" font-weight="500" font-style="italic"
+        fill="#A6261C">A</text>
+  <circle cx="78" cy="76" r="7" fill="#A6261C"/>
+</svg>

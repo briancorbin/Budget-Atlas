@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "verify": "yarn typecheck && yarn lint && yarn format:check",
     "render-branding": "./scripts/render-branding.sh",
-    "check-links": "./audit/links/check.sh"
+    "check-links": "./audit/links/check.sh",
+    "audit:seed-issues": "node audit/links/seed-issues.mjs"
   },
   "dependencies": {
     "react": "^19.2.5",

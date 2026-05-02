@@ -6,13 +6,15 @@ Triage view of currently-actionable links. Auto-generated raw data in [`results/
 
 | Status              |   Count | Action                                                          |
 | ------------------- | ------: | --------------------------------------------------------------- |
-| `200` (loaded)      |     158 | Spot-check for content drift; mark `reviewed.tsv` when verified |
-| `404` (gone)        |      46 | **Replace or remove.** Highest priority.                        |
+| `200` (loaded)      |     157 | Spot-check for content drift; mark `reviewed.tsv` when verified |
+| `404` (gone)        |      43 | **Replace or remove.** Highest priority.                        |
 | `403` (bot-blocked) |      17 | Manual browser check; almost always fine                        |
-| `000` / `ERR`       |       9 | DNS/TLS/timeout — manual check                                  |
+| `000` / `ERR`       |       5 | DNS/TLS/timeout — manual check                                  |
 | `999` (anti-bot)    |       3 | Manual browser check                                            |
-| **Total**           | **233** |                                                                 |
+| **Total**           | **225** |                                                                 |
 | Manually reviewed   |       1 | HUD Handbook 4350.3 (resolved 2026-05-02)                       |
+
+The audit runs nightly via [GitHub Actions](https://github.com/TheBudgetAtlas/thebudgetatlas/actions/workflows/audit-links.yml) and auto-creates issues with the [`audit:link`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Alink) label for any newly broken citation. Pick one up by commenting on the issue and PRing a fix.
 
 ## Resolved
 

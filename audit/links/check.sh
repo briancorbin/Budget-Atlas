@@ -37,7 +37,7 @@ grep -rEho 'https?://[^ )"`'"'"'<>]+' \
   --include='*.ts' --include='*.tsx' --include='*.md' \
   --include='*.json' --include='*.html' --include='*.svg' \
   --exclude-dir=node_modules --exclude-dir=.yarn --exclude-dir=dist \
-  --exclude-dir=results \
+  --exclude-dir=results --exclude-dir=.claude --exclude-dir=.git \
   "$ROOT" \
   | grep -vE '^http://localhost|^http://127\.0\.0\.1|^http://www\.w3\.org' \
   | sed 's/&amp;/\&/g' \

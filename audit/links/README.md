@@ -42,6 +42,19 @@ Append a row to `reviewed.tsv`. The next audit run will pick it up.
 
 Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. The notes are the audit trail.
 
+## Automation
+
+The audit runs nightly via [GitHub Actions](../../.github/workflows/audit-links.yml) (09:00 UTC) and can be triggered manually from the Actions tab. The nightly job:
+
+1. Runs `check.sh` against the current `main` branch.
+2. Compares the resulting failures against open issues labeled [`audit:link`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Alink).
+3. Creates a new issue per newly-broken URL (deduped by URL in body). Hard cap of 50 issues per run as a safety valve.
+4. Uploads the dated TSV as a workflow artifact (90-day retention).
+
+Issues track `404`, `000`/`ERR`, and `999` outcomes. `200`/`3xx` aren't issued — they live in `reviewed.tsv` instead. `403` is excluded too (almost always bot-blocking that resolves under human eyes).
+
+To seed issues manually from a local audit run: `yarn audit:seed-issues` (or `--dry-run` to preview).
+
 ## Contributing a fix
 
 1. Run the audit. Pick a finding from `results/<latest>.tsv`.

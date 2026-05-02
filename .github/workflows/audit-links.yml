@@ -1,0 +1,54 @@
+name: Audit links
+
+# Runs the public link audit nightly: extracts every external URL cited from
+# the codebase, hits each with curl, and opens GitHub issues for newly broken
+# ones (deduped against the existing audit:link issues).
+#
+# Manual runs are also welcome via the "Run workflow" button on the Actions tab.
+
+on:
+  schedule:
+    # 09:00 UTC — late evening US, after most overnight maintenance windows.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: audit-links
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run link audit
+        run: yarn check-links
+
+      - name: Seed GitHub issues for newly broken links
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node audit/links/seed-issues.mjs
+
+      - name: Upload audit results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-audit-${{ github.run_id }}
+          path: audit/links/results/
+          retention-days: 90

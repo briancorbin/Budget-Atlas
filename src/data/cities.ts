@@ -390,9 +390,10 @@ export const CITIES: Record<string, CityInfo> = {
  */
 export const RENT_LOGIC_SOURCES: readonly Source[] = [
   {
-    label: 'HUD Occupancy Standards (HUD Handbook 4350.3)',
-    url: 'https://www.hud.gov/sites/dfiles/OCHCO/documents/4350.3.pdf',
-    date: '2023',
+    label:
+      'HUD Handbook 4350.3 REV-1, Change 4 — Occupancy Requirements of Subsidized Multifamily Housing Programs',
+    url: 'https://www.hud.gov/hudclips/handbooks/housing-4350-3',
+    date: '2013-11',
   },
   {
     label: 'EPI Family Budget Calculator — methodology',

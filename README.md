@@ -126,7 +126,7 @@ The rent _value_ comes from the sources above, but the rule that picks **which**
 - Any kids → 3BR family-sized. Matches HUD FMR's family benchmark and EPI's Family Budget Calculator, both of which use 3BR for households with children regardless of count.
 - Lifestyle multiplier: ×0.9 modest, ×1.0 moderate, ×1.15 comfortable. Editorial, not from a single dataset — rough match for the spread between "modest yet adequate" and "comfortable" tiers in EPI / BLS CES decile data.
 
-Sources for the data-grounded parts: **HUD Occupancy Standards** ([link](https://www.hud.gov/sites/dfiles/OCHCO/documents/4350.3.pdf)), **EPI Family Budget Calculator methodology** ([link](https://www.epi.org/resources/budget/budget-factsheets/)), **Zillow Rent by Bedroom** ([link](https://www.zillow.com/research/data/)). The editorial parts (1.2× couple premium, lifestyle multipliers) are flagged as approximations rather than fake-cited.
+Sources for the data-grounded parts: **HUD Handbook 4350.3 REV-1, Change 4 — Occupancy Requirements** ([link](https://www.hud.gov/hudclips/handbooks/housing-4350-3), 2013-11), **EPI Family Budget Calculator methodology** ([link](https://www.epi.org/resources/budget/budget-factsheets/)), **Zillow Rent by Bedroom** ([link](https://www.zillow.com/research/data/)). The editorial parts (1.2× couple premium, lifestyle multipliers) are flagged as approximations rather than fake-cited.
 
 ### A note on precision
 

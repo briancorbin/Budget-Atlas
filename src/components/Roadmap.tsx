@@ -78,9 +78,15 @@ function Intro() {
 }
 
 function PlannedList() {
+  const plannedCount = ROADMAP.filter(i => i.status !== 'shipped').length;
+  const shippedCount = ROADMAP.filter(i => i.status === 'shipped').length;
+  const kicker = shippedCount > 0
+    ? `${plannedCount} planned · ${shippedCount} shipped`
+    : `Planned · ${plannedCount} items`;
+
   return (
     <div style={{ marginBottom: 56 }}>
-      <SectionTitle kicker={`Planned · ${ROADMAP.length} items`}>
+      <SectionTitle kicker={kicker}>
         On the build list
       </SectionTitle>
       <div style={{ display: 'grid', gap: 16 }}>

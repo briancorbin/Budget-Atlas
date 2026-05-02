@@ -112,6 +112,22 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'Replace the fixed list of ~20 cities with state + city selection, where the city can be any locality. Use curated city profiles when available; fall back to state defaults otherwise. Custom overrides for users who know their actual local rent, utilities, etc. Round-trips via the shareable link feature.',
   },
+  {
+    id: 12,
+    title: 'Student loan payments',
+    category: 'Cost of living',
+    status: 'planned',
+    summary:
+      'Add an input for monthly student loan payment, with optional balance + rate + standard 10-year payment estimate. Model income-driven repayment (IDR / SAVE / PAYE) where payments scale with discretionary income above a poverty multiple. Pick up the $2,500/yr student loan interest deduction (above-the-line, phased out at ~$80K single / $165K joint).',
+  },
+  {
+    id: 13,
+    title: 'Homeownership / mortgage',
+    category: 'Cost of living',
+    status: 'planned',
+    summary:
+      'Today everyone rents. Add an "I own" toggle that swaps rent for full PITI (principal, interest, property tax, insurance) plus HOA and a 1%/yr maintenance reserve. State-specific effective property tax rates (TX ~1.6%, NJ ~2.2%, HI ~0.3%). Shows that owning often looks cheaper monthly until you net out maintenance and opportunity cost of the down payment.',
+  },
 ];
 
 /**

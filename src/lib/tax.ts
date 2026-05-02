@@ -21,6 +21,46 @@ export function progressiveTax(taxable: number, brackets: readonly TaxBracket[])
   return tax;
 }
 
+/** One row of a bracket walkthrough — what's taxed in this bracket and how much. */
+export interface BracketRow {
+  from: number;
+  to: number;             // Infinity for the top bracket
+  rate: number;
+  taxableInRow: number;   // dollars of taxable income that fall inside this bracket
+  taxFromRow: number;     // tax contributed by this bracket
+  /** True if the filer's last taxable dollar lands in this bracket. */
+  isUserBracket: boolean;
+}
+
+/**
+ * Walk the brackets and report per-row detail. Sum of `taxFromRow` matches
+ * `progressiveTax(taxable, brackets)`. Used by the bracket walkthrough UI.
+ */
+export function bracketBreakdown(
+  taxable: number,
+  brackets: readonly TaxBracket[],
+): BracketRow[] {
+  const rows: BracketRow[] = [];
+  let prev = 0;
+  let userMarked = false;
+  for (const [cap, rate] of brackets) {
+    const fullyInside = taxable > cap;
+    const inRow = fullyInside ? cap - prev : Math.max(0, taxable - prev);
+    const isUserBracket = !userMarked && taxable > prev && !fullyInside && inRow > 0;
+    rows.push({
+      from: prev,
+      to: cap,
+      rate,
+      taxableInRow: inRow,
+      taxFromRow: inRow * rate,
+      isUserBracket,
+    });
+    if (isUserBracket) userMarked = true;
+    prev = cap;
+  }
+  return rows;
+}
+
 /**
  * FICA: Social Security 6.2% up to the per-person wage base, Medicare 1.45%
  * on all wages, plus 0.9% Additional Medicare on income over $200K (single

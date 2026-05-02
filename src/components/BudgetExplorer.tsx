@@ -6,6 +6,7 @@ import { Masthead } from './Masthead';
 import { ScenarioPicker, CustomizePanel, type InputsState } from './Inputs';
 import { StatRow, StatusBanner } from './Summary';
 import { IncomeFlow } from './IncomeFlow';
+import { BracketWalkthrough } from './BracketWalkthrough';
 import { ExpenseBreakdown } from './ExpenseBreakdown';
 import { DiscretionaryPlan } from './DiscretionaryPlan';
 import { CityComparison } from './CityComparison';
@@ -57,6 +58,11 @@ export function BudgetExplorer() {
         <StatRow result={result} />
         <StatusBanner result={result} />
         <IncomeFlow result={result} />
+        <BracketWalkthrough
+          result={result}
+          incomeA={incomeA} incomeB={effectiveIncomeB}
+          hasPartner={twoIncome} filing={filing}
+        />
         <ExpenseBreakdown result={result} />
         <DiscretionaryPlan result={result} />
         <CityComparison

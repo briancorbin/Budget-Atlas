@@ -67,10 +67,12 @@ The split is deliberate: data, calculation, and presentation each live separatel
 
 ## Deployment
 
-Static build — works on any static host:
+The live site is hosted on **Cloudflare Pages** at [thebudgetatlas.com](https://thebudgetatlas.com). Pushes to `main` auto-deploy via Cloudflare's GitHub integration — framework preset "Vite", build command `npm run build`, output directory `dist`, `NODE_VERSION=20`.
 
-- **Vercel** / **Netlify** / **Cloudflare Pages**: connect the GitHub repo, framework preset "Vite". Done.
-- **GitHub Pages**: build with `npm run build`, push `dist/` to `gh-pages` branch. The `base: './'` in vite.config.ts already handles relative paths.
+The build is fully static and works on any static host. Alternatives that need zero code change (`base: './'` in `vite.config.ts` keeps asset paths relative):
+
+- **Vercel** / **Netlify**: connect the GitHub repo, pick the Vite preset.
+- **GitHub Pages**: build with `npm run build`, publish `dist/` via `actions/deploy-pages`.
 
 ## Updating for a new tax year
 

@@ -8,20 +8,21 @@ import { SectionTitle } from './ui';
 
 export function CityComparison({
   result, compareCity, setCompareCity,
-  incomeA, incomeB, filing, kids, lifestyle,
+  incomeA, incomeB, hasPartner, filing, kids, lifestyle,
 }: {
   result: BudgetResult;
   compareCity: string;
   setCompareCity: (c: string) => void;
   incomeA: number;
   incomeB: number;
+  hasPartner: boolean;
   filing: FilingStatus;
   kids: number;
   lifestyle: Lifestyle;
 }) {
   const compare = useMemo(
-    () => computeBudget({ incomeA, incomeB, filing, city: compareCity, kids, lifestyle }),
-    [incomeA, incomeB, filing, compareCity, kids, lifestyle],
+    () => computeBudget({ incomeA, incomeB, hasPartner, filing, city: compareCity, kids, lifestyle }),
+    [incomeA, incomeB, hasPartner, filing, compareCity, kids, lifestyle],
   );
 
   const sides = [

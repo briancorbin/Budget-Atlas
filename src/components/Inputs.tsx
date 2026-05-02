@@ -112,7 +112,7 @@ export function CustomizePanel(s: InputsState) {
           marginBottom: 10, flexWrap: 'wrap', gap: 8,
         }}>
           <label style={{ fontSize: 12, color: T.inkSoft, letterSpacing: '0.05em' }}>
-            {s.twoIncome ? 'PRIMARY EARNER · ANNUAL' : 'ANNUAL HOUSEHOLD INCOME'}
+            {s.twoIncome ? 'INCOME' : 'ANNUAL HOUSEHOLD INCOME'}
           </label>
           <button
             onClick={() => s.setTwoIncome(!s.twoIncome)}
@@ -131,6 +131,7 @@ export function CustomizePanel(s: InputsState) {
           gap: 20,
         }}>
           <div>
+            {s.twoIncome && <label style={labelStyle}>PRIMARY · ANNUAL</label>}
             <input
               type="number" value={s.incomeA}
               onChange={e => s.setIncomeA(+e.target.value)}

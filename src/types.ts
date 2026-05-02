@@ -59,6 +59,12 @@ export interface Scenario {
 export interface BudgetInput {
   incomeA: number;
   incomeB?: number;
+  /**
+   * True when the household has a second adult (married, or cohabitating
+   * with a partner). Drives household size independently of `incomeB` —
+   * a stay-at-home spouse still counts as a second adult.
+   */
+  hasPartner?: boolean;
   filing: FilingStatus;
   city: string;
   kids: number;

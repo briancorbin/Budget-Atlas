@@ -25,8 +25,8 @@ export function BudgetExplorer() {
   const effectiveIncomeB = twoIncome ? incomeB : 0;
 
   const result = useMemo(
-    () => computeBudget({ incomeA, incomeB: effectiveIncomeB, filing, city, kids, lifestyle }),
-    [incomeA, effectiveIncomeB, filing, city, kids, lifestyle],
+    () => computeBudget({ incomeA, incomeB: effectiveIncomeB, hasPartner: twoIncome, filing, city, kids, lifestyle }),
+    [incomeA, effectiveIncomeB, twoIncome, filing, city, kids, lifestyle],
   );
 
   const inputState: InputsState = {
@@ -62,7 +62,7 @@ export function BudgetExplorer() {
         <CityComparison
           result={result}
           compareCity={compareCity} setCompareCity={setCompareCity}
-          incomeA={incomeA} incomeB={effectiveIncomeB}
+          incomeA={incomeA} incomeB={effectiveIncomeB} hasPartner={twoIncome}
           filing={filing} kids={kids} lifestyle={lifestyle}
         />
         <Notes filing={filing} />

@@ -16,12 +16,14 @@ import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/ta
  * wage base cap.
  */
 export function computeBudget(input: BudgetInput): BudgetResult {
-  const { incomeA, incomeB = 0, filing, city, kids, lifestyle } = input;
+  const { incomeA, incomeB = 0, hasPartner = false, filing, city, kids, lifestyle } = input;
   const cityData = CITIES[city];
   const stateData = STATES[cityData.state];
   const totalIncome = incomeA + incomeB;
   const hasSecondIncome = incomeB > 0;
-  const adults = (filing === 'married' || hasSecondIncome) ? 2 : 1;
+  // Adults reflects household composition (intent), not income. A stay-at-home
+  // spouse / partner still counts. Married filing status implies a partner.
+  const adults = (filing === 'married' || hasPartner || hasSecondIncome) ? 2 : 1;
 
   // ── Tax calculation ──
   let fedTaxRaw: number;

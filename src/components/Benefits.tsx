@@ -1,8 +1,8 @@
-import type { BudgetResult } from '@/types';
+import type { BudgetResult, Source } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt } from '@/lib/format';
-import { checkBenefit, type BenefitEligibility, type BenefitId } from '@/lib/benefits';
-import { SNAP_SOURCE } from '@/data/benefits';
+import { checkBenefit, type BenefitEligibility, type BenefitId, type BenefitInputs } from '@/lib/benefits';
+import { SNAP_SOURCE, snapStateSource } from '@/data/benefits';
 import { POVERTY_SOURCE } from '@/data/poverty';
 import { Cite, SectionTitle } from './ui';
 
@@ -13,7 +13,10 @@ interface BenefitMeta {
   blurb: string;
   /** What the benefit reduces in the budget, in plain language. */
   appliesTo: string;
-  source: typeof SNAP_SOURCE;
+  /** Federal-level citation. Always shown. */
+  source: Source;
+  /** Optional state-specific citation, computed at render time. */
+  stateSource?: (inputs: BenefitInputs) => Source;
 }
 
 const BENEFIT_META: readonly BenefitMeta[] = [
@@ -23,6 +26,7 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     blurb: 'Federal food assistance, scaled to household size and income. Loaded onto an EBT card monthly.',
     appliesTo: 'Reduces the grocery line.',
     source: SNAP_SOURCE,
+    stateSource: inputs => snapStateSource(inputs.state),
   },
 ];
 
@@ -58,10 +62,14 @@ export function Benefits({
         {BENEFIT_META.map(meta => {
           const elig = evaluate(meta.id);
           const isClaimed = claimed.has(meta.id);
+          const sources: readonly Source[] = meta.stateSource
+            ? [meta.source, meta.stateSource(inputs)]
+            : [meta.source];
           return (
             <Card
               key={meta.id}
               meta={meta}
+              sources={sources}
               eligibility={elig}
               claimed={isClaimed}
               onToggle={() => toggle(meta.id)}
@@ -95,8 +103,9 @@ export function Benefits({
   );
 }
 
-function Card({ meta, eligibility, claimed, onToggle }: {
+function Card({ meta, sources, eligibility, claimed, onToggle }: {
   meta: BenefitMeta;
+  sources: readonly Source[];
   eligibility: BenefitEligibility;
   claimed: boolean;
   onToggle: () => void;
@@ -126,7 +135,7 @@ function Card({ meta, eligibility, claimed, onToggle }: {
         marginBottom: 4, gap: 8,
       }}>
         <div style={{ fontFamily: fonts.display, fontSize: 18, fontWeight: 500 }}>
-          {meta.name}<Cite source={meta.source} />
+          {meta.name}<Cite source={sources} />
         </div>
         <EligibilityBadge eligible={eligible} claimed={claimed} />
       </div>

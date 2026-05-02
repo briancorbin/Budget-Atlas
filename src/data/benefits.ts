@@ -84,3 +84,69 @@ export const SNAP_BBCE_SOURCE: Source = {
   url: 'https://www.cbpp.org/research/food-assistance/states-have-flexibility-to-expand-snap-categorical-eligibility',
   date: '2024',
 };
+
+/**
+ * State agency that administers SNAP (program name varies by state —
+ * CalFresh in California, OTDA in New York, DTA in Massachusetts, etc.).
+ * URLs point to the agency's SNAP/food-assistance landing page where
+ * possible, otherwise the agency homepage. Subject to occasional
+ * reorganization at the state level.
+ */
+const STATE_SNAP_AGENCY: Record<StateCode, Source> = {
+  AL: { label: 'AL DHR Food Assistance',                   url: 'https://dhr.alabama.gov/services/food-assistance/',                                              date: '2026' },
+  AK: { label: 'AK DPA SNAP',                              url: 'http://dhss.alaska.gov/dpa/Pages/snap/default.aspx',                                             date: '2026' },
+  AZ: { label: 'AZ DES Nutrition Assistance',              url: 'https://des.az.gov/services/basic-needs/food-assistance/nutrition-assistance',                  date: '2026' },
+  AR: { label: 'AR DHS SNAP',                              url: 'https://humanservices.arkansas.gov/divisions-shared-services/county-operations/programs-services/snap/', date: '2026' },
+  CA: { label: 'CalFresh (CA DSS)',                        url: 'https://www.cdss.ca.gov/calfresh',                                                                date: '2026' },
+  CO: { label: 'CO CDHS SNAP',                             url: 'https://cdhs.colorado.gov/snap',                                                                  date: '2026' },
+  CT: { label: 'CT DSS SNAP',                              url: 'https://portal.ct.gov/DSS/SNAP/SNAP',                                                             date: '2026' },
+  DE: { label: 'DE DHSS Food Benefits',                    url: 'https://dhss.delaware.gov/dss/foodstamps.html',                                                   date: '2026' },
+  FL: { label: 'FL DCF Food Assistance',                   url: 'https://www.myflfamilies.com/services/public-assistance/food-assistance',                        date: '2026' },
+  GA: { label: 'GA DHS Food Stamps',                       url: 'https://dhs.georgia.gov/services/food-stamps',                                                    date: '2026' },
+  HI: { label: 'HI DHS SNAP',                              url: 'https://humanservices.hawaii.gov/bessd/snap-2/',                                                  date: '2026' },
+  ID: { label: 'ID DHW Food Stamps',                       url: 'https://healthandwelfare.idaho.gov/services-programs/food-assistance/food-stamps-snap',          date: '2026' },
+  IL: { label: 'IL DHS SNAP',                              url: 'https://www.dhs.state.il.us/page.aspx?item=30357',                                                date: '2026' },
+  IN: { label: 'IN FSSA SNAP',                             url: 'https://www.in.gov/fssa/dfr/snap/',                                                               date: '2026' },
+  IA: { label: 'IA HHS Food Assistance',                   url: 'https://hhs.iowa.gov/programs/welcome-iowa-snap',                                                 date: '2026' },
+  KS: { label: 'KS DCF Food Assistance',                   url: 'https://www.dcf.ks.gov/services/Pages/Food-Assistance.aspx',                                      date: '2026' },
+  KY: { label: 'KY DCBS SNAP',                             url: 'https://www.chfs.ky.gov/agencies/dcbs/dfs/Pages/snap.aspx',                                       date: '2026' },
+  LA: { label: 'LA DCFS SNAP',                             url: 'https://www.dcfs.louisiana.gov/page/snap',                                                        date: '2026' },
+  ME: { label: 'ME DHHS Food Supplement',                  url: 'https://www.maine.gov/dhhs/ofi/programs-services/food-supplement',                                date: '2026' },
+  MD: { label: 'MD DHS Food Supplement',                   url: 'https://dhs.maryland.gov/food-supplement-program/',                                               date: '2026' },
+  MA: { label: 'MA DTA SNAP',                              url: 'https://www.mass.gov/snap-benefits-formerly-food-stamps',                                         date: '2026' },
+  MI: { label: 'MI MDHHS Food Assistance',                 url: 'https://www.michigan.gov/mdhhs/assistance-programs/food-assistance',                              date: '2026' },
+  MN: { label: 'MN DHS SNAP',                              url: 'https://mn.gov/dhs/people-we-serve/adults/economic-assistance/food-nutrition/programs-and-services/supplemental-nutrition-program.jsp', date: '2026' },
+  MS: { label: 'MS DHS SNAP',                              url: 'https://www.mdhs.ms.gov/economic-assistance/snap/',                                               date: '2026' },
+  MO: { label: 'MO DSS Food Stamp Program',                url: 'https://dss.mo.gov/fsd/food-stamps/',                                                             date: '2026' },
+  MT: { label: 'MT DPHHS SNAP',                            url: 'https://dphhs.mt.gov/hcsd/snap',                                                                  date: '2026' },
+  NE: { label: 'NE DHHS SNAP',                             url: 'https://dhhs.ne.gov/Pages/Economic-Assistance-SNAP.aspx',                                          date: '2026' },
+  NV: { label: 'NV DWSS SNAP',                             url: 'https://dwss.nv.gov/SNAP/SNAP_Home/',                                                              date: '2026' },
+  NH: { label: 'NH DHHS Food Stamp',                       url: 'https://www.dhhs.nh.gov/programs-services/medicaid/food-stamp-program',                            date: '2026' },
+  NJ: { label: 'NJ SNAP (DHS)',                            url: 'https://www.nj.gov/humanservices/njsnap/',                                                         date: '2026' },
+  NM: { label: 'NM HCA SNAP',                              url: 'https://www.hca.nm.gov/lookingforassistance/snap/',                                                date: '2026' },
+  NY: { label: 'NY OTDA SNAP',                             url: 'https://otda.ny.gov/programs/snap/',                                                               date: '2026' },
+  NC: { label: 'NC DHHS Food and Nutrition Services',      url: 'https://www.ncdhhs.gov/divisions/social-services/food-and-nutrition-services-food-stamps',         date: '2026' },
+  ND: { label: 'ND HHS SNAP',                              url: 'https://www.hhs.nd.gov/snap',                                                                      date: '2026' },
+  OH: { label: 'OH ODJFS Food Assistance',                 url: 'https://jfs.ohio.gov/family-services-and-assistance/cash-and-food-assistance/food-assistance',     date: '2026' },
+  OK: { label: 'OK DHS SNAP',                              url: 'https://oklahoma.gov/okdhs/services/sfn.html',                                                     date: '2026' },
+  OR: { label: 'OR ODHS SNAP',                             url: 'https://www.oregon.gov/odhs/food/Pages/default.aspx',                                              date: '2026' },
+  PA: { label: 'PA DHS SNAP',                              url: 'https://www.dhs.pa.gov/Services/Assistance/Pages/SNAP.aspx',                                       date: '2026' },
+  RI: { label: 'RI DHS SNAP',                              url: 'https://dhs.ri.gov/programs-and-services/supplemental-nutrition-assistance-program-snap',          date: '2026' },
+  SC: { label: 'SC DSS SNAP',                              url: 'https://dss.sc.gov/snap/',                                                                          date: '2026' },
+  SD: { label: 'SD DSS Food Stamps',                       url: 'https://dss.sd.gov/foodstamps/',                                                                    date: '2026' },
+  TN: { label: 'TN DHS SNAP',                              url: 'https://www.tn.gov/humanservices/for-families/supplemental-nutrition-assistance-program-snap.html', date: '2026' },
+  TX: { label: 'TX HHSC SNAP',                             url: 'https://www.hhs.texas.gov/services/food/snap-food-benefits',                                       date: '2026' },
+  UT: { label: 'UT DWS Food Stamps',                       url: 'https://jobs.utah.gov/customereducation/services/foodstamps/index.html',                           date: '2026' },
+  VT: { label: '3SquaresVT (VT DCF)',                      url: 'https://dcf.vermont.gov/benefits/3SquaresVT',                                                       date: '2026' },
+  VA: { label: 'VA DSS SNAP',                              url: 'https://www.dss.virginia.gov/benefit/snap.cgi',                                                     date: '2026' },
+  WA: { label: 'WA DSHS Basic Food',                       url: 'https://www.dshs.wa.gov/esa/community-services-offices/basic-food',                                 date: '2026' },
+  WV: { label: 'WV DHHR SNAP',                             url: 'https://dhhr.wv.gov/bcf/Services/Pages/SNAP.aspx',                                                  date: '2026' },
+  WI: { label: 'FoodShare Wisconsin (DHS)',                url: 'https://www.dhs.wisconsin.gov/foodshare/index.htm',                                                 date: '2026' },
+  WY: { label: 'WY DFS Food Stamps',                       url: 'https://dfs.wyo.gov/assistance-programs/food-and-nutrition/',                                       date: '2026' },
+  DC: { label: 'DC DHS SNAP',                              url: 'https://dhs.dc.gov/service/snap-food-stamps',                                                       date: '2026' },
+};
+
+/** State SNAP agency citation for a given state. */
+export function snapStateSource(state: StateCode): Source {
+  return STATE_SNAP_AGENCY[state];
+}

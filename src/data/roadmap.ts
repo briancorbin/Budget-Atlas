@@ -132,6 +132,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Add an input for monthly student loan payment, with optional balance + rate + standard 10-year payment estimate. Model income-driven repayment (IDR / SAVE / PAYE) where payments scale with discretionary income above a poverty multiple. Pick up the $2,500/yr student loan interest deduction (above-the-line, phased out at ~$80K single / $165K joint).',
   },
   {
+    id: 17,
+    title: 'Expanded dependents',
+    category: 'Household detail',
+    status: 'planned',
+    summary:
+      'Today the household model is "adults + kids 0–4" and assumes kids age out at 18. In reality plenty of households support an adult special-needs child, an elderly parent who lives with them, or a sibling between jobs. Add a "other dependents" input that flows into household size (rent, groceries, utilities), tax math (Credit for Other Dependents — $500 nonrefundable per qualifying non-child dependent), and optionally their own income contribution if they work. Surfaces the real cost of multigenerational and care-giving households, and the modest tax offset that exists for them.',
+  },
+  {
     id: 16,
     title: 'Housing-footprint preferences',
     category: 'Household detail',

@@ -107,3 +107,20 @@ export interface BudgetResult {
 }
 
 export type TaxBracket = readonly [number, number]; // [cap, rate]
+
+/**
+ * Reference for a piece of data shown in the app. Every numeric value the
+ * model displays should be traceable to a Source. Where the value is an
+ * approximation rather than a published statistic, label it as such honestly
+ * (e.g. label: "Approximate / illustrative") rather than fake-citing.
+ *
+ * See README "Sources" section for the master list.
+ */
+export interface Source {
+  /** Short citation label, e.g. "IRS Rev. Proc. 2025-32". */
+  label: string;
+  /** Canonical URL the citation resolves to. */
+  url: string;
+  /** Optional retrieval / publication date in ISO form. */
+  date?: string;
+}

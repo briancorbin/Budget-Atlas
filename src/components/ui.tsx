@@ -1,7 +1,41 @@
 import type { ReactNode } from 'react';
 import type { TooltipProps } from 'recharts';
+import type { Source } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt } from '@/lib/format';
+
+/**
+ * Tiny editorial citation. Renders a superscript "ⁱ" that opens the source
+ * URL in a new tab; the source label appears in the native browser tooltip
+ * on hover. Designed to be unobtrusive next to a value.
+ *
+ * Pass an array to attach multiple sources to a single value; each gets its
+ * own indicator.
+ */
+export function Cite({ source }: { source: Source | readonly Source[] }) {
+  const sources = Array.isArray(source) ? source : [source as Source];
+  return (
+    <>
+      {sources.map((s, i) => (
+        <a
+          key={i}
+          href={s.url}
+          target="_blank"
+          rel="noreferrer"
+          title={s.date ? `${s.label} (${s.date})` : s.label}
+          aria-label={`Source: ${s.label}`}
+          style={{
+            color: T.inkMuted, textDecoration: 'none',
+            fontSize: '0.7em', verticalAlign: 'super',
+            padding: '0 2px', cursor: 'help',
+            fontFamily: fonts.body, fontWeight: 600,
+            letterSpacing: 0,
+          }}
+        >ⁱ</a>
+      ))}
+    </>
+  );
+}
 
 export function Stat({ label, value, sub, accent }: {
   label: string;
@@ -28,7 +62,7 @@ export function Stat({ label, value, sub, accent }: {
   );
 }
 
-export function SectionTitle({ children, kicker }: { children: ReactNode; kicker?: string }) {
+export function SectionTitle({ children, kicker }: { children: ReactNode; kicker?: ReactNode }) {
   return (
     <div style={{ marginBottom: 16, marginTop: 8 }}>
       {kicker && (

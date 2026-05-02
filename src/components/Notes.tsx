@@ -1,7 +1,17 @@
-import type { FilingStatus } from '@/types';
+import type { FilingStatus, Source } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt } from '@/lib/format';
-import { STD_DEDUCTION_2026 } from '@/data/federalTax';
+import { FEDERAL_TAX_SOURCE, SS_WAGE_BASE_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
+import { STATE_TAX_SOURCE, STATE_MIN_WAGE_SOURCE } from '@/data/states';
+import { CITY_COL_SOURCES } from '@/data/cities';
+
+const FOOTER_SOURCES: readonly Source[] = [
+  FEDERAL_TAX_SOURCE,
+  SS_WAGE_BASE_SOURCE,
+  STATE_TAX_SOURCE,
+  STATE_MIN_WAGE_SOURCE,
+  ...CITY_COL_SOURCES,
+];
 
 export function Notes({ filing }: { filing: FilingStatus }) {
   const filingLabel = filing === 'married'
@@ -79,9 +89,19 @@ export function Notes({ filing }: { filing: FilingStatus }) {
 
       <div style={{
         marginTop: 40, paddingTop: 20, borderTop: `2px solid ${T.ink}`, textAlign: 'center',
-        fontSize: 11, color: T.inkMuted, letterSpacing: '0.2em', textTransform: 'uppercase',
+        fontSize: 11, color: T.inkMuted, letterSpacing: '0.18em', textTransform: 'uppercase',
+        lineHeight: 1.9,
       }}>
-        Data: IRS Rev. Proc. 2025-32 · Tax Foundation 2026 · BLS CPI · RentCafe / Zillow medians
+        Sources ·{' '}
+        {FOOTER_SOURCES.map((s, i) => (
+          <span key={i}>
+            <a href={s.url} target="_blank" rel="noreferrer"
+              style={{ color: T.inkMuted, textDecoration: 'underline', textDecorationStyle: 'dotted' }}>
+              {s.label}
+            </a>
+            {i < FOOTER_SOURCES.length - 1 && ' · '}
+          </span>
+        ))}
       </div>
     </>
   );

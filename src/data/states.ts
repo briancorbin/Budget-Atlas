@@ -1,4 +1,21 @@
-import type { FilingStatus, StateCode, StateInfo, TaxBracket } from '@/types';
+import type { FilingStatus, Source, StateCode, StateInfo, TaxBracket } from '@/types';
+
+/**
+ * Shared citations for state tax data. Per-state DOR pages would be more
+ * authoritative; for now we cite Tax Foundation 2026 as the consolidated
+ * source we used and DOL/NCSL for minimum wage.
+ */
+export const STATE_TAX_SOURCE: Source = {
+  label: 'Tax Foundation: 2026 State Income Tax Rates and Brackets',
+  url: 'https://taxfoundation.org/data/all/state/state-income-tax-rates/',
+  date: '2026',
+};
+
+export const STATE_MIN_WAGE_SOURCE: Source = {
+  label: 'NCSL State Minimum Wage Chart',
+  url: 'https://www.ncsl.org/labor-and-employment/state-minimum-wages',
+  date: '2026',
+};
 
 /**
  * State income tax brackets and standard deductions for tax year 2026

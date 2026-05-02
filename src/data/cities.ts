@@ -1,12 +1,22 @@
-import type { CityInfo } from '@/types';
+import type { CityInfo, Source } from '@/types';
 
 /**
- * City cost profiles. Numbers approximate 2025–26 medians from
- * RentCafe/Zillow rents, BLS regional CPI, Numbeo, and Care.com childcare data.
+ * City cost profiles. Numbers approximate 2025–26 medians from the sources
+ * listed in CITY_COL_SOURCES below (also surfaced in the README).
  *
  * To add a new city, add an entry following the same shape. The id is what
  * components reference; keep them lowercase short slugs.
  */
+
+/** Aggregated citations for city-level cost-of-living figures. */
+export const CITY_COL_SOURCES: readonly Source[] = [
+  { label: 'RentCafe National Apartment List', url: 'https://www.rentcafe.com/average-rent-market-trends/us/', date: '2026' },
+  { label: 'Zillow Observed Rent Index', url: 'https://www.zillow.com/research/data/', date: '2026' },
+  { label: 'BLS Consumer Expenditure Survey', url: 'https://www.bls.gov/cex/', date: '2025' },
+  { label: 'Care.com Cost of Care Report', url: 'https://www.care.com/c/cost-of-childcare/', date: '2025' },
+  { label: 'KFF Employer Health Benefits Survey', url: 'https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/', date: '2025' },
+  { label: 'Numbeo cost-of-living indices (cross-check)', url: 'https://www.numbeo.com/cost-of-living/', date: '2026' },
+];
 export const CITIES: Record<string, CityInfo> = {
   nyc: {
     name: 'New York City', state: 'NY', tier: 'Very High', localTax: 0.038,

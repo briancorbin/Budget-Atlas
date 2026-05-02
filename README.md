@@ -27,9 +27,9 @@ src/
 ├── types.ts                  Shared TS types
 │
 ├── data/                     Reference data — edit these to update for a new tax year
-│   ├── federalTax.ts         2026 federal brackets, std deduction, SS wage base
-│   ├── states.ts             State income tax rate + minimum wage
-│   ├── cities.ts             20 city cost profiles (rent, groceries, childcare, etc.)
+│   ├── federalTax.ts         2026 federal brackets, std deduction, SS wage base, sources
+│   ├── states.ts             State graduated brackets, std deductions, min wage, sources
+│   ├── cities.ts             20 city cost profiles + cost-of-living source list
 │   └── scenarios.ts          Pre-built archetype households
 │
 ├── lib/                      Pure functions — no React, easy to test
@@ -56,7 +56,7 @@ The split is deliberate: data, calculation, and presentation each live separatel
 
 **Federal income tax**: progressive brackets per filing status. Standard deduction subtracted before brackets apply. Child Tax Credit ($2,000/child under 17, refundable up to $1,700/child) and EITC (fully refundable, approximated with phase-in/plateau/phase-out) reduce the bill — net federal tax can go negative for low-income families.
 
-**State tax**: simplified flat effective rate × federal taxable income. Real states use graduated brackets, so this approximation is off by 1–2 points at the extremes.
+**State tax**: real graduated brackets per filing status, with state-specific standard deductions. Same `progressiveTax` machinery as federal. Flat-tax states (CO, IL, PA, etc.) use a single positive bracket; no-tax states (TX, FL, WA, etc.) use a single 0% bracket; high-tax states with detailed schedules (CA, NY, NJ, OR, HI, MN, MA's millionaire surtax, MD, CT, VT, ME, NM, RI, WI, DC) carry their full bracket structure.
 
 **FICA**: per-person calculation. 6.2% Social Security up to $181K wage base, plus 1.45% Medicare on all wages, plus 0.9% Additional Medicare over $200K. Two earners at $200K each pay more SS than one earner at $400K — the per-person cap is preserved.
 
@@ -74,11 +74,34 @@ Static build — works on any static host:
 
 ## Updating for a new tax year
 
-1. Edit `src/data/federalTax.ts` with the new brackets and standard deduction.
-2. Edit `src/data/states.ts` with updated state rates and minimum wages.
-3. Edit `src/data/cities.ts` if rent or other costs have shifted significantly.
+1. Edit `src/data/federalTax.ts` with the new brackets and standard deduction. Update `FEDERAL_TAX_SOURCE.date` to the new IRS Rev. Proc. publication date.
+2. Edit `src/data/states.ts` with updated state brackets, std deductions, and minimum wages. Update the `STATE_TAX_SOURCE.date` accordingly.
+3. Edit `src/data/cities.ts` if rent or other costs have shifted significantly; update entries in `CITY_COL_SOURCES` if you swap providers.
 4. Update the masthead "Vol. 2026" in `src/components/Masthead.tsx`.
-5. Update the data citation footer in `src/components/Notes.tsx`.
+
+## Sources
+
+This is an editorial reference tool. Every numeric value the model displays is traceable to a published source — see the inline `ⁱ` indicators in the app and the consolidated list in the page footer. Source constants live alongside the data they cite (`src/data/federalTax.ts`, `src/data/states.ts`, `src/data/cities.ts`).
+
+### Federal taxes
+- **IRS Rev. Proc. 2025-32** ([link](https://www.irs.gov/pub/irs-drop/rp-25-32.pdf)) — 2026 income tax brackets, standard deductions, OBBBA-adjusted CTC parameters
+- **SSA Contribution and Benefit Base** ([link](https://www.ssa.gov/oact/cola/cbb.html)) — Social Security wage base
+
+### State taxes
+- **Tax Foundation: 2026 State Income Tax Rates and Brackets** ([link](https://taxfoundation.org/data/all/state/state-income-tax-rates/)) — consolidated brackets and flat rates by state. State revenue department pages are more authoritative for any single state; we use Tax Foundation as the cross-state aggregator.
+- **NCSL State Minimum Wage Chart** ([link](https://www.ncsl.org/labor-and-employment/state-minimum-wages)) — 2026 effective minimum wages
+- **U.S. Dept. of Labor State Minimum Wage Rates** — federal floor reference
+
+### Cost of living (per city)
+- **RentCafe National Apartment List** ([link](https://www.rentcafe.com/average-rent-market-trends/us/)) — 1BR / 3BR median rents
+- **Zillow Observed Rent Index** ([link](https://www.zillow.com/research/data/)) — cross-check on rent medians
+- **BLS Consumer Expenditure Survey** ([link](https://www.bls.gov/cex/)) — groceries, utilities, transportation
+- **Care.com Cost of Care Report** ([link](https://www.care.com/c/cost-of-childcare/)) — childcare cost by metro
+- **KFF Employer Health Benefits Survey** ([link](https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/)) — employer-sponsored health insurance premiums
+- **Numbeo cost-of-living indices** ([link](https://www.numbeo.com/cost-of-living/)) — third-party cross-check
+
+### A note on precision
+City-level numbers are approximate medians, rounded to the nearest $50–$100 for readability. They're appropriate for an editorial model exploring orders of magnitude — not for personal financial planning. Tax bracket numbers are rounded to clean values; they'll be off from a real return by 1–3% from index-adjustment timing.
 
 ## Caveats baked into the model
 

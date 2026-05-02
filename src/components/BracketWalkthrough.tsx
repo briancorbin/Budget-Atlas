@@ -3,8 +3,9 @@ import type { BudgetResult, FilingStatus, TaxBracket } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { bracketBreakdown, type BracketRow } from '@/lib/tax';
-import { FEDERAL_BRACKETS_2026, STD_DEDUCTION_2026 } from '@/data/federalTax';
-import { SectionTitle } from './ui';
+import { FEDERAL_BRACKETS_2026, FEDERAL_TAX_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
+import { STATE_TAX_SOURCE } from '@/data/states';
+import { Cite, SectionTitle } from './ui';
 
 interface FilerWalk {
   label: string;
@@ -102,7 +103,7 @@ export function BracketWalkthrough({
           marginTop: 16, background: T.surface,
           border: `1px solid ${T.border}`, padding: '24px 24px 8px',
         }}>
-          <SectionTitle kicker="Federal income tax">
+          <SectionTitle kicker={<>Federal income tax<Cite source={FEDERAL_TAX_SOURCE} /></>}>
             How {federalRawTotal === 0 ? 'no tax was assessed' : `${fmt(federalRawTotal)} in raw federal tax`} was calculated
           </SectionTitle>
           {federalFilers.map((f, i) => (
@@ -117,7 +118,7 @@ export function BracketWalkthrough({
 
           <div style={{ height: 28 }} />
 
-          <SectionTitle kicker={`State income tax · ${stateData.name}`}>
+          <SectionTitle kicker={<>State income tax · {stateData.name}<Cite source={STATE_TAX_SOURCE} /></>}>
             {stateNoTax
               ? `${stateData.name} has no state income tax`
               : `How ${fmt(stateTotal)} in state tax was calculated`}

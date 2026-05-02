@@ -36,6 +36,12 @@ export interface StateInfo {
 export interface CityInfo {
   name: string;
   state: StateCode;
+  /**
+   * `'curated'` = hand-researched per-city profile sourced from RentCafe / Zillow / etc.
+   * `'statewide'` = state-level fallback used when no curated city exists for a state.
+   * Defaults to `'curated'` if omitted (back-compat).
+   */
+  kind?: 'curated' | 'statewide';
   tier: 'Very High' | 'High' | 'Moderate' | 'Lower' | 'Very Low';
   /** Local income tax (NYC, some Ohio cities, some PA municipalities). */
   localTax: number;

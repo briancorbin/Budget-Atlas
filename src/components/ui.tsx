@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import type { TooltipProps } from 'recharts';
 import type { Source } from '@/types';
 import { theme as T, fonts } from '@/theme';
@@ -153,6 +153,182 @@ export function Cite({ source }: { source: Source | readonly Source[] }) {
         >source ↗</a>
       ))}
     </>
+  );
+}
+
+/**
+ * Type-to-filter combobox. Renders an input that opens a popover list of
+ * options, filtered by case-insensitive substring match on the option's
+ * label. Keyboard support: ↑↓ to move, Enter to select, Esc to close.
+ *
+ * Stays consistent with the project's no-framework, inline-styles approach.
+ * Generic `T` is the option's value (typically a string slug). The component
+ * only mutates via `onChange`; selection state lives in the parent.
+ */
+export interface SearchableOption<T extends string> {
+  value: T;
+  label: string;
+  /** Optional secondary text (e.g. "— Moderate"); rendered dim, also searched. */
+  hint?: string;
+}
+
+export function SearchableSelect<T extends string>({
+  value, options, onChange, placeholder, ariaLabel, minWidth,
+}: {
+  value: T;
+  options: readonly SearchableOption<T>[];
+  onChange: (v: T) => void;
+  placeholder?: string;
+  ariaLabel?: string;
+  minWidth?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeIdx, setActiveIdx] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find(o => o.value === value);
+  // When closed, the input shows the selected label. When open, the user's
+  // active query is what's visible — so they can filter without losing the
+  // baseline by accident.
+  const displayValue = open ? query : (selected?.label ?? '');
+
+  const q = query.trim().toLowerCase();
+  const filtered = !open || q === ''
+    ? options
+    : options.filter(o =>
+        o.label.toLowerCase().includes(q)
+        || (o.hint?.toLowerCase().includes(q) ?? false),
+      );
+
+  // Reset highlight when the filtered set changes; keep it in bounds.
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [q, open]);
+
+  // Click-outside / Escape: same pattern as CiteGroup.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  // Keep the active row scrolled into view while arrow-keying.
+  useEffect(() => {
+    if (!open || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-idx="${activeIdx}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [activeIdx, open]);
+
+  const commit = (v: T) => {
+    onChange(v);
+    setOpen(false);
+    setQuery('');
+    inputRef.current?.blur();
+  };
+
+  const onKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setActiveIdx(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const pick = filtered[activeIdx];
+      if (pick) commit(pick.value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      setQuery('');
+    }
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', minWidth }}>
+      <input
+        ref={inputRef}
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        autoComplete="off"
+        spellCheck={false}
+        value={displayValue}
+        placeholder={placeholder}
+        onFocus={() => { setOpen(true); setQuery(''); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onKeyDown={onKey}
+        style={{
+          width: '100%',
+          padding: '10px 32px 10px 12px',
+          fontFamily: fonts.body, fontSize: 14,
+          background: T.bg, border: `1px solid ${T.border}`,
+          color: T.ink, outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+      <span style={{
+        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+        color: T.inkMuted, fontSize: 11, pointerEvents: 'none',
+      }}>{open ? '▴' : '▾'}</span>
+      {open && (
+        <div
+          ref={listRef}
+          role="listbox"
+          style={{
+            position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0,
+            background: T.bg, border: `1px solid ${T.border}`,
+            maxHeight: 280, overflowY: 'auto',
+            zIndex: 60,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+          }}
+        >
+          {filtered.length === 0 && (
+            <div style={{
+              padding: '10px 12px', fontSize: 13,
+              color: T.inkMuted, fontFamily: fonts.body,
+            }}>No matches</div>
+          )}
+          {filtered.map((o, i) => {
+            const active = i === activeIdx;
+            const isSelected = o.value === value;
+            return (
+              <div
+                key={o.value}
+                data-idx={i}
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setActiveIdx(i)}
+                onMouseDown={(e) => { e.preventDefault(); commit(o.value); }}
+                style={{
+                  padding: '8px 12px', cursor: 'pointer',
+                  fontFamily: fonts.body, fontSize: 14,
+                  background: active ? T.bgAlt : 'transparent',
+                  color: T.ink,
+                  display: 'flex', justifyContent: 'space-between', gap: 12,
+                  borderLeft: isSelected ? `2px solid ${T.accent}` : '2px solid transparent',
+                }}
+              >
+                <span>{o.label}</span>
+                {o.hint && (
+                  <span style={{ color: T.inkMuted, fontSize: 12 }}>{o.hint}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

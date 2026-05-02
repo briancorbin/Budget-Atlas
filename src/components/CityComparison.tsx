@@ -1,10 +1,11 @@
-import type { BudgetResult, FilingStatus, Lifestyle } from '@/types';
+import type { BudgetResult, FilingStatus, Lifestyle, StateCode } from '@/types';
 import { useMemo } from 'react';
 import { theme as T, fonts } from '@/theme';
 import { fmt, fmtSigned } from '@/lib/format';
-import { CITIES } from '@/data/cities';
+import { CITIES, stateSlug } from '@/data/cities';
+import { STATES } from '@/data/states';
 import { computeBudget } from '@/lib/budget';
-import { SectionTitle } from './ui';
+import { SearchableSelect, SectionTitle, type SearchableOption } from './ui';
 
 export function CityComparison({
   result, compareCity, setCompareCity,
@@ -30,6 +31,28 @@ export function CityComparison({
     { city: compare.cityData, data: compare, label: 'Comparison' },
   ];
 
+  // Paired-picker state for the comparison side. Mirrors the main inputs.
+  const compareState = compare.cityData.state;
+  const stateOptions: SearchableOption<StateCode>[] = (Object.keys(STATES) as StateCode[])
+    .sort((a, b) => STATES[a].name.localeCompare(STATES[b].name))
+    .map(code => ({ value: code, label: STATES[code].name, hint: code }));
+
+  const tierRank: Record<string, number> = {
+    'Very High': 0, 'High': 1, 'Moderate': 2, 'Lower': 3, 'Very Low': 4,
+  };
+  const curatedInState = Object.entries(CITIES)
+    .filter(([, c]) => c.state === compareState)
+    .sort(([, a], [, b]) => (tierRank[a.tier] ?? 9) - (tierRank[b.tier] ?? 9) || a.name.localeCompare(b.name));
+  const localityOptions: SearchableOption<string>[] = [
+    ...curatedInState.map(([id, c]) => ({ value: id, label: c.name, hint: c.tier })),
+    { value: stateSlug(compareState), label: 'Statewide average', hint: 'approx.' },
+  ];
+
+  const onStateChange = (code: StateCode) => {
+    const firstCurated = Object.entries(CITIES).find(([, c]) => c.state === code);
+    setCompareCity(firstCurated ? firstCurated[0] : stateSlug(code));
+  };
+
   return (
     <div style={{ marginBottom: 40 }}>
       <SectionTitle kicker="The same income, somewhere else">
@@ -45,17 +68,32 @@ export function CityComparison({
             fontSize: 12, color: T.inkSoft, display: 'block',
             marginBottom: 6, letterSpacing: '0.05em',
           }}>COMPARE WITH</label>
-          <select
-            value={compareCity} onChange={e => setCompareCity(e.target.value)}
-            style={{
-              padding: '8px 12px', fontFamily: fonts.body, fontSize: 14,
-              background: T.bg, border: `1px solid ${T.border}`,
-              color: T.ink, outline: 'none', minWidth: 280,
-            }}>
-            {Object.entries(CITIES).map(([id, c]) => (
-              <option key={id} value={id}>{c.name}, {c.state} — {c.tier}</option>
-            ))}
-          </select>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(180px, 1fr) minmax(220px, 1.4fr)',
+            gap: 8,
+            maxWidth: 520,
+          }}>
+            <SearchableSelect<StateCode>
+              value={compareState}
+              options={stateOptions}
+              onChange={onStateChange}
+              placeholder="State"
+              ariaLabel="Comparison state"
+            />
+            <SearchableSelect<string>
+              value={compareCity}
+              options={localityOptions}
+              onChange={setCompareCity}
+              placeholder="City or statewide"
+              ariaLabel="Comparison locality"
+            />
+          </div>
+          {compare.cityData.kind === 'statewide' && (
+            <div style={{ fontSize: 11, color: T.accent, marginTop: 6 }}>
+              Statewide approximation
+            </div>
+          )}
         </div>
 
         <div style={{

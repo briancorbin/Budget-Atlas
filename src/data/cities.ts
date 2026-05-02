@@ -1,4 +1,4 @@
-import type { CityInfo, Source } from '@/types';
+import type { CityInfo, Source, StateCode } from '@/types';
 
 /**
  * City cost profiles. Numbers approximate 2025–26 medians from the sources
@@ -119,3 +119,220 @@ export const CITIES: Record<string, CityInfo> = {
     childcareInfant: 950, childcarePreschool: 800, healthSingle: 380, healthFamily: 1210,
   },
 };
+
+/**
+ * Methodology sources for the statewide-default profiles below. Each
+ * STATE_DEFAULTS entry is derived from these aggregators rather than a
+ * city-specific publisher; values are deliberately rounded approximations
+ * (rent to nearest $50, others to $10) and labeled "approx." in the UI.
+ *
+ * - HUD FMR FY2026: state-area weighted Fair Market Rents for 1BR / 3BR.
+ * - BLS CES regional cuts: per-person grocery + transportation by region.
+ * - EIA residential energy: state household utility averages.
+ * - Child Care Aware "Price of Care": state infant + preschool monthly cost.
+ * - KFF Employer Health Benefits: state single + family premium averages.
+ * - AAA "Your Driving Costs": state-adjusted vehicle ownership cost.
+ */
+export const STATE_DEFAULT_SOURCES: readonly Source[] = [
+  { label: 'HUD Fair Market Rents (FY2026)', url: 'https://www.huduser.gov/portal/datasets/fmr.html', date: '2025' },
+  { label: 'BLS Consumer Expenditure Survey — regional', url: 'https://www.bls.gov/cex/tables.htm', date: '2025' },
+  { label: 'EIA Residential Energy Consumption', url: 'https://www.eia.gov/consumption/residential/', date: '2025' },
+  { label: 'Child Care Aware — Price of Care', url: 'https://www.childcareaware.org/state-fact-sheets/', date: '2025' },
+  { label: 'KFF Employer Health Benefits — state averages', url: 'https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/', date: '2025' },
+  { label: 'AAA Your Driving Costs', url: 'https://newsroom.aaa.com/auto/your-driving-costs/', date: '2025' },
+];
+
+/**
+ * State-level fallback cost profiles. One entry per US state + DC. Used by
+ * the picker when the user selects "Statewide average" rather than a curated
+ * city. Numbers approximate state-area weighted aggregates from
+ * STATE_DEFAULT_SOURCES; treat as illustrative, not precise.
+ *
+ * Tier is derived from rent1 quintile across all 51:
+ *   Very High ≥ $1700, High $1400–1699, Moderate $1100–1399,
+ *   Lower $950–1099, Very Low < $950.
+ *
+ * Slug convention: `<lowercase state code>_state` (e.g. `wa_state`).
+ */
+export const STATE_DEFAULTS: Record<StateCode, CityInfo> = {
+  AL: { name: 'Alabama (statewide)', state: 'AL', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 180, transit: 40, carCost: 850,
+        childcareInfant: 850, childcarePreschool: 700, healthSingle: 380, healthFamily: 1210 },
+  AK: { name: 'Alaska (statewide)', state: 'AK', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2100, groceries: 480, utilities: 220, transit: 50, carCost: 950,
+        childcareInfant: 1300, childcarePreschool: 1050, healthSingle: 450, healthFamily: 1450 },
+  AZ: { name: 'Arizona (statewide)', state: 'AZ', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2000, groceries: 410, utilities: 200, transit: 50, carCost: 880,
+        childcareInfant: 1200, childcarePreschool: 1000, healthSingle: 410, healthFamily: 1290 },
+  AR: { name: 'Arkansas (statewide)', state: 'AR', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 850, rent3: 1300, groceries: 360, utilities: 180, transit: 30, carCost: 830,
+        childcareInfant: 800, childcarePreschool: 670, healthSingle: 380, healthFamily: 1200 },
+  CA: { name: 'California (statewide)', state: 'CA', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 1900, rent3: 3100, groceries: 460, utilities: 180, transit: 80, carCost: 1000,
+        childcareInfant: 1900, childcarePreschool: 1500, healthSingle: 440, healthFamily: 1400 },
+  CO: { name: 'Colorado (statewide)', state: 'CO', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1500, rent3: 2400, groceries: 430, utilities: 170, transit: 70, carCost: 920,
+        childcareInfant: 1700, childcarePreschool: 1400, healthSingle: 410, healthFamily: 1310 },
+  CT: { name: 'Connecticut (statewide)', state: 'CT', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1500, rent3: 2400, groceries: 440, utilities: 220, transit: 70, carCost: 970,
+        childcareInfant: 1600, childcarePreschool: 1300, healthSingle: 430, healthFamily: 1380 },
+  DE: { name: 'Delaware (statewide)', state: 'DE', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1250, rent3: 1900, groceries: 400, utilities: 200, transit: 50, carCost: 900,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 410, healthFamily: 1290 },
+  FL: { name: 'Florida (statewide)', state: 'FL', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1500, rent3: 2400, groceries: 410, utilities: 200, transit: 60, carCost: 950,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 420, healthFamily: 1330 },
+  GA: { name: 'Georgia (statewide)', state: 'GA', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1250, rent3: 1900, groceries: 390, utilities: 180, transit: 50, carCost: 880,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 400, healthFamily: 1270 },
+  HI: { name: 'Hawaii (statewide)', state: 'HI', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 2200, rent3: 3700, groceries: 540, utilities: 260, transit: 80, carCost: 1000,
+        childcareInfant: 1700, childcarePreschool: 1400, healthSingle: 440, healthFamily: 1390 },
+  ID: { name: 'Idaho (statewide)', state: 'ID', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1050, rent3: 1700, groceries: 400, utilities: 170, transit: 30, carCost: 870,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 400, healthFamily: 1260 },
+  IL: { name: 'Illinois (statewide)', state: 'IL', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1250, rent3: 1900, groceries: 410, utilities: 180, transit: 60, carCost: 900,
+        childcareInfant: 1500, childcarePreschool: 1200, healthSingle: 410, healthFamily: 1300 },
+  IN: { name: 'Indiana (statewide)', state: 'IN', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1000, rent3: 1500, groceries: 380, utilities: 170, transit: 40, carCost: 870,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 400, healthFamily: 1260 },
+  IA: { name: 'Iowa (statewide)', state: 'IA', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 180, transit: 30, carCost: 860,
+        childcareInfant: 950, childcarePreschool: 800, healthSingle: 390, healthFamily: 1240 },
+  KS: { name: 'Kansas (statewide)', state: 'KS', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 170, transit: 30, carCost: 860,
+        childcareInfant: 950, childcarePreschool: 800, healthSingle: 390, healthFamily: 1240 },
+  KY: { name: 'Kentucky (statewide)', state: 'KY', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 180, transit: 30, carCost: 850,
+        childcareInfant: 850, childcarePreschool: 700, healthSingle: 380, healthFamily: 1220 },
+  LA: { name: 'Louisiana (statewide)', state: 'LA', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 950, rent3: 1500, groceries: 380, utilities: 200, transit: 30, carCost: 900,
+        childcareInfant: 850, childcarePreschool: 700, healthSingle: 390, healthFamily: 1240 },
+  ME: { name: 'Maine (statewide)', state: 'ME', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1200, rent3: 1900, groceries: 420, utilities: 220, transit: 30, carCost: 870,
+        childcareInfant: 1200, childcarePreschool: 950, healthSingle: 420, healthFamily: 1320 },
+  MD: { name: 'Maryland (statewide)', state: 'MD', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1600, rent3: 2500, groceries: 440, utilities: 190, transit: 80, carCost: 950,
+        childcareInfant: 1500, childcarePreschool: 1200, healthSingle: 430, healthFamily: 1370 },
+  MA: { name: 'Massachusetts (statewide)', state: 'MA', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 1900, rent3: 3000, groceries: 460, utilities: 220, transit: 80, carCost: 970,
+        childcareInfant: 2300, childcarePreschool: 1900, healthSingle: 440, healthFamily: 1410 },
+  MI: { name: 'Michigan (statewide)', state: 'MI', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1050, rent3: 1600, groceries: 380, utilities: 180, transit: 50, carCost: 900,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 400, healthFamily: 1280 },
+  MN: { name: 'Minnesota (statewide)', state: 'MN', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1250, rent3: 2000, groceries: 410, utilities: 180, transit: 60, carCost: 900,
+        childcareInfant: 1600, childcarePreschool: 1300, healthSingle: 410, healthFamily: 1300 },
+  MS: { name: 'Mississippi (statewide)', state: 'MS', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 850, rent3: 1300, groceries: 360, utilities: 180, transit: 20, carCost: 830,
+        childcareInfant: 800, childcarePreschool: 670, healthSingle: 380, healthFamily: 1200 },
+  MO: { name: 'Missouri (statewide)', state: 'MO', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1000, rent3: 1500, groceries: 380, utilities: 170, transit: 40, carCost: 870,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 390, healthFamily: 1250 },
+  MT: { name: 'Montana (statewide)', state: 'MT', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1050, rent3: 1700, groceries: 410, utilities: 180, transit: 30, carCost: 870,
+        childcareInfant: 1050, childcarePreschool: 850, healthSingle: 400, healthFamily: 1250 },
+  NE: { name: 'Nebraska (statewide)', state: 'NE', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 170, transit: 30, carCost: 860,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 390, healthFamily: 1240 },
+  NV: { name: 'Nevada (statewide)', state: 'NV', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2000, groceries: 420, utilities: 200, transit: 50, carCost: 920,
+        childcareInfant: 1200, childcarePreschool: 1000, healthSingle: 410, healthFamily: 1290 },
+  NH: { name: 'New Hampshire (statewide)', state: 'NH', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1400, rent3: 2200, groceries: 440, utilities: 220, transit: 30, carCost: 900,
+        childcareInfant: 1500, childcarePreschool: 1200, healthSingle: 430, healthFamily: 1370 },
+  NJ: { name: 'New Jersey (statewide)', state: 'NJ', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 1750, rent3: 2800, groceries: 450, utilities: 220, transit: 90, carCost: 970,
+        childcareInfant: 1700, childcarePreschool: 1400, healthSingle: 440, healthFamily: 1400 },
+  NM: { name: 'New Mexico (statewide)', state: 'NM', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1000, rent3: 1500, groceries: 390, utilities: 180, transit: 30, carCost: 870,
+        childcareInfant: 950, childcarePreschool: 800, healthSingle: 390, healthFamily: 1250 },
+  NY: { name: 'New York (statewide)', state: 'NY', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 1700, rent3: 2700, groceries: 450, utilities: 200, transit: 90, carCost: 950,
+        childcareInfant: 1900, childcarePreschool: 1500, healthSingle: 440, healthFamily: 1400 },
+  NC: { name: 'North Carolina (statewide)', state: 'NC', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1100, rent3: 1700, groceries: 390, utilities: 180, transit: 40, carCost: 880,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 400, healthFamily: 1270 },
+  ND: { name: 'North Dakota (statewide)', state: 'ND', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 380, utilities: 180, transit: 30, carCost: 860,
+        childcareInfant: 950, childcarePreschool: 800, healthSingle: 390, healthFamily: 1240 },
+  OH: { name: 'Ohio (statewide)', state: 'OH', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 950, rent3: 1450, groceries: 380, utilities: 180, transit: 50, carCost: 870,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 400, healthFamily: 1260 },
+  OK: { name: 'Oklahoma (statewide)', state: 'OK', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 900, rent3: 1400, groceries: 370, utilities: 180, transit: 30, carCost: 860,
+        childcareInfant: 850, childcarePreschool: 700, healthSingle: 390, healthFamily: 1230 },
+  OR: { name: 'Oregon (statewide)', state: 'OR', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2100, groceries: 430, utilities: 170, transit: 60, carCost: 900,
+        childcareInfant: 1500, childcarePreschool: 1200, healthSingle: 410, healthFamily: 1300 },
+  PA: { name: 'Pennsylvania (statewide)', state: 'PA', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1100, rent3: 1700, groceries: 410, utilities: 200, transit: 60, carCost: 900,
+        childcareInfant: 1200, childcarePreschool: 1000, healthSingle: 410, healthFamily: 1290 },
+  RI: { name: 'Rhode Island (statewide)', state: 'RI', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2100, groceries: 440, utilities: 220, transit: 60, carCost: 950,
+        childcareInfant: 1500, childcarePreschool: 1200, healthSingle: 430, healthFamily: 1360 },
+  SC: { name: 'South Carolina (statewide)', state: 'SC', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1000, rent3: 1500, groceries: 380, utilities: 190, transit: 30, carCost: 860,
+        childcareInfant: 900, childcarePreschool: 750, healthSingle: 390, healthFamily: 1240 },
+  SD: { name: 'South Dakota (statewide)', state: 'SD', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 850, rent3: 1400, groceries: 370, utilities: 170, transit: 20, carCost: 850,
+        childcareInfant: 900, childcarePreschool: 750, healthSingle: 390, healthFamily: 1230 },
+  TN: { name: 'Tennessee (statewide)', state: 'TN', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1150, rent3: 1750, groceries: 390, utilities: 180, transit: 40, carCost: 880,
+        childcareInfant: 1000, childcarePreschool: 850, healthSingle: 400, healthFamily: 1270 },
+  TX: { name: 'Texas (statewide)', state: 'TX', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1200, rent3: 1850, groceries: 400, utilities: 200, transit: 50, carCost: 920,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 410, healthFamily: 1280 },
+  UT: { name: 'Utah (statewide)', state: 'UT', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1200, rent3: 1900, groceries: 410, utilities: 170, transit: 50, carCost: 880,
+        childcareInfant: 1100, childcarePreschool: 900, healthSingle: 410, healthFamily: 1280 },
+  VT: { name: 'Vermont (statewide)', state: 'VT', kind: 'statewide', tier: 'Moderate', localTax: 0,
+        rent1: 1300, rent3: 2000, groceries: 440, utilities: 220, transit: 30, carCost: 880,
+        childcareInfant: 1300, childcarePreschool: 1050, healthSingle: 420, healthFamily: 1340 },
+  VA: { name: 'Virginia (statewide)', state: 'VA', kind: 'statewide', tier: 'High', localTax: 0,
+        rent1: 1400, rent3: 2200, groceries: 410, utilities: 180, transit: 60, carCost: 900,
+        childcareInfant: 1300, childcarePreschool: 1050, healthSingle: 410, healthFamily: 1300 },
+  WA: { name: 'Washington (statewide)', state: 'WA', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 1700, rent3: 2700, groceries: 450, utilities: 170, transit: 80, carCost: 950,
+        childcareInfant: 1700, childcarePreschool: 1400, healthSingle: 420, healthFamily: 1340 },
+  WV: { name: 'West Virginia (statewide)', state: 'WV', kind: 'statewide', tier: 'Very Low', localTax: 0,
+        rent1: 850, rent3: 1300, groceries: 370, utilities: 200, transit: 20, carCost: 830,
+        childcareInfant: 850, childcarePreschool: 700, healthSingle: 390, healthFamily: 1230 },
+  WI: { name: 'Wisconsin (statewide)', state: 'WI', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 1000, rent3: 1500, groceries: 390, utilities: 180, transit: 40, carCost: 880,
+        childcareInfant: 1200, childcarePreschool: 1000, healthSingle: 400, healthFamily: 1270 },
+  WY: { name: 'Wyoming (statewide)', state: 'WY', kind: 'statewide', tier: 'Lower', localTax: 0,
+        rent1: 950, rent3: 1500, groceries: 390, utilities: 180, transit: 20, carCost: 870,
+        childcareInfant: 950, childcarePreschool: 800, healthSingle: 390, healthFamily: 1240 },
+  DC: { name: 'Washington DC (statewide)', state: 'DC', kind: 'statewide', tier: 'Very High', localTax: 0,
+        rent1: 2100, rent3: 3500, groceries: 460, utilities: 200, transit: 90, carCost: 980,
+        childcareInfant: 2200, childcarePreschool: 1800, healthSingle: 440, healthFamily: 1400 },
+};
+
+/**
+ * Slug naming convention for statewide-default entries: lowercase state code
+ * + `_state`. Stable; the picker writes this slug into `BudgetInput.city`
+ * when "Statewide average" is selected.
+ */
+export function stateSlug(code: StateCode): string {
+  return `${code.toLowerCase()}_state`;
+}
+
+/**
+ * Single resolver for a city slug → CityInfo. Curated cities take priority;
+ * unknown slugs fall through to a statewide default if the slug matches the
+ * `xx_state` convention. Throws on a truly unknown slug so misuses surface
+ * loudly rather than silently rendering the wrong city's costs.
+ */
+export function getCityData(slug: string): CityInfo {
+  const curated = CITIES[slug];
+  if (curated) return curated;
+  const m = /^([a-z]{2})_state$/.exec(slug);
+  if (m) {
+    const code = m[1].toUpperCase() as StateCode;
+    const fallback = STATE_DEFAULTS[code];
+    if (fallback) return fallback;
+  }
+  throw new Error(`Unknown city slug: ${slug}`);
+}

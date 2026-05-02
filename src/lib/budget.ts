@@ -1,5 +1,5 @@
 import type { BudgetInput, BudgetResult } from '@/types';
-import { CITIES } from '@/data/cities';
+import { getCityData } from '@/data/cities';
 import { STATES } from '@/data/states';
 import { FEDERAL_BRACKETS_2026, STD_DEDUCTION_2026 } from '@/data/federalTax';
 import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/tax';
@@ -18,13 +18,16 @@ import { checkChip, checkMedicaid, checkSnap } from '@/lib/benefits';
  */
 export function computeBudget(input: BudgetInput): BudgetResult {
   const { incomeA, incomeB = 0, hasPartner = false, filing, city, kids, lifestyle, claimedBenefits } = input;
-  const cityData = CITIES[city];
+  const cityData = getCityData(city);
   const stateData = STATES[cityData.state];
   const totalIncome = incomeA + incomeB;
   const hasSecondIncome = incomeB > 0;
-  // Adults reflects household composition (intent), not income. A stay-at-home
-  // spouse / partner still counts. Married filing status implies a partner.
-  const adults = (filing === 'married' || hasPartner || hasSecondIncome) ? 2 : 1;
+  // Adults reflects the household composition the user explicitly modeled
+  // via the partner toggle. Filing status drives tax math but never
+  // household size — a married couple living apart, or filing jointly
+  // while modeling one person's budget, both pick "no partner" and get a
+  // 1-adult household. Income from a non-toggled partner is already zero.
+  const adults = hasPartner ? 2 : 1;
 
   // ── Tax calculation ──
   let fedTaxRaw: number;

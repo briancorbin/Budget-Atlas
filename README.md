@@ -29,7 +29,7 @@ src/
 ├── data/                     Reference data — edit these to update for a new tax year
 │   ├── federalTax.ts         2026 federal brackets, std deduction, SS wage base, sources
 │   ├── states.ts             State graduated brackets, std deductions, min wage, sources
-│   ├── cities.ts             20 city cost profiles + cost-of-living source list
+│   ├── cities.ts             ~20 curated city profiles + 51 statewide-default fallbacks + sources
 │   └── scenarios.ts          Pre-built archetype households
 │
 ├── lib/                      Pure functions — no React, easy to test
@@ -100,8 +100,18 @@ This is an editorial reference tool. Every numeric value the model displays is t
 - **KFF Employer Health Benefits Survey** ([link](https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/)) — employer-sponsored health insurance premiums
 - **Numbeo cost-of-living indices** ([link](https://www.numbeo.com/cost-of-living/)) — third-party cross-check
 
+### Cost of living (statewide fallbacks)
+When the user picks a state without a curated city, the model falls back to a **statewide-average** profile derived from these aggregators. Values are deliberately rounded approximations (rent to nearest $50, others to $10) and labeled "approx." in the UI.
+
+- **HUD Fair Market Rents (FY2026)** ([link](https://www.huduser.gov/portal/datasets/fmr.html)) — state-area weighted 1BR / 3BR rents
+- **BLS Consumer Expenditure Survey — regional** ([link](https://www.bls.gov/cex/tables.htm)) — groceries + transportation by Census region
+- **EIA Residential Energy Consumption** ([link](https://www.eia.gov/consumption/residential/)) — state utility averages
+- **Child Care Aware — Price of Care** ([link](https://www.childcareaware.org/state-fact-sheets/)) — state infant + preschool monthly cost
+- **KFF Employer Health Benefits — state averages** ([link](https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/)) — state premium averages
+- **AAA Your Driving Costs** ([link](https://newsroom.aaa.com/auto/your-driving-costs/)) — state-adjusted vehicle ownership cost
+
 ### A note on precision
-City-level numbers are approximate medians, rounded to the nearest $50–$100 for readability. They're appropriate for an editorial model exploring orders of magnitude — not for personal financial planning. Tax bracket numbers are rounded to clean values; they'll be off from a real return by 1–3% from index-adjustment timing.
+City-level numbers are approximate medians, rounded to the nearest $50–$100 for readability. Statewide-average profiles are coarser still — they collapse intra-state variation (Manhattan vs. Buffalo, Bay Area vs. Bakersfield) into a single number. Both are appropriate for an editorial model exploring orders of magnitude — not for personal financial planning. Tax bracket numbers are rounded to clean values; they'll be off from a real return by 1–3% from index-adjustment timing.
 
 ## Caveats baked into the model
 

@@ -1,10 +1,10 @@
-import type { FilingStatus, Lifestyle } from '@/types';
+import type { FilingStatus, Lifestyle, StateCode } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
-import { CITIES } from '@/data/cities';
+import { CITIES, getCityData, stateSlug } from '@/data/cities';
 import { STATES, bracketRange } from '@/data/states';
 import { SCENARIOS } from '@/data/scenarios';
-import { SectionTitle } from './ui';
+import { SearchableSelect, SectionTitle, type SearchableOption } from './ui';
 
 export interface InputsState {
   scenarioId: string;
@@ -77,8 +77,33 @@ export function ScenarioPicker(s: InputsState) {
 
 export function CustomizePanel(s: InputsState) {
   const totalIncome = s.incomeA + (s.twoIncome ? s.incomeB : 0);
-  const cityState = CITIES[s.city].state;
+  const currentCity = getCityData(s.city);
+  const cityState = currentCity.state;
   const stateMinAnnual = STATES[cityState].min * 40 * 52;
+
+  // State picker options — all 51, name-only.
+  const stateOptions: SearchableOption<StateCode>[] = (Object.keys(STATES) as StateCode[])
+    .sort((a, b) => STATES[a].name.localeCompare(STATES[b].name))
+    .map(code => ({ value: code, label: STATES[code].name, hint: code }));
+
+  // Locality picker options for the *currently selected state*: curated cities
+  // first (sorted by tier+name), then the synthetic "Statewide average" entry.
+  const tierRank: Record<string, number> = {
+    'Very High': 0, 'High': 1, 'Moderate': 2, 'Lower': 3, 'Very Low': 4,
+  };
+  const curatedInState = Object.entries(CITIES)
+    .filter(([, c]) => c.state === cityState)
+    .sort(([, a], [, b]) => (tierRank[a.tier] ?? 9) - (tierRank[b.tier] ?? 9) || a.name.localeCompare(b.name));
+  const localityOptions: SearchableOption<string>[] = [
+    ...curatedInState.map(([id, c]) => ({ value: id, label: c.name, hint: c.tier })),
+    { value: stateSlug(cityState), label: 'Statewide average', hint: 'approx.' },
+  ];
+
+  const onStateChange = (code: StateCode) => {
+    // Auto-pick a sensible locality: first curated city in that state, else statewide.
+    const firstCurated = Object.entries(CITIES).find(([, c]) => c.state === code);
+    s.setCity(firstCurated ? firstCurated[0] : stateSlug(code));
+  };
 
   const inputStyle = {
     width: '100%', padding: '10px 12px', fontFamily: fonts.mono,
@@ -177,21 +202,55 @@ export function CustomizePanel(s: InputsState) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
-        <div>
+        <div style={{ gridColumn: '1 / -1' }}>
           <label style={labelStyle}>LOCATION</label>
-          <select value={s.city} onChange={e => s.setCity(e.target.value)} style={selectStyle}>
-            {Object.entries(CITIES).map(([id, c]) => (
-              <option key={id} value={id}>{c.name}, {c.state} — {c.tier}</option>
-            ))}
-          </select>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(180px, 1fr) minmax(220px, 1.4fr)',
+            gap: 8,
+          }}>
+            <SearchableSelect<StateCode>
+              value={cityState}
+              options={stateOptions}
+              onChange={onStateChange}
+              placeholder="State"
+              ariaLabel="State"
+            />
+            <SearchableSelect<string>
+              value={s.city}
+              options={localityOptions}
+              onChange={s.setCity}
+              placeholder="City or statewide"
+              ariaLabel="City or statewide locality"
+            />
+          </div>
           <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 6 }}>
             {(() => {
-              const [lo, hi] = bracketRange(STATES[CITIES[s.city].state].brackets[s.filing]);
+              const [lo, hi] = bracketRange(STATES[cityState].brackets[s.filing]);
               if (hi === 0) return 'No state income tax';
               if (lo === hi) return `State income tax: ${fmtPct(hi)} (flat)`;
               return `State income tax: ${fmtPct(lo)}–${fmtPct(hi)}`;
             })()}
-            {' · '}1BR rent: {fmt(CITIES[s.city].rent1)}/mo
+            {' · '}
+            {(() => {
+              // Mirror the housing logic in lib/budget.ts so the displayed
+              // figure matches what the model actually uses for this household:
+              //   kids ≥ 1            → 3BR family rent
+              //   2 adults, no kids   → 1BR + 20% (a small 2BR or roomier 1BR)
+              //   solo, no kids       → 1BR
+              // Adults is driven by the partner toggle, not filing status.
+              const twoAdults = s.twoIncome;
+              if (s.kids >= 1) {
+                return <>3BR rent (family): {fmt(currentCity.rent3)}/mo</>;
+              }
+              if (twoAdults) {
+                return <>1BR rent (couple, +20%): {fmt(Math.round(currentCity.rent1 * 1.2))}/mo</>;
+              }
+              return <>1BR rent: {fmt(currentCity.rent1)}/mo</>;
+            })()}
+            {currentCity.kind === 'statewide' && (
+              <span style={{ color: T.accent, marginLeft: 8 }}>· statewide approx.</span>
+            )}
           </div>
         </div>
 

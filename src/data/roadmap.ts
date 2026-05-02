@@ -119,9 +119,9 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Geography',
     status: 'in-progress',
     startedAt: '2026-05-01',
-    progress: 10,
+    progress: 60,
     summary:
-      'Replace the fixed list of ~20 cities with state + city selection, where the city can be any locality. Use curated city profiles when available; fall back to state defaults otherwise. Custom overrides for users who know their actual local rent, utilities, etc. Round-trips via the shareable link feature.',
+      'Phase 1 (shipped): state-first picker with searchable typeahead and statewide-average fallback for any of the 51 jurisdictions, even ones without a curated city. Phase 2 (planned): per-locality custom overrides for rent, groceries, healthcare, etc. Phase 3 (planned): round-trip via shareable links.',
   },
   {
     id: 12,

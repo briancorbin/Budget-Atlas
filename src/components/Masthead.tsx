@@ -18,10 +18,20 @@ export function Masthead() {
           The Budget Atlas · Vol. 2026
         </div>
         <div style={{
+          display: 'flex', alignItems: 'baseline', gap: 18,
           fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: T.inkMuted,
         }}>
-          An interactive examination
+          <span>An interactive examination</span>
+          <a
+            href="#/roadmap"
+            style={{
+              color: T.accent, textDecoration: 'none', fontWeight: 600,
+              borderBottom: `1px solid ${T.border}`, paddingBottom: 1,
+            }}
+          >
+            Roadmap →
+          </a>
         </div>
       </div>
       <h1 style={{

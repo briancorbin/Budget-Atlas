@@ -21,6 +21,12 @@ export interface RoadmapItem {
   category: RoadmapCategory;
   status: RoadmapStatus;
   summary: string;
+  /** ISO date (YYYY-MM-DD) when status flipped to 'in-progress'. Set this
+   *  the same commit that starts work; leave undefined for planned items. */
+  startedAt?: string;
+  /** Rough completion estimate 0–100 for in-progress items. Honest
+   *  finger-in-the-air, not a Jira-precise number. Omit for planned/shipped. */
+  progress?: number;
   /** ISO date (YYYY-MM-DD) when status flipped to 'shipped'. Set this in
    *  the same commit that flips status; leave undefined for planned items. */
   shippedAt?: string;
@@ -111,7 +117,9 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 11,
     title: 'Open-ended location selection',
     category: 'Geography',
-    status: 'planned',
+    status: 'in-progress',
+    startedAt: '2026-05-01',
+    progress: 10,
     summary:
       'Replace the fixed list of ~20 cities with state + city selection, where the city can be any locality. Use curated city profiles when available; fall back to state defaults otherwise. Custom overrides for users who know their actual local rent, utilities, etc. Round-trips via the shareable link feature.',
   },
@@ -122,6 +130,22 @@ export const ROADMAP: readonly RoadmapItem[] = [
     status: 'planned',
     summary:
       'Add an input for monthly student loan payment, with optional balance + rate + standard 10-year payment estimate. Model income-driven repayment (IDR / SAVE / PAYE) where payments scale with discretionary income above a poverty multiple. Pick up the $2,500/yr student loan interest deduction (above-the-line, phased out at ~$80K single / $165K joint).',
+  },
+  {
+    id: 15,
+    title: 'Community suggestions & contributions',
+    category: 'Sharing',
+    status: 'planned',
+    summary:
+      'A lightweight path for visitors to suggest new roadmap items, flag bad data, or contribute fixes — without needing a GitHub account. Likely a "Suggest an idea" form that opens a pre-filled GitHub issue, plus clear CONTRIBUTING docs for adding cities, sources, or local resources via PR. Goal: turn the roadmap from a one-person backlog into a place anyone can shape.',
+  },
+  {
+    id: 14,
+    title: 'Local resources directory',
+    category: 'Geography',
+    status: 'planned',
+    summary:
+      'Surface community resources for the selected location: food banks, shelters, free clinics, diaper banks, utility-assistance programs, legal aid, workforce centers. Seeded from public directories (211, FoodPantries.org, HUD shelter lists) and expandable as a community-driven layer where users can submit additions for their city. Shows alongside benefits so a household sees both the formal safety net and the local one.',
   },
   {
     id: 13,

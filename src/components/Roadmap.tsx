@@ -81,11 +81,22 @@ function Intro() {
 function PlannedList() {
   // Items with status='shipped' relocate to the horizontal-scroll strip
   // below; only planned/in-progress items render in the main vertical list.
-  const items = ROADMAP.filter(i => i.status !== 'shipped');
+  // In-progress items float to the top so the active work is what you see first.
+  const items = ROADMAP
+    .filter(i => i.status !== 'shipped')
+    .slice()
+    .sort((a, b) => {
+      if (a.status === b.status) return 0;
+      return a.status === 'in-progress' ? -1 : 1;
+    });
+  const inProgress = ROADMAP.filter(i => i.status === 'in-progress').length;
+  const planned = ROADMAP.filter(i => i.status === 'planned').length;
   const shippedFromRoadmap = ROADMAP.filter(i => i.status === 'shipped').length;
-  const kicker = shippedFromRoadmap > 0
-    ? `${items.length} planned · ${shippedFromRoadmap} shipped (below)`
-    : `Planned · ${items.length} items`;
+  const parts: string[] = [];
+  if (inProgress > 0) parts.push(`${inProgress} in progress`);
+  parts.push(`${planned} planned`);
+  if (shippedFromRoadmap > 0) parts.push(`${shippedFromRoadmap} shipped (below)`);
+  const kicker = parts.join(' · ');
 
   return (
     <div style={{ marginBottom: 56 }}>
@@ -111,20 +122,12 @@ function PlannedCard({ item }: { item: RoadmapItem }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         gap: 16, marginBottom: 8, flexWrap: 'wrap',
       }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span style={{
-            fontFamily: fonts.mono, fontSize: 13, color: T.inkMuted,
-            fontWeight: 500,
-          }}>
-            {String(item.id).padStart(2, '0')}
-          </span>
-          <span style={{
-            fontFamily: fonts.display, fontSize: 22, fontWeight: 500,
-            color: T.ink, letterSpacing: '-0.005em',
-          }}>
-            {item.title}
-          </span>
-        </div>
+        <span style={{
+          fontFamily: fonts.display, fontSize: 22, fontWeight: 500,
+          color: T.ink, letterSpacing: '-0.005em',
+        }}>
+          {item.title}
+        </span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <CategoryTag category={item.category} />
           <StatusBadge status={item.status} />
@@ -132,10 +135,50 @@ function PlannedCard({ item }: { item: RoadmapItem }) {
       </div>
       <p style={{
         fontSize: 14, lineHeight: 1.6, color: T.inkSoft,
-        margin: 0, marginLeft: 32,
+        margin: 0,
       }}>
         {item.summary}
       </p>
+      {item.status === 'in-progress' && <ProgressStrip item={item} />}
+    </div>
+  );
+}
+
+function ProgressStrip({ item }: { item: RoadmapItem }) {
+  // Only renders for in-progress items. Shows a thin filled bar plus a
+  // mono caption with the started-at date and rough % complete. Both fields
+  // are optional; we render whatever's provided.
+  const pct = typeof item.progress === 'number'
+    ? Math.max(0, Math.min(100, item.progress))
+    : null;
+  const captionParts: string[] = [];
+  if (item.startedAt) captionParts.push(`Started ${item.startedAt}`);
+  if (pct !== null) captionParts.push(`${pct}% complete`);
+  if (captionParts.length === 0 && pct === null) return null;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {pct !== null && (
+        <div style={{
+          height: 3, width: '100%',
+          background: T.border, marginBottom: 6,
+          position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, bottom: 0,
+            width: `${pct}%`, background: T.warning,
+            transition: 'width 0.3s',
+          }} />
+        </div>
+      )}
+      {captionParts.length > 0 && (
+        <div style={{
+          fontFamily: fonts.mono, fontSize: 11, color: T.inkMuted,
+          letterSpacing: '0.04em',
+        }}>
+          {captionParts.join(' · ')}
+        </div>
+      )}
     </div>
   );
 }

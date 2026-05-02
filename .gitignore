@@ -39,5 +39,6 @@ pnpm-debug.log*
 # OS
 Thumbs.db
 
-# Claude Code local settings
+# Claude Code local settings & scratch
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { FilingStatus, Lifestyle } from '@/types';
 import { theme as T } from '@/theme';
 import { computeBudget } from '@/lib/budget';
@@ -10,6 +10,7 @@ import { BracketWalkthrough } from './BracketWalkthrough';
 import { ExpenseBreakdown } from './ExpenseBreakdown';
 import { DiscretionaryPlan } from './DiscretionaryPlan';
 import { CityComparison } from './CityComparison';
+import { Benefits } from './Benefits';
 import { Notes } from './Notes';
 
 export function BudgetExplorer() {
@@ -22,13 +23,22 @@ export function BudgetExplorer() {
   const [kids, setKids] = useState(2);
   const [lifestyle, setLifestyle] = useState<Lifestyle>('moderate');
   const [compareCity, setCompareCity] = useState('sf');
+  const [claimedBenefits, setClaimedBenefits] = useState<ReadonlySet<string>>(() => new Set());
 
   const effectiveIncomeB = twoIncome ? incomeB : 0;
 
   const result = useMemo(
-    () => computeBudget({ incomeA, incomeB: effectiveIncomeB, hasPartner: twoIncome, filing, city, kids, lifestyle }),
-    [incomeA, effectiveIncomeB, twoIncome, filing, city, kids, lifestyle],
+    () => computeBudget({ incomeA, incomeB: effectiveIncomeB, hasPartner: twoIncome, filing, city, kids, lifestyle, claimedBenefits }),
+    [incomeA, effectiveIncomeB, twoIncome, filing, city, kids, lifestyle, claimedBenefits],
   );
+
+  const toggleBenefit = useCallback((id: string) => {
+    setClaimedBenefits(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   const inputState: InputsState = {
     scenarioId, setScenarioId,
@@ -55,6 +65,7 @@ export function BudgetExplorer() {
         <Masthead />
         <ScenarioPicker {...inputState} />
         <CustomizePanel {...inputState} />
+        <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
         <StatRow result={result} />
         <StatusBanner result={result} />
         <IncomeFlow result={result} />

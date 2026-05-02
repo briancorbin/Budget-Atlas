@@ -3,6 +3,7 @@ import { CITIES } from '@/data/cities';
 import { STATES } from '@/data/states';
 import { FEDERAL_BRACKETS_2026, STD_DEDUCTION_2026 } from '@/data/federalTax';
 import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/tax';
+import { checkSnap } from '@/lib/benefits';
 
 /**
  * Given household inputs, compute taxes, expenses, and discretionary income.
@@ -16,7 +17,7 @@ import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/ta
  * wage base cap.
  */
 export function computeBudget(input: BudgetInput): BudgetResult {
-  const { incomeA, incomeB = 0, hasPartner = false, filing, city, kids, lifestyle } = input;
+  const { incomeA, incomeB = 0, hasPartner = false, filing, city, kids, lifestyle, claimedBenefits } = input;
   const cityData = CITIES[city];
   const stateData = STATES[cityData.state];
   const totalIncome = incomeA + incomeB;
@@ -125,7 +126,25 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const insuranceOther = 90 + (kids * 15) + ((kids >= 1 || adults === 2) ? 40 : 0);
   const personalEssentials = 120 * householdSize * lifestyleMult;
 
-  const totalExpenses = housing + utilities + groceries + transportation +
+  // ── Benefits ──
+  // For each claimed program, compute eligibility from inputs (re-checked
+  // here so the budget can never apply a benefit the household isn't
+  // eligible for, even if the UI somehow lets them claim it).
+  const benefitsApplied: Record<string, number> = {};
+  let groceriesAfterBenefits = groceries;
+
+  if (claimedBenefits?.has('snap')) {
+    const snap = checkSnap({ grossIncome: totalIncome, householdSize, state: cityData.state });
+    if (snap.eligible && snap.monthlyBenefit > 0) {
+      const offset = Math.min(snap.monthlyBenefit, groceries);
+      groceriesAfterBenefits = groceries - offset;
+      benefitsApplied['SNAP'] = offset;
+    }
+  }
+
+  const totalBenefits = Object.values(benefitsApplied).reduce((s, n) => s + n, 0);
+
+  const totalExpenses = housing + utilities + groceriesAfterBenefits + transportation +
     healthcare + childcare + phoneInternet + insuranceOther + personalEssentials;
 
   const discretionary = monthlyNet - totalExpenses;
@@ -141,12 +160,13 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     federalTax, fedTaxRaw, ctc, eitc, stateTax, localTax, fica, totalTaxes, taxableIncome,
     netIncome, monthlyNet,
     expenses: {
-      Housing: housing, Utilities: utilities, Groceries: groceries,
+      Housing: housing, Utilities: utilities, Groceries: groceriesAfterBenefits,
       Transportation: transportation, Healthcare: healthcare,
       Childcare: childcare, 'Phone & Internet': phoneInternet,
       Insurance: insuranceOther, 'Personal Essentials': personalEssentials,
     },
     totalExpenses, discretionary, annualDiscretionary,
+    benefitsApplied, totalBenefits,
     suggestedSavings, suggestedVacation, suggestedSplurge, suggestedEmergency,
     cityData, stateData,
   };

@@ -76,6 +76,12 @@ export interface BudgetInput {
   city: string;
   kids: number;
   lifestyle: Lifestyle;
+  /**
+   * Set of benefit program IDs the household is claiming. Eligibility is
+   * computed separately; this only controls whether the program's effect
+   * is applied to the budget. Unknown / ineligible IDs are ignored.
+   */
+  claimedBenefits?: ReadonlySet<string>;
 }
 
 export interface BudgetResult {
@@ -103,6 +109,9 @@ export interface BudgetResult {
   totalExpenses: number;
   discretionary: number;
   annualDiscretionary: number;
+  // Benefits applied (per-program monthly benefit actually used in this calc)
+  benefitsApplied: Record<string, number>;
+  totalBenefits: number;
   // Suggested allocation of surplus
   suggestedSavings: number;
   suggestedVacation: number;

@@ -1,4 +1,5 @@
 import { theme as T, fonts } from '@/theme';
+import { navigate } from '@/App';
 
 export function Masthead() {
   return (
@@ -24,7 +25,8 @@ export function Masthead() {
         }}>
           <span>An interactive examination</span>
           <a
-            href="#/roadmap"
+            href="/roadmap"
+            onClick={(e) => { e.preventDefault(); navigate('/roadmap'); }}
             style={{
               color: T.accent, textDecoration: 'none', fontWeight: 600,
               borderBottom: `1px solid ${T.border}`, paddingBottom: 1,

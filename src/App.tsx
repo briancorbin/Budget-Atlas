@@ -4,17 +4,42 @@ import { Roadmap } from '@/components/Roadmap';
 
 type Route = 'atlas' | 'roadmap';
 
-function routeFromHash(hash: string): Route {
-  return hash.replace(/^#\/?/, '').toLowerCase() === 'roadmap' ? 'roadmap' : 'atlas';
+function routeFromPath(pathname: string): Route {
+  const trimmed = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  return trimmed === 'roadmap' ? 'roadmap' : 'atlas';
+}
+
+const NAV_EVENT = 'app:navigate';
+
+/**
+ * Programmatic navigation — used by in-app links to change route without a
+ * full page reload. Call this instead of setting `window.location`.
+ */
+export function navigate(path: string) {
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new Event(NAV_EVENT));
 }
 
 export default function App() {
-  const [route, setRoute] = useState<Route>(() => routeFromHash(window.location.hash));
+  const [route, setRoute] = useState<Route>(() => {
+    // Migrate legacy hash URLs (#/roadmap) to clean paths (/roadmap) on
+    // first load so old bookmarks and shared links still work.
+    if (window.location.hash) {
+      const legacy = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      const target = legacy === 'roadmap' ? '/roadmap' : '/';
+      window.history.replaceState({}, '', target);
+    }
+    return routeFromPath(window.location.pathname);
+  });
 
   useEffect(() => {
-    const onHashChange = () => setRoute(routeFromHash(window.location.hash));
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    const update = () => setRoute(routeFromPath(window.location.pathname));
+    window.addEventListener('popstate', update);
+    window.addEventListener(NAV_EVENT, update);
+    return () => {
+      window.removeEventListener('popstate', update);
+      window.removeEventListener(NAV_EVENT, update);
+    };
   }, []);
 
   useEffect(() => {
@@ -22,7 +47,7 @@ export default function App() {
   }, [route]);
 
   if (route === 'roadmap') {
-    return <Roadmap onBack={() => { window.location.hash = ''; }} />;
+    return <Roadmap onBack={() => navigate('/')} />;
   }
   return <BudgetExplorer />;
 }

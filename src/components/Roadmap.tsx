@@ -39,7 +39,7 @@ function Header({ onBack }: { onBack: () => void }) {
         The Budget Atlas · Vol. 2026 · Roadmap
       </div>
       <a
-        href="#/"
+        href="/"
         onClick={(e) => { e.preventDefault(); onBack(); }}
         style={{
           fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase',
@@ -328,7 +328,7 @@ function Footer({ onBack }: { onBack: () => void }) {
       textAlign: 'center',
     }}>
       <a
-        href="#/"
+        href="/"
         onClick={(e) => { e.preventDefault(); onBack(); }}
         style={{
           fontFamily: fonts.body, fontSize: 13, letterSpacing: '0.1em',

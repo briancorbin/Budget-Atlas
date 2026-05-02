@@ -48,6 +48,16 @@ Requires Node 20+. Yarn classic (1.x) is the package manager — install via `br
 
 `src/data/scenarios.ts`. Include a descriptive `label`, the income(s), filing status, city id, kids, and lifestyle. Add `incomeB` if it's a dual-earner scenario.
 
+### Auditing a cited link
+
+The project runs a public link audit because citations rot — agencies reorganize URLs, PDFs disappear, content gets superseded. Anyone can re-run it:
+
+```bash
+yarn check-links
+```
+
+This extracts every URL from the codebase, hits each with curl, and writes a dated TSV to `audit/links/results/`. Status code reference and contribution flow live in [`audit/links/README.md`](./audit/links/README.md). When you've manually verified a URL's destination still cites what we claim, append a row to `audit/links/reviewed.tsv` — that record carries forward across audit runs.
+
 ### Updating branding
 
 The favicons and OG share card render from SVG masters at `public/favicon.svg` and `public/og-image.svg`. Edit those, then run:

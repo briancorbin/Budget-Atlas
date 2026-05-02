@@ -2,6 +2,9 @@
 
 > An interactive examination of how Americans live on what they earn — across cities, tax regimes, and household configurations.
 
+> [!NOTE]
+> The Budget Atlas is not the definitive word on taxes, benefits, or cost of living — it's a growing public-good tool that gets more accurate as more eyes check it. Some specifics will be wrong: agencies reorganize URLs, programs update rules, and approximations stay approximations. If you find a broken citation or an outdated rule, the way to make the atlas better is to open an issue or a PR. See the [public link audit](./audit/links/) for what we're currently triaging.
+
 Built on 2026 IRS brackets, state tax data, BLS price indices, and median rents. Models federal, state, and FICA taxes (with proper progressive bracket math), childcare, housing, and discretionary income across single-earner and dual-earner households.
 
 ## Quick start

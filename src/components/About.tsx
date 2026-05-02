@@ -23,6 +23,7 @@ export function About({ onBack }: { onBack: () => void }) {
         <Intro />
         <WhyThisExists />
         <BiggerGoal />
+        <StillImproving />
         <AboutMe />
         <AIExperiment />
         <Elsewhere />
@@ -199,6 +200,48 @@ function BiggerGoal() {
           roadmap
         </a>
         . But that's the direction this is pointed.
+      </p>
+    </section>
+  );
+}
+
+function StillImproving() {
+  const linkStyle = {
+    color: T.accent,
+    textDecoration: 'none',
+    fontWeight: 600,
+    borderBottom: `1px solid ${T.border}`,
+    paddingBottom: 1,
+  } as const;
+  return (
+    <section style={{ marginBottom: 56 }}>
+      <SectionTitle kicker="Honest caveats">Help us keep it accurate</SectionTitle>
+      <p style={proseStyle}>
+        The Budget Atlas is not meant to be the definitive word on taxes, benefits, or cost of
+        living. It's a public-good project, deliberately editorial in spirit — useful as a way to
+        see the <em>shape</em> of how American households live across geographies and life
+        configurations, not as a substitute for talking to a tax preparer, a benefits navigator, or
+        the actual program office that runs a benefit you might qualify for.
+      </p>
+      <p style={proseStyle}>
+        Some specifics will be wrong. State agencies reorganize URLs and citations rot. Programs
+        update eligibility rules between annual cycles. Cost-of-living numbers are approximations
+        rounded for readability, not personal-finance-grade precision. We try to flag the
+        approximations as approximations rather than dress them up as harder numbers than they are.
+      </p>
+      <p style={proseStyle}>
+        This is a growing community tool that gets more accurate as more eyes check it. If you find
+        a broken citation, an outdated program rule, or a number that looks wrong, the way to make
+        it better is to open an issue or a pull request. We run a public{' '}
+        <a
+          href={`${GITHUB_URL}/tree/main/audit`}
+          target="_blank"
+          rel="noreferrer"
+          style={linkStyle}
+        >
+          link audit
+        </a>{' '}
+        and welcome help triaging it.
       </p>
     </section>
   );

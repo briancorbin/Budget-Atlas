@@ -1,0 +1,15 @@
+# Human review log for cited URLs.
+#
+# Add a row when you've manually opened a URL and confirmed the destination
+# still cites the content the codebase relies on. A 200 from curl only tells
+# you something loaded — only a human can tell you whether what loaded is
+# still the right document.
+#
+# Format: url \t YYYY-MM-DD \t reviewer \t notes (tab-separated)
+# Lines starting with # are comments. Keep the format flat — this file is
+# joined into the audit results TSV by audit/links/check.sh.
+#
+# Reviewer can be a name, GitHub handle, or initials — be consistent.
+#
+# url	reviewed_at	reviewed_by	notes
+https://www.hud.gov/hudclips/handbooks/housing-4350-3	2026-05-02	bcorbin	HUD Handbook 4350.3 REV-1, Change 4 (Nov 2013). Confirmed the landing page lists the handbook + chapters; Ch. 3 covers occupancy. Replaces the 404'd /sites/dfiles/OCHCO/documents/4350.3.pdf citation.

@@ -9,19 +9,23 @@ import { STD_DEDUCTION_2026 } from '@/data/federalTax';
 
 export function IncomeFlow({ result }: { result: BudgetResult }) {
   void STD_DEDUCTION_2026; // for IDE: kept available for inline annotations
+  // Bars always grow upward; color encodes kind. A federal "tax" of negative
+  // dollars (refundable credits net to a refund) becomes a green bar; a
+  // negative take-home (rare — would mean total taxes exceed gross) becomes red.
   const data = [
-    { name: 'Gross',     value: result.grossIncome / 12,   kind: 'gross' },
-    { name: 'Federal',   value: -result.federalTax / 12,   kind: result.federalTax < 0 ? 'refund' : 'tax' },
-    { name: 'State',     value: -result.stateTax / 12,     kind: 'tax' },
-    { name: 'Local',     value: -result.localTax / 12,     kind: 'tax' },
-    { name: 'FICA',      value: -result.fica / 12,         kind: 'tax' },
-    { name: 'Take-home', value: result.monthlyNet,         kind: 'net' },
+    { name: 'Gross',     value: result.grossIncome / 12,            kind: 'gross' },
+    { name: 'Federal',   value: Math.abs(result.federalTax) / 12,   kind: result.federalTax < 0 ? 'refund' : 'tax' },
+    { name: 'State',     value: result.stateTax / 12,               kind: 'tax' },
+    { name: 'Local',     value: result.localTax / 12,               kind: 'tax' },
+    { name: 'FICA',      value: result.fica / 12,                   kind: 'tax' },
+    { name: 'Take-home', value: Math.abs(result.monthlyNet),        kind: result.monthlyNet < 0 ? 'deficit' : 'net' },
   ] as const;
 
   const fillFor = (kind: string) =>
-    kind === 'gross' ? T.ink :
-    kind === 'tax' ? T.accent :
-    T.positive;
+    kind === 'gross'   ? T.ink :
+    kind === 'tax'     ? T.accent :
+    kind === 'deficit' ? T.accent :
+    T.positive; // refund, net
 
   const effRate = result.totalTaxes / result.grossIncome;
 

@@ -2,7 +2,7 @@ import type { FilingStatus, Lifestyle } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { CITIES } from '@/data/cities';
-import { STATES } from '@/data/states';
+import { STATES, bracketRange } from '@/data/states';
 import { SCENARIOS } from '@/data/scenarios';
 import { SectionTitle } from './ui';
 
@@ -184,7 +184,12 @@ export function CustomizePanel(s: InputsState) {
             ))}
           </select>
           <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 6 }}>
-            State income tax: {fmtPct(STATES[CITIES[s.city].state].rate)}
+            {(() => {
+              const [lo, hi] = bracketRange(STATES[CITIES[s.city].state].brackets[s.filing]);
+              if (hi === 0) return 'No state income tax';
+              if (lo === hi) return `State income tax: ${fmtPct(hi)} (flat)`;
+              return `State income tax: ${fmtPct(lo)}–${fmtPct(hi)}`;
+            })()}
             {' · '}1BR rent: {fmt(CITIES[s.city].rent1)}/mo
           </div>
         </div>

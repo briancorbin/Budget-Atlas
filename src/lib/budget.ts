@@ -29,6 +29,12 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   let ctc: number;
   let eitc: number;
 
+  // State tax: progressive brackets applied to (gross − state std deduction),
+  // mirroring the per-earner logic of the federal return. Filing status at
+  // the state level follows federal (MFJ → joint state return; cohabitating
+  // → each files singly).
+  let stateTax: number;
+
   if (filing === 'married') {
     // MFJ: one combined return regardless of one or two earners
     const std = STD_DEDUCTION_2026.married;
@@ -36,6 +42,9 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     fedTaxRaw = progressiveTax(taxableIncome, FEDERAL_BRACKETS_2026.married);
     ctc = calcChildTaxCredit(totalIncome, kids, 'married');
     eitc = calcEITC(totalIncome, kids, 'married');
+
+    const stateTaxable = Math.max(0, totalIncome - stateData.stdDeduction.married);
+    stateTax = progressiveTax(stateTaxable, stateData.brackets.married);
   } else if (hasSecondIncome) {
     // Cohabitating: each files singly. Person A may file HoH if there are kids.
     const stdA = STD_DEDUCTION_2026[filing];
@@ -49,6 +58,11 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     // Only one parent can claim each child; primary earner does
     ctc = calcChildTaxCredit(incomeA, kids, filing);
     eitc = calcEITC(incomeA, kids, filing);
+
+    const stateTaxableA = Math.max(0, incomeA - stateData.stdDeduction[filing]);
+    const stateTaxableB = Math.max(0, incomeB - stateData.stdDeduction.single);
+    stateTax = progressiveTax(stateTaxableA, stateData.brackets[filing])
+             + progressiveTax(stateTaxableB, stateData.brackets.single);
   } else {
     // Single earner
     const std = STD_DEDUCTION_2026[filing];
@@ -56,6 +70,9 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     fedTaxRaw = progressiveTax(taxableIncome, FEDERAL_BRACKETS_2026[filing]);
     ctc = calcChildTaxCredit(incomeA, kids, filing);
     eitc = calcEITC(incomeA, kids, filing);
+
+    const stateTaxable = Math.max(0, incomeA - stateData.stdDeduction[filing]);
+    stateTax = progressiveTax(stateTaxable, stateData.brackets[filing]);
   }
 
   // CTC: $2,000/child, refundable up to $1,700 (2026 OBBBA).
@@ -65,8 +82,6 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const ctcRefundedExcess = Math.min(ctcRefundableCap, Math.max(0, ctc - fedTaxRaw));
   const federalTax = taxAfterNonRefundable - ctcRefundedExcess - eitc;
 
-  // State tax: flat effective approximation × federal taxable income
-  const stateTax = taxableIncome * stateData.rate;
   const localTax = totalIncome * (cityData.localTax || 0);
   const fica = calcFICA(incomeA) + (hasSecondIncome ? calcFICA(incomeB) : 0);
 

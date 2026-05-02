@@ -71,7 +71,7 @@ export function IncomeFlow({ result }: { result: BudgetResult }) {
           </Detail>
           <Detail label="STATE + LOCAL" value={fmt(result.stateTax + result.localTax) + '/yr'}>
             <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>
-              {result.cityData.state} rate: {fmtPct(result.stateData.rate)}
+              {result.cityData.state} effective: {fmtPct(result.grossIncome > 0 ? result.stateTax / result.grossIncome : 0)}
             </div>
           </Detail>
           <Detail label="FICA (PAYROLL)" value={fmt(result.fica) + '/yr'}>

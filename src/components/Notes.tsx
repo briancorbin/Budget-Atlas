@@ -15,8 +15,9 @@ export function Notes({ filing }: { filing: FilingStatus }) {
         <>
           The U.S. federal system is progressive — only the dollars within each bracket are taxed
           at that rate. The 2026 standard deduction ({fmt(STD_DEDUCTION_2026[filing])} for {filingLabel})
-          is subtracted before brackets apply. State tax here is approximated as a flat effective rate;
-          real graduated brackets shift the result by a few percentage points at the extremes.
+          is subtracted before brackets apply. State tax uses the same machinery: each state's actual
+          graduated brackets and standard deduction, applied to gross income. No-tax states (TX, FL,
+          WA, etc.) use a single 0% bracket; flat-tax states (CO, IL, PA) use a single positive bracket.
         </>
       ),
     },

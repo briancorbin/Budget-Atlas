@@ -10,8 +10,18 @@ export type StateCode =
 
 export interface StateInfo {
   name: string;
-  /** Approximate effective income tax rate, applied to federal taxable income. */
-  rate: number;
+  /**
+   * State income tax brackets per filing status. Flat-tax states use a single
+   * `[Infinity, rate]` bracket; no-tax states use `[Infinity, 0]`. Same
+   * `progressiveTax` machinery as federal.
+   */
+  brackets: Record<FilingStatus, readonly TaxBracket[]>;
+  /**
+   * State standard deduction per filing status. Subtracted from gross before
+   * brackets apply. States without a standard deduction use 0 (some use a
+   * personal exemption instead, which we approximate inside the brackets).
+   */
+  stdDeduction: Record<FilingStatus, number>;
   /** 2026 minimum hourly wage. Federal $7.25 floor where state has none. */
   min: number;
 }

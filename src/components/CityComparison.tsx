@@ -70,7 +70,9 @@ export function CityComparison({
           }}>COMPARE WITH</label>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(180px, 1fr) minmax(220px, 1.4fr)',
+            // auto-fit so the two pickers sit side-by-side when there's room
+            // and stack into a single column on narrow phones.
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
             gap: 8,
             maxWidth: 520,
           }}>

@@ -1,9 +1,9 @@
 import type { FilingStatus, Source, StateCode, StateInfo, TaxBracket } from '@/types';
 
 /**
- * Shared citations for state tax data. Per-state DOR pages would be more
- * authoritative; for now we cite Tax Foundation 2026 as the consolidated
- * source we used and DOL/NCSL for minimum wage.
+ * Cross-state aggregator (still used in the page footer as a convenient
+ * cross-reference). Per-state authoritative sources live on each StateInfo
+ * via `taxSource` and are used in the bracket walkthrough.
  */
 export const STATE_TAX_SOURCE: Source = {
   label: 'Tax Foundation: 2026 State Income Tax Rates and Brackets',
@@ -25,9 +25,10 @@ export const STATE_MIN_WAGE_SOURCE: Source = {
  * rate], terminating with [Infinity, top rate]. State tax is computed by
  * applying `progressiveTax` to (gross income − state std deduction).
  *
- * Sources: Tax Foundation 2026 State Income Tax Rates; state revenue
- * department publications; NCSL minimum-wage tables. Numbers are rounded
- * to clean values — appropriate for an editorial model, not for filing.
+ * Sources: each state's department of revenue / taxation (cited on the
+ * StateInfo via `taxSource`); Tax Foundation 2026 as an aggregator;
+ * NCSL minimum-wage tables. Numbers are rounded to clean values —
+ * appropriate for an editorial model, not for filing.
  *
  * Where a state has no standard deduction in reality (NJ, MA, PA, etc.)
  * we use 0; their personal exemptions are small and embedded into the
@@ -59,36 +60,95 @@ function singleStd(amount: number): Record<FilingStatus, number> {
   return { single: amount, married: amount, head: amount };
 }
 
+/**
+ * Per-state Department of Revenue / Taxation citations. URLs point to each
+ * agency's canonical homepage rather than a specific PDF/page (deep links
+ * tend to break across tax years). Date stamps the model year.
+ */
+const STATE_DOR: Record<StateCode, Source> = {
+  AL: { label: 'Alabama Department of Revenue',                    url: 'https://revenue.alabama.gov',                                       date: '2026' },
+  AK: { label: 'Alaska Department of Revenue, Tax Division',       url: 'https://tax.alaska.gov',                                            date: '2026' },
+  AZ: { label: 'Arizona Department of Revenue',                    url: 'https://azdor.gov',                                                 date: '2026' },
+  AR: { label: 'Arkansas Department of Finance and Administration',url: 'https://www.dfa.arkansas.gov/income-tax',                           date: '2026' },
+  CA: { label: 'California Franchise Tax Board',                   url: 'https://www.ftb.ca.gov',                                            date: '2026' },
+  CO: { label: 'Colorado Department of Revenue, Taxation Division',url: 'https://tax.colorado.gov',                                          date: '2026' },
+  CT: { label: 'Connecticut Department of Revenue Services',       url: 'https://portal.ct.gov/DRS',                                         date: '2026' },
+  DE: { label: 'Delaware Division of Revenue',                     url: 'https://revenue.delaware.gov',                                      date: '2026' },
+  FL: { label: 'Florida Department of Revenue',                    url: 'https://floridarevenue.com',                                        date: '2026' },
+  GA: { label: 'Georgia Department of Revenue',                    url: 'https://dor.georgia.gov',                                           date: '2026' },
+  HI: { label: 'Hawaii Department of Taxation',                    url: 'https://tax.hawaii.gov',                                            date: '2026' },
+  ID: { label: 'Idaho State Tax Commission',                       url: 'https://tax.idaho.gov',                                             date: '2026' },
+  IL: { label: 'Illinois Department of Revenue',                   url: 'https://tax.illinois.gov',                                          date: '2026' },
+  IN: { label: 'Indiana Department of Revenue',                    url: 'https://www.in.gov/dor',                                            date: '2026' },
+  IA: { label: 'Iowa Department of Revenue',                       url: 'https://tax.iowa.gov',                                              date: '2026' },
+  KS: { label: 'Kansas Department of Revenue',                     url: 'https://www.ksrevenue.gov',                                         date: '2026' },
+  KY: { label: 'Kentucky Department of Revenue',                   url: 'https://revenue.ky.gov',                                            date: '2026' },
+  LA: { label: 'Louisiana Department of Revenue',                  url: 'https://revenue.louisiana.gov',                                     date: '2026' },
+  ME: { label: 'Maine Revenue Services',                           url: 'https://www.maine.gov/revenue',                                     date: '2026' },
+  MD: { label: 'Comptroller of Maryland',                          url: 'https://www.marylandtaxes.gov',                                     date: '2026' },
+  MA: { label: 'Massachusetts Department of Revenue',              url: 'https://www.mass.gov/orgs/massachusetts-department-of-revenue',     date: '2026' },
+  MI: { label: 'Michigan Department of Treasury',                  url: 'https://www.michigan.gov/treasury',                                 date: '2026' },
+  MN: { label: 'Minnesota Department of Revenue',                  url: 'https://www.revenue.state.mn.us',                                   date: '2026' },
+  MS: { label: 'Mississippi Department of Revenue',                url: 'https://www.dor.ms.gov',                                            date: '2026' },
+  MO: { label: 'Missouri Department of Revenue',                   url: 'https://dor.mo.gov',                                                date: '2026' },
+  MT: { label: 'Montana Department of Revenue',                    url: 'https://mtrevenue.gov',                                             date: '2026' },
+  NE: { label: 'Nebraska Department of Revenue',                   url: 'https://revenue.nebraska.gov',                                      date: '2026' },
+  NV: { label: 'Nevada Department of Taxation',                    url: 'https://tax.nv.gov',                                                date: '2026' },
+  NH: { label: 'New Hampshire Department of Revenue Administration', url: 'https://www.revenue.nh.gov',                                      date: '2026' },
+  NJ: { label: 'New Jersey Division of Taxation',                  url: 'https://www.nj.gov/treasury/taxation',                              date: '2026' },
+  NM: { label: 'New Mexico Taxation and Revenue Department',       url: 'https://www.tax.newmexico.gov',                                     date: '2026' },
+  NY: { label: 'New York State Department of Taxation and Finance',url: 'https://www.tax.ny.gov',                                            date: '2026' },
+  NC: { label: 'North Carolina Department of Revenue',             url: 'https://www.ncdor.gov',                                             date: '2026' },
+  ND: { label: 'North Dakota Office of State Tax Commissioner',    url: 'https://www.tax.nd.gov',                                            date: '2026' },
+  OH: { label: 'Ohio Department of Taxation',                      url: 'https://tax.ohio.gov',                                              date: '2026' },
+  OK: { label: 'Oklahoma Tax Commission',                          url: 'https://oklahoma.gov/tax.html',                                     date: '2026' },
+  OR: { label: 'Oregon Department of Revenue',                     url: 'https://www.oregon.gov/dor',                                        date: '2026' },
+  PA: { label: 'Pennsylvania Department of Revenue',               url: 'https://www.revenue.pa.gov',                                        date: '2026' },
+  RI: { label: 'Rhode Island Division of Taxation',                url: 'https://tax.ri.gov',                                                date: '2026' },
+  SC: { label: 'South Carolina Department of Revenue',             url: 'https://dor.sc.gov',                                                date: '2026' },
+  SD: { label: 'South Dakota Department of Revenue',               url: 'https://dor.sd.gov',                                                date: '2026' },
+  TN: { label: 'Tennessee Department of Revenue',                  url: 'https://www.tn.gov/revenue',                                        date: '2026' },
+  TX: { label: 'Texas Comptroller of Public Accounts',             url: 'https://comptroller.texas.gov',                                     date: '2026' },
+  UT: { label: 'Utah State Tax Commission',                        url: 'https://tax.utah.gov',                                              date: '2026' },
+  VT: { label: 'Vermont Department of Taxes',                      url: 'https://tax.vermont.gov',                                           date: '2026' },
+  VA: { label: 'Virginia Department of Taxation',                  url: 'https://www.tax.virginia.gov',                                      date: '2026' },
+  WA: { label: 'Washington Department of Revenue',                 url: 'https://dor.wa.gov',                                                date: '2026' },
+  WV: { label: 'West Virginia Tax Division',                       url: 'https://tax.wv.gov',                                                date: '2026' },
+  WI: { label: 'Wisconsin Department of Revenue',                  url: 'https://www.revenue.wi.gov',                                        date: '2026' },
+  WY: { label: 'Wyoming Department of Revenue',                    url: 'https://revenue.wyo.gov',                                           date: '2026' },
+  DC: { label: 'D.C. Office of Tax and Revenue',                   url: 'https://otr.cfo.dc.gov',                                            date: '2026' },
+};
+
 export const STATES: Record<StateCode, StateInfo> = {
   // ── No income tax ──────────────────────────────────────────────────────
-  AK: { name: 'Alaska',         brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 13.00 },
-  FL: { name: 'Florida',        brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 14.00 },
-  NV: { name: 'Nevada',         brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 12.00 },
-  NH: { name: 'New Hampshire',  brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25 },
-  SD: { name: 'South Dakota',   brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 11.50 },
-  TN: { name: 'Tennessee',      brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25 },
-  TX: { name: 'Texas',          brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25 },
-  WA: { name: 'Washington',     brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 17.13 },
-  WY: { name: 'Wyoming',        brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25 },
+  AK: { name: 'Alaska',         brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 13.00, taxSource: STATE_DOR.AK },
+  FL: { name: 'Florida',        brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 14.00, taxSource: STATE_DOR.FL },
+  NV: { name: 'Nevada',         brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 12.00, taxSource: STATE_DOR.NV },
+  NH: { name: 'New Hampshire',  brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25,  taxSource: STATE_DOR.NH },
+  SD: { name: 'South Dakota',   brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 11.50, taxSource: STATE_DOR.SD },
+  TN: { name: 'Tennessee',      brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25,  taxSource: STATE_DOR.TN },
+  TX: { name: 'Texas',          brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25,  taxSource: STATE_DOR.TX },
+  WA: { name: 'Washington',     brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 17.13, taxSource: STATE_DOR.WA },
+  WY: { name: 'Wyoming',        brackets: NO_TAX_BRACKETS, stdDeduction: ZERO_STD, min: 7.25,  taxSource: STATE_DOR.WY },
 
   // ── Flat-rate states ───────────────────────────────────────────────────
-  AZ: { name: 'Arizona',        brackets: flat(0.025),  stdDeduction: singleStd(14600), min: 15.15 },
-  CO: { name: 'Colorado',       brackets: flat(0.044),  stdDeduction: singleStd(14600), min: 15.16 },
-  GA: { name: 'Georgia',        brackets: flat(0.0539), stdDeduction: { single: 12000, married: 24000, head: 12000 }, min: 7.25 },
-  IA: { name: 'Iowa',           brackets: flat(0.038),  stdDeduction: ZERO_STD, min: 7.25 },
-  ID: { name: 'Idaho',          brackets: flat(0.058),  stdDeduction: singleStd(14600), min: 7.25 },
-  IL: { name: 'Illinois',       brackets: flat(0.0495), stdDeduction: ZERO_STD, min: 15.00 },
-  IN: { name: 'Indiana',        brackets: flat(0.0295), stdDeduction: ZERO_STD, min: 7.25 },
-  KY: { name: 'Kentucky',       brackets: flat(0.035),  stdDeduction: singleStd(3270), min: 7.25 },
-  LA: { name: 'Louisiana',      brackets: flat(0.030),  stdDeduction: ZERO_STD, min: 7.25 },
-  MI: { name: 'Michigan',       brackets: flat(0.0425), stdDeduction: ZERO_STD, min: 13.73 },
-  MS: { name: 'Mississippi',    brackets: flat(0.044),  stdDeduction: { single: 2300, married: 4600, head: 3400 }, min: 7.25 },
-  MO: { name: 'Missouri',       brackets: flat(0.047),  stdDeduction: singleStd(14600), min: 13.75 },
-  NC: { name: 'North Carolina', brackets: flat(0.0425), stdDeduction: { single: 12750, married: 25500, head: 19125 }, min: 7.25 },
-  OK: { name: 'Oklahoma',       brackets: flat(0.0475), stdDeduction: { single: 6350, married: 12700, head: 9350 }, min: 7.25 },
-  PA: { name: 'Pennsylvania',   brackets: flat(0.0307), stdDeduction: ZERO_STD, min: 7.25 },
-  UT: { name: 'Utah',           brackets: flat(0.0465), stdDeduction: ZERO_STD, min: 7.25 },
-  WV: { name: 'West Virginia',  brackets: flat(0.0460), stdDeduction: ZERO_STD, min: 8.75 },
+  AZ: { name: 'Arizona',        brackets: flat(0.025),  stdDeduction: singleStd(14600), min: 15.15, taxSource: STATE_DOR.AZ },
+  CO: { name: 'Colorado',       brackets: flat(0.044),  stdDeduction: singleStd(14600), min: 15.16, taxSource: STATE_DOR.CO },
+  GA: { name: 'Georgia',        brackets: flat(0.0539), stdDeduction: { single: 12000, married: 24000, head: 12000 }, min: 7.25, taxSource: STATE_DOR.GA },
+  IA: { name: 'Iowa',           brackets: flat(0.038),  stdDeduction: ZERO_STD, min: 7.25, taxSource: STATE_DOR.IA },
+  ID: { name: 'Idaho',          brackets: flat(0.058),  stdDeduction: singleStd(14600), min: 7.25, taxSource: STATE_DOR.ID },
+  IL: { name: 'Illinois',       brackets: flat(0.0495), stdDeduction: ZERO_STD, min: 15.00, taxSource: STATE_DOR.IL },
+  IN: { name: 'Indiana',        brackets: flat(0.0295), stdDeduction: ZERO_STD, min: 7.25, taxSource: STATE_DOR.IN },
+  KY: { name: 'Kentucky',       brackets: flat(0.035),  stdDeduction: singleStd(3270), min: 7.25, taxSource: STATE_DOR.KY },
+  LA: { name: 'Louisiana',      brackets: flat(0.030),  stdDeduction: ZERO_STD, min: 7.25, taxSource: STATE_DOR.LA },
+  MI: { name: 'Michigan',       brackets: flat(0.0425), stdDeduction: ZERO_STD, min: 13.73, taxSource: STATE_DOR.MI },
+  MS: { name: 'Mississippi',    brackets: flat(0.044),  stdDeduction: { single: 2300, married: 4600, head: 3400 }, min: 7.25, taxSource: STATE_DOR.MS },
+  MO: { name: 'Missouri',       brackets: flat(0.047),  stdDeduction: singleStd(14600), min: 13.75, taxSource: STATE_DOR.MO },
+  NC: { name: 'North Carolina', brackets: flat(0.0425), stdDeduction: { single: 12750, married: 25500, head: 19125 }, min: 7.25, taxSource: STATE_DOR.NC },
+  OK: { name: 'Oklahoma',       brackets: flat(0.0475), stdDeduction: { single: 6350, married: 12700, head: 9350 }, min: 7.25, taxSource: STATE_DOR.OK },
+  PA: { name: 'Pennsylvania',   brackets: flat(0.0307), stdDeduction: ZERO_STD, min: 7.25, taxSource: STATE_DOR.PA },
+  UT: { name: 'Utah',           brackets: flat(0.0465), stdDeduction: ZERO_STD, min: 7.25, taxSource: STATE_DOR.UT },
+  WV: { name: 'West Virginia',  brackets: flat(0.0460), stdDeduction: ZERO_STD, min: 8.75, taxSource: STATE_DOR.WV },
 
   // ── Graduated states ───────────────────────────────────────────────────
   AL: {
@@ -100,12 +160,14 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 3000, married: 8500, head: 5200 },
     min: 7.25,
+    taxSource: STATE_DOR.AL,
   },
   AR: {
     name: 'Arkansas',
     brackets: uniform([[5300, 0], [10600, 0.02], [Infinity, 0.039]]),
     stdDeduction: { single: 2340, married: 4680, head: 2340 },
     min: 11.00,
+    taxSource: STATE_DOR.AR,
   },
   CA: {
     name: 'California',
@@ -128,6 +190,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 5700, married: 11400, head: 11400 },
     min: 16.90,
+    taxSource: STATE_DOR.CA,
   },
   CT: {
     name: 'Connecticut',
@@ -138,6 +201,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: ZERO_STD,
     min: 16.94,
+    taxSource: STATE_DOR.CT,
   },
   DE: {
     name: 'Delaware',
@@ -147,6 +211,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     ]),
     stdDeduction: { single: 3250, married: 6500, head: 3250 },
     min: 15.00,
+    taxSource: STATE_DOR.DE,
   },
   HI: {
     name: 'Hawaii',
@@ -169,6 +234,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 4400, married: 8800, head: 6424 },
     min: 16.00,
+    taxSource: STATE_DOR.HI,
   },
   KS: {
     name: 'Kansas',
@@ -179,6 +245,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 3605, married: 8240, head: 6180 },
     min: 7.25,
+    taxSource: STATE_DOR.KS,
   },
   ME: {
     name: 'Maine',
@@ -189,6 +256,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 14600, married: 29200, head: 21900 },
     min: 15.10,
+    taxSource: STATE_DOR.ME,
   },
   MD: {
     name: 'Maryland',
@@ -208,6 +276,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 2750, married: 5550, head: 5550 },
     min: 15.00,
+    taxSource: STATE_DOR.MD,
   },
   MA: {
     name: 'Massachusetts',
@@ -215,6 +284,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     brackets: uniform([[1083150, 0.05], [Infinity, 0.09]]),
     stdDeduction: ZERO_STD,
     min: 15.00,
+    taxSource: STATE_DOR.MA,
   },
   MN: {
     name: 'Minnesota',
@@ -225,6 +295,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 14575, married: 29150, head: 21900 },
     min: 11.13,
+    taxSource: STATE_DOR.MN,
   },
   MT: {
     name: 'Montana',
@@ -235,6 +306,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 14600, married: 29200, head: 21900 },
     min: 10.55,
+    taxSource: STATE_DOR.MT,
   },
   NE: {
     name: 'Nebraska',
@@ -245,6 +317,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 8350, married: 16700, head: 12250 },
     min: 15.00,
+    taxSource: STATE_DOR.NE,
   },
   NJ: {
     name: 'New Jersey',
@@ -264,6 +337,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: ZERO_STD,
     min: 15.50,
+    taxSource: STATE_DOR.NJ,
   },
   NM: {
     name: 'New Mexico',
@@ -274,6 +348,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 14600, married: 29200, head: 21900 },
     min: 12.00,
+    taxSource: STATE_DOR.NM,
   },
   NY: {
     name: 'New York',
@@ -296,18 +371,21 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 8000, married: 16050, head: 11200 },
     min: 16.50,
+    taxSource: STATE_DOR.NY,
   },
   ND: {
     name: 'North Dakota',
     brackets: uniform([[44725, 0], [225975, 0.0195], [Infinity, 0.025]]),
     stdDeduction: ZERO_STD,
     min: 7.25,
+    taxSource: STATE_DOR.ND,
   },
   OH: {
     name: 'Ohio',
     brackets: uniform([[26050, 0], [100000, 0.0275], [Infinity, 0.035]]),
     stdDeduction: ZERO_STD,
     min: 10.70,
+    taxSource: STATE_DOR.OH,
   },
   OR: {
     name: 'Oregon',
@@ -318,18 +396,21 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 2800, married: 5600, head: 4500 },
     min: 14.70,
+    taxSource: STATE_DOR.OR,
   },
   RI: {
     name: 'Rhode Island',
     brackets: uniform([[77450, 0.0375], [176050, 0.0475], [Infinity, 0.0599]]),
     stdDeduction: { single: 10550, married: 21150, head: 15850 },
     min: 16.00,
+    taxSource: STATE_DOR.RI,
   },
   SC: {
     name: 'South Carolina',
     brackets: uniform([[3460, 0], [17330, 0.03], [Infinity, 0.062]]),
     stdDeduction: { single: 14600, married: 29200, head: 21900 },
     min: 7.25,
+    taxSource: STATE_DOR.SC,
   },
   VT: {
     name: 'Vermont',
@@ -340,12 +421,14 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 7400, married: 14800, head: 11050 },
     min: 14.01,
+    taxSource: STATE_DOR.VT,
   },
   VA: {
     name: 'Virginia',
     brackets: uniform([[3000, 0.02], [5000, 0.03], [17000, 0.05], [Infinity, 0.0575]]),
     stdDeduction: { single: 8500, married: 17000, head: 8500 },
     min: 12.41,
+    taxSource: STATE_DOR.VA,
   },
   WI: {
     name: 'Wisconsin',
@@ -356,6 +439,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     },
     stdDeduction: { single: 13230, married: 24490, head: 17090 },
     min: 7.25,
+    taxSource: STATE_DOR.WI,
   },
   DC: {
     name: 'D.C.',
@@ -365,6 +449,7 @@ export const STATES: Record<StateCode, StateInfo> = {
     ]),
     stdDeduction: { single: 14600, married: 29200, head: 21900 },
     min: 17.95,
+    taxSource: STATE_DOR.DC,
   },
 };
 

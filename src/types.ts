@@ -24,6 +24,13 @@ export interface StateInfo {
   stdDeduction: Record<FilingStatus, number>;
   /** 2026 minimum hourly wage. Federal $7.25 floor where state has none. */
   min: number;
+  /**
+   * Authoritative source for this state's brackets and standard deduction —
+   * typically the state Department of Revenue / Taxation. Cited in the
+   * walkthrough header. The Tax Foundation aggregator remains in the page
+   * footer as a cross-state cross-reference.
+   */
+  taxSource: Source;
 }
 
 export interface CityInfo {

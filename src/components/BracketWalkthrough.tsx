@@ -4,7 +4,6 @@ import { theme as T, fonts } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { bracketBreakdown, type BracketRow } from '@/lib/tax';
 import { FEDERAL_BRACKETS_2026, FEDERAL_TAX_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
-import { STATE_TAX_SOURCE } from '@/data/states';
 import { Cite, SectionTitle } from './ui';
 
 interface FilerWalk {
@@ -118,7 +117,7 @@ export function BracketWalkthrough({
 
           <div style={{ height: 28 }} />
 
-          <SectionTitle kicker={<>State income tax · {stateData.name}<Cite source={STATE_TAX_SOURCE} /></>}>
+          <SectionTitle kicker={<>State income tax · {stateData.name}<Cite source={stateData.taxSource} /></>}>
             {stateNoTax
               ? `${stateData.name} has no state income tax`
               : `How ${fmt(stateTotal)} in state tax was calculated`}

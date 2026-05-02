@@ -101,9 +101,9 @@ export function Masthead() {
           lineHeight: 1.5,
         }}
       >
-        Plug in an income, a place, a family. See where the money goes — and what's left for the
-        future, the trip, the splurge. Built on 2026 IRS brackets, state tax data, BLS price
-        indices, and real rents.
+        Plug in an income, a place, a family. See where the money goes — what's left for the future,
+        the trip, the splurge — and the help a household at that income may already qualify for.
+        Built on 2026 IRS brackets, state tax data, BLS price indices, and real rents.
       </div>
     </div>
   );

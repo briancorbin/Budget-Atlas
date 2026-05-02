@@ -113,6 +113,14 @@ export interface Scenario {
   city: string;
   kids: number;
   lifestyle: Lifestyle;
+  /**
+   * One-line editorial takeaway shown next to the scenario in the picker.
+   * Should teach something specific the household reveals about how the system
+   * works (a marriage bonus/penalty, a benefit cliff, a credit phase-out, the
+   * effect of state tax structure, etc.) — not a generic descriptor. Required
+   * because every scenario should earn its place in the picker.
+   */
+  takeaway: string;
 }
 
 export interface BudgetInput {

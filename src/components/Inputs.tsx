@@ -55,10 +55,14 @@ export function CustomizePanel(s: InputsState) {
   ];
 
   // Scenario quick-load options: archetype households as a searchable dropdown.
-  // Hint shows total income so the user can scan the spectrum at a glance.
+  // Label folds the household income (compact $XK form) into the existing
+  // persona/location label so the user can scan the income spectrum at a
+  // glance while choosing. Hint carries the editorial takeaway — the
+  // teaching moment that justifies each scenario's place in the picker.
   const scenarioOptions: SearchableOption<string>[] = SCENARIOS.map((sc) => {
     const total = sc.income + (sc.incomeB ?? 0);
-    return { value: sc.id, label: sc.label, hint: fmt(total) + ' total' };
+    const totalK = '$' + Math.round(total / 1000) + 'K';
+    return { value: sc.id, label: `${totalK} · ${sc.label}`, hint: sc.takeaway };
   });
 
   // The dropdown is intentionally stateless — we never bind it to a "current

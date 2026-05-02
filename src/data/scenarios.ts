@@ -6,6 +6,11 @@ import type { Scenario } from '@/types';
  * abstract income brackets.
  *
  * `incomeB` is optional. When present, the scenario is dual-earner.
+ *
+ * Each scenario carries a one-line `takeaway` surfaced in the picker dropdown —
+ * something the household teaches about how the system works (a marriage
+ * bonus, a benefit cliff, a phase-out, the effect of a state's tax structure).
+ * The takeaway should be defensible from the model itself, not editorial color.
  */
 export const SCENARIOS: Scenario[] = [
   {
@@ -16,6 +21,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'rural_ms',
     kids: 0,
     lifestyle: 'modest',
+    takeaway: 'Falls into the Medicaid coverage gap',
   },
   {
     id: 'min_nyc',
@@ -25,6 +31,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'nyc',
     kids: 0,
     lifestyle: 'modest',
+    takeaway: 'Same job, 2× the Mississippi minimum — rent claws most of it back',
   },
   {
     id: 'retail_phx',
@@ -34,6 +41,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'phx',
     kids: 2,
     lifestyle: 'modest',
+    takeaway: 'Net federal tax goes negative — refundable credits exceed withholding',
   },
   {
     id: 'cohab_bk',
@@ -44,6 +52,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'nyc',
     kids: 0,
     lifestyle: 'moderate',
+    takeaway: 'Asymmetric incomes — marrying would gain a federal marriage bonus',
   },
   {
     id: 'teacher_oh',
@@ -54,6 +63,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'cmh',
     kids: 2,
     lifestyle: 'moderate',
+    takeaway: 'Two near-equal incomes, MFJ — almost no marriage bonus or penalty',
   },
   {
     id: 'nurse_den',
@@ -63,6 +73,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'den',
     kids: 0,
     lifestyle: 'moderate',
+    takeaway: 'Above every safety-net threshold; flat-tax Colorado',
   },
   {
     id: 'tradesman_wy',
@@ -72,6 +83,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'rural_wy',
     kids: 1,
     lifestyle: 'moderate',
+    takeaway: 'No state income tax + sole-earner marriage bonus',
   },
   {
     id: 'tech_aus',
@@ -81,6 +93,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'aus',
     kids: 0,
     lifestyle: 'comfortable',
+    takeaway: 'Texas zero-state-tax — federal + FICA carry the full bill',
   },
   {
     id: 'tech_sf',
@@ -90,6 +103,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'sf',
     kids: 0,
     lifestyle: 'comfortable',
+    takeaway: "California state tax alone tops a min-wage worker's full take-home",
   },
   {
     id: 'tech_sf_family',
@@ -100,6 +114,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'sf',
     kids: 2,
     lifestyle: 'comfortable',
+    takeaway: 'Just under the $400K CTC phase-out cliff',
   },
   {
     id: 'lawyer_bos',
@@ -110,6 +125,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'bos',
     kids: 0,
     lifestyle: 'comfortable',
+    takeaway: 'Asymmetric MFJ — marriage bonus vs. filing as singles',
   },
   {
     id: 'manager_atl',
@@ -120,6 +136,7 @@ export const SCENARIOS: Scenario[] = [
     city: 'atl',
     kids: 1,
     lifestyle: 'moderate',
+    takeaway: 'EITC phase-out hikes the effective rate on the second income',
   },
   {
     id: 'exec_nyc',
@@ -130,5 +147,6 @@ export const SCENARIOS: Scenario[] = [
     city: 'nyc',
     kids: 2,
     lifestyle: 'comfortable',
+    takeaway: 'Combined federal + NY + NYC marginal rate above 50%',
   },
 ];

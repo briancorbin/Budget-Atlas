@@ -137,9 +137,10 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 18,
     title: 'Rethink the "Start with someone real" section',
     category: 'UX & navigation',
-    status: 'planned',
+    status: 'shipped',
+    shippedAt: '2026-05-02',
     summary:
-      'The scenario picker shipped early as a friendly entry point — half a dozen archetype households with one-line bios. As the model has grown (graduated state brackets, benefits, statewide fallbacks, more inputs), the section feels increasingly cluttered and the archetypes feel less load-bearing now that anyone can model their own situation directly. Open questions: keep it as a quick-start carousel, fold it into a smaller "examples" link, replace it with a guided onboarding flow, or drop it entirely in favor of sensible defaults? Worth a design pass once it gets in the way of something concrete rather than refactoring preemptively.',
+      'Demoted from a 13-card top-of-page grid to a stateless single-line dropdown at the top of the Customize panel. Picking a scenario applies the prefill via the existing input setters and the dropdown immediately resets to its placeholder — it never claims to reflect "current state," so once any input is tweaked the picker can\'t lie. Each scenario carries a one-line editorial takeaway (marriage bonus, benefit cliff, credit phase-out) shown next to its label, so the picker doubles as a teaching surface. Reuses SearchableSelect for consistency with the existing state and locality pickers.',
   },
   {
     id: 17,

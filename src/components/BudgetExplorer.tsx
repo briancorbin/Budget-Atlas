@@ -71,7 +71,7 @@ export function BudgetExplorer() {
           incomeA={incomeA} incomeB={effectiveIncomeB} hasPartner={twoIncome}
           filing={filing} kids={kids} lifestyle={lifestyle}
         />
-        <Notes filing={filing} />
+        <Notes filing={filing} stateTaxSource={result.stateData.taxSource} />
       </div>
     </div>
   );

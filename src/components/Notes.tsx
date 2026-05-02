@@ -5,15 +5,22 @@ import { FEDERAL_TAX_SOURCE, SS_WAGE_BASE_SOURCE, STD_DEDUCTION_2026 } from '@/d
 import { STATE_TAX_SOURCE, STATE_MIN_WAGE_SOURCE } from '@/data/states';
 import { CITY_COL_SOURCES } from '@/data/cities';
 
-const FOOTER_SOURCES: readonly Source[] = [
-  FEDERAL_TAX_SOURCE,
-  SS_WAGE_BASE_SOURCE,
-  STATE_TAX_SOURCE,
-  STATE_MIN_WAGE_SOURCE,
-  ...CITY_COL_SOURCES,
-];
+function buildFooterSources(stateSource?: Source): readonly Source[] {
+  return [
+    FEDERAL_TAX_SOURCE,
+    SS_WAGE_BASE_SOURCE,
+    STATE_TAX_SOURCE,
+    ...(stateSource ? [stateSource] : []),
+    STATE_MIN_WAGE_SOURCE,
+    ...CITY_COL_SOURCES,
+  ];
+}
 
-export function Notes({ filing }: { filing: FilingStatus }) {
+export function Notes({ filing, stateTaxSource }: {
+  filing: FilingStatus;
+  stateTaxSource?: Source;
+}) {
+  const footerSources = buildFooterSources(stateTaxSource);
   const filingLabel = filing === 'married'
     ? 'married filing jointly'
     : filing === 'head' ? 'head of household' : 'single';
@@ -93,13 +100,13 @@ export function Notes({ filing }: { filing: FilingStatus }) {
         lineHeight: 1.9,
       }}>
         Sources ·{' '}
-        {FOOTER_SOURCES.map((s, i) => (
+        {footerSources.map((s, i) => (
           <span key={i}>
             <a href={s.url} target="_blank" rel="noreferrer"
               style={{ color: T.inkMuted, textDecoration: 'underline', textDecorationStyle: 'dotted' }}>
               {s.label}
             </a>
-            {i < FOOTER_SOURCES.length - 1 && ' · '}
+            {i < footerSources.length - 1 && ' · '}
           </span>
         ))}
       </div>

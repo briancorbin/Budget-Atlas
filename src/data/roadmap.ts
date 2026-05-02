@@ -132,6 +132,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Add an input for monthly student loan payment, with optional balance + rate + standard 10-year payment estimate. Model income-driven repayment (IDR / SAVE / PAYE) where payments scale with discretionary income above a poverty multiple. Pick up the $2,500/yr student loan interest deduction (above-the-line, phased out at ~$80K single / $165K joint).',
   },
   {
+    id: 16,
+    title: 'Housing-footprint preferences',
+    category: 'Household detail',
+    status: 'planned',
+    summary:
+      'Let households override the default bedroom-count assumption. Today the model picks 1BR / 1BR+20% / 3BR rigidly from adults+kids; in reality plenty of families share bedrooms (two kids in a 2BR with bunkbeds, three kids splitting a room, a couple staying in a studio, multigenerational households doubling up). Add a "bedrooms" override so users can pick smaller or larger than the default — surfaces the rent savings of trading space for togetherness, or the premium of wanting a dedicated room per kid.',
+  },
+  {
     id: 15,
     title: 'Community suggestions & contributions',
     category: 'Sharing',

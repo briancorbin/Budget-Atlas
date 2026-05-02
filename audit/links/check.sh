@@ -72,6 +72,11 @@ while IFS= read -r url; do
 done < "$URLS_FILE"
 wait
 
+# Sort the raw curl output deterministically by URL so identical runs produce
+# byte-identical TSVs and git diffs only show real changes (parallel curl
+# writes finish in non-deterministic order otherwise).
+LC_ALL=C sort -t$'\t' -k2,2 -o "$RAW_FILE" "$RAW_FILE"
+
 # Join reviews (URL -> reviewed_at, reviewed_by, notes) into the raw curl output.
 # reviewed.tsv format: url \t YYYY-MM-DD \t reviewer \t notes (tab-separated)
 # Lines starting with # in reviewed.tsv are comments.

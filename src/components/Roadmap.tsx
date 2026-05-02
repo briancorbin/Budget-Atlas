@@ -78,11 +78,13 @@ function Intro() {
 }
 
 function PlannedList() {
-  const plannedCount = ROADMAP.filter(i => i.status !== 'shipped').length;
-  const shippedCount = ROADMAP.filter(i => i.status === 'shipped').length;
-  const kicker = shippedCount > 0
-    ? `${plannedCount} planned · ${shippedCount} shipped`
-    : `Planned · ${plannedCount} items`;
+  // Items with status='shipped' relocate to the horizontal-scroll strip
+  // below; only planned/in-progress items render in the main vertical list.
+  const items = ROADMAP.filter(i => i.status !== 'shipped');
+  const shippedFromRoadmap = ROADMAP.filter(i => i.status === 'shipped').length;
+  const kicker = shippedFromRoadmap > 0
+    ? `${items.length} planned · ${shippedFromRoadmap} shipped (below)`
+    : `Planned · ${items.length} items`;
 
   return (
     <div style={{ marginBottom: 56 }}>
@@ -90,7 +92,7 @@ function PlannedList() {
         On the build list
       </SectionTitle>
       <div style={{ display: 'grid', gap: 16 }}>
-        {ROADMAP.map(item => (
+        {items.map(item => (
           <PlannedCard key={item.id} item={item} />
         ))}
       </div>
@@ -174,37 +176,63 @@ function StatusBadge({ status }: { status: RoadmapStatus }) {
 }
 
 function ShippedList() {
+  // Merge roadmap items that have shipped (from ROADMAP) with the historical
+  // pre-roadmap milestones (from SHIPPED). Both render the same way.
+  // Newest first so the most recent ship is visible without scrolling.
+  const shippedRoadmap = ROADMAP
+    .filter(i => i.status === 'shipped')
+    .map(i => ({ title: i.title, summary: i.summary, shippedAt: i.shippedAt ?? '' }));
+  const all = [...shippedRoadmap, ...SHIPPED]
+    .sort((a, b) => (b.shippedAt ?? '').localeCompare(a.shippedAt ?? ''));
+
   return (
     <div style={{ marginBottom: 48 }}>
-      <SectionTitle kicker={`Shipped · ${SHIPPED.length} milestones`}>
+      <SectionTitle kicker={`Shipped · ${all.length} milestones · scroll →`}>
         Already in the model
       </SectionTitle>
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12,
+        display: 'flex', gap: 12,
+        overflowX: 'auto',
+        paddingBottom: 12,
+        scrollSnapType: 'x mandatory',
+        // hint that there's more to the right with a soft fade
+        maskImage: 'linear-gradient(to right, black 0%, black 92%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to right, black 0%, black 92%, transparent 100%)',
       }}>
-        {SHIPPED.map((item, i) => (
+        {all.map((item, i) => (
           <div key={i} style={{
+            flexShrink: 0,
+            width: 300,
+            scrollSnapAlign: 'start',
             background: T.surface, border: `1px solid ${T.border}`,
             padding: '16px 20px',
             position: 'relative',
           }}>
             <div style={{
-              fontFamily: fonts.display, fontSize: 17, fontWeight: 500,
-              marginBottom: 6, paddingRight: 64,
+              fontFamily: fonts.display, fontSize: 16, fontWeight: 500,
+              marginBottom: 8, paddingRight: 70, lineHeight: 1.25,
             }}>
               {item.title}
             </div>
             <div style={{
-              position: 'absolute', top: 16, right: 16,
-              fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
-              color: T.bg, background: T.positive,
-              fontFamily: fonts.body, fontWeight: 700,
-              padding: '2px 7px', borderRadius: 2,
+              position: 'absolute', top: 14, right: 14,
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4,
             }}>
-              ✓ Shipped
+              <span style={{
+                fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: T.bg, background: T.positive,
+                fontFamily: fonts.body, fontWeight: 700,
+                padding: '2px 7px', borderRadius: 2,
+              }}>✓ Shipped</span>
+              {item.shippedAt && (
+                <span style={{
+                  fontSize: 10, color: T.inkMuted, fontFamily: fonts.mono,
+                  letterSpacing: '0.04em',
+                }}>{item.shippedAt}</span>
+              )}
             </div>
             <p style={{
-              fontSize: 13, lineHeight: 1.55, color: T.inkSoft, margin: 0,
+              fontSize: 12.5, lineHeight: 1.55, color: T.inkSoft, margin: 0,
             }}>
               {item.summary}
             </p>

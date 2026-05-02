@@ -21,6 +21,9 @@ export interface RoadmapItem {
   category: RoadmapCategory;
   status: RoadmapStatus;
   summary: string;
+  /** ISO date (YYYY-MM-DD) when status flipped to 'shipped'. Set this in
+   *  the same commit that flips status; leave undefined for planned items. */
+  shippedAt?: string;
 }
 
 export const ROADMAP: readonly RoadmapItem[] = [
@@ -137,26 +140,31 @@ export const ROADMAP: readonly RoadmapItem[] = [
 export interface ShippedItem {
   title: string;
   summary: string;
+  shippedAt: string;
 }
 
 export const SHIPPED: readonly ShippedItem[] = [
   {
     title: 'Graduated state tax brackets',
+    shippedAt: '2026-05-01',
     summary:
       'All 51 jurisdictions now use the same progressive-bracket machinery as federal. State-specific standard deductions and per-filing-status brackets where applicable. Replaces the previous flat-effective-rate approximation.',
   },
   {
     title: 'Bracket walkthrough',
+    shippedAt: '2026-05-01',
     summary:
       'Click "View bracket walkthrough" under the paycheck chart to see federal and state taxes calculated row by row, with the marginal bracket highlighted and refundable credits reconciled.',
   },
   {
     title: 'Per-state source citations',
+    shippedAt: '2026-05-01',
     summary:
       'Every state attaches its own Department of Revenue / Taxation, SNAP agency, Medicaid agency, and CHIP program citation. The page footer rotates the current state\'s sources alongside the cross-state aggregators.',
   },
   {
     title: 'Benefits & safety net',
+    shippedAt: '2026-05-01',
     summary:
       'SNAP, Medicaid, and CHIP eligibility — with state-specific BBCE thresholds, Medicaid expansion vs. coverage-gap branching, and CHIP\'s state-set income limits. Claimed benefits adjust the budget.',
   },

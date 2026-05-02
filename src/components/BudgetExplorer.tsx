@@ -4,7 +4,7 @@ import { theme as T } from '@/theme';
 import { computeBudget } from '@/lib/budget';
 import { checkBenefit, type BenefitId } from '@/lib/benefits';
 import { Masthead } from './Masthead';
-import { ScenarioPicker, CustomizePanel, type InputsState } from './Inputs';
+import { CustomizePanel, type InputsState } from './Inputs';
 import { StatRow, StatusBanner } from './Summary';
 import { IncomeFlow } from './IncomeFlow';
 import { BracketWalkthrough } from './BracketWalkthrough';
@@ -15,7 +15,10 @@ import { Benefits } from './Benefits';
 import { Notes } from './Notes';
 
 export function BudgetExplorer() {
-  const [scenarioId, setScenarioId] = useState('teacher_oh');
+  // Default boot state mirrors the legacy 'teacher_oh' scenario (two teachers,
+  // Columbus OH, ~$110K combined, 2 kids, married, moderate). Inlined as
+  // useState seeds rather than a scenario lookup so the page lands on a
+  // sensible household without any picker state to track.
   const [incomeA, setIncomeA] = useState(56000);
   const [incomeB, setIncomeB] = useState(54000);
   const [twoIncome, setTwoIncome] = useState(true);
@@ -94,8 +97,6 @@ export function BudgetExplorer() {
   }
 
   const inputState: InputsState = {
-    scenarioId,
-    setScenarioId,
     incomeA,
     setIncomeA,
     incomeB,
@@ -126,7 +127,6 @@ export function BudgetExplorer() {
     >
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
-        <ScenarioPicker {...inputState} />
         <CustomizePanel {...inputState} />
         <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
         <StatRow result={result} />

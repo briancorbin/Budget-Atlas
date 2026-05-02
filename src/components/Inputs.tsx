@@ -4,11 +4,9 @@ import { fmt, fmtPct } from '@/lib/format';
 import { CITIES, RENT_LOGIC_SOURCES, getCityData, stateSlug } from '@/data/cities';
 import { STATES, bracketRange } from '@/data/states';
 import { SCENARIOS } from '@/data/scenarios';
-import { CiteGroup, SearchableSelect, SectionTitle, type SearchableOption } from './ui';
+import { CiteGroup, SearchableSelect, type SearchableOption } from './ui';
 
 export interface InputsState {
-  scenarioId: string;
-  setScenarioId: (id: string) => void;
   incomeA: number;
   setIncomeA: (n: number) => void;
   incomeB: number;
@@ -23,72 +21,6 @@ export interface InputsState {
   setKids: (n: number) => void;
   lifestyle: Lifestyle;
   setLifestyle: (l: Lifestyle) => void;
-}
-
-export function ScenarioPicker(s: InputsState) {
-  const apply = (sc: (typeof SCENARIOS)[number]) => {
-    s.setScenarioId(sc.id);
-    s.setIncomeA(sc.income);
-    s.setIncomeB(sc.incomeB || 0);
-    s.setTwoIncome((sc.incomeB || 0) > 0);
-    s.setFiling(sc.filing);
-    s.setCity(sc.city);
-    s.setKids(sc.kids);
-    s.setLifestyle(sc.lifestyle);
-  };
-
-  return (
-    <div style={{ marginBottom: 36 }}>
-      <SectionTitle kicker="Quick scenarios">Start with someone real</SectionTitle>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 8,
-        }}
-      >
-        {SCENARIOS.map((sc) => {
-          const total = sc.income + (sc.incomeB || 0);
-          const active = s.scenarioId === sc.id;
-          return (
-            <button
-              key={sc.id}
-              onClick={() => apply(sc)}
-              style={{
-                textAlign: 'left',
-                padding: '14px 16px',
-                background: active ? T.ink : T.surface,
-                color: active ? T.bg : T.ink,
-                border: `1px solid ${active ? T.ink : T.border}`,
-                fontFamily: fonts.body,
-                fontSize: 13.5,
-                lineHeight: 1.35,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: fonts.mono,
-                  fontSize: 13,
-                  color: active ? T.bgAlt : T.accent,
-                  marginBottom: 4,
-                }}
-              >
-                {fmt(total)}
-                {sc.incomeB && sc.incomeB > 0 && (
-                  <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 6 }}>
-                    ({fmt(sc.income)} + {fmt(sc.incomeB)})
-                  </span>
-                )}
-              </div>
-              {sc.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 export function CustomizePanel(s: InputsState) {
@@ -121,6 +53,30 @@ export function CustomizePanel(s: InputsState) {
     ...curatedInState.map(([id, c]) => ({ value: id, label: c.name, hint: c.tier })),
     { value: stateSlug(cityState), label: 'Statewide average', hint: 'approx.' },
   ];
+
+  // Scenario quick-load options: archetype households as a searchable dropdown.
+  // Hint shows total income so the user can scan the spectrum at a glance.
+  const scenarioOptions: SearchableOption<string>[] = SCENARIOS.map((sc) => {
+    const total = sc.income + (sc.incomeB ?? 0);
+    return { value: sc.id, label: sc.label, hint: fmt(total) + ' total' };
+  });
+
+  // The dropdown is intentionally stateless — we never bind it to a "current
+  // scenario" because once any input is tweaked the picker would lie. Instead
+  // we hard-pin its value to '' so SearchableSelect always renders the
+  // placeholder, and on each pick we apply the scenario's values to the real
+  // input setters and let the dropdown immediately reset itself.
+  const applyScenarioById = (id: string) => {
+    const sc = SCENARIOS.find((x) => x.id === id);
+    if (!sc) return;
+    s.setIncomeA(sc.income);
+    s.setIncomeB(sc.incomeB ?? 0);
+    s.setTwoIncome((sc.incomeB ?? 0) > 0);
+    s.setFiling(sc.filing);
+    s.setCity(sc.city);
+    s.setKids(sc.kids);
+    s.setLifestyle(sc.lifestyle);
+  };
 
   const onStateChange = (code: StateCode) => {
     // Auto-pick a sensible locality: first curated city in that state, else statewide.
@@ -177,6 +133,20 @@ export function CustomizePanel(s: InputsState) {
         }}
       >
         Customize
+      </div>
+
+      {/* Quick-load: pick a real-feeling household to prefill every input below.
+          Stateless — picking applies the values and resets the dropdown so it
+          never claims to reflect "current state" once the user starts tweaking. */}
+      <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px dashed ${T.border}` }}>
+        <label style={labelStyle}>OR LOAD AN EXAMPLE</label>
+        <SearchableSelect<string>
+          value=""
+          options={scenarioOptions}
+          onChange={applyScenarioById}
+          placeholder="Pick a real-feeling household to prefill these inputs…"
+          ariaLabel="Load an example household"
+        />
       </div>
 
       {/* Income row */}

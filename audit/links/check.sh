@@ -40,6 +40,7 @@ grep -rEho 'https?://[^ )"`'"'"'<>]+' \
   --exclude-dir=results --exclude-dir=.claude --exclude-dir=.git \
   "$ROOT" \
   | grep -vE '^http://localhost|^http://127\.0\.0\.1|^http://www\.w3\.org' \
+  | grep -vE '^https?://fonts\.googleapis\.com|^https?://fonts\.gstatic\.com' \
   | sed 's/&amp;/\&/g' \
   | sort -u > "$URLS_FILE"
 

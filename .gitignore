@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 
+# This project uses Yarn classic — yarn.lock is the source of truth.
+# Keep npm's lockfile out so CF Pages (and anyone running `npm install`)
+# doesn't generate a parallel, drifting lockfile.
+package-lock.json
+
 # Build output
 dist/
 dist-ssr/

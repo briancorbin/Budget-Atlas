@@ -11,6 +11,16 @@ import {
 /** All benefit programs we model. Add new IDs here as we ship them. */
 export type BenefitId = 'snap';
 
+/**
+ * Dispatch eligibility for any program by id. New programs add a case here
+ * once their checker exists; callers can stay generic.
+ */
+export function checkBenefit(id: BenefitId, inputs: BenefitInputs): BenefitEligibility {
+  switch (id) {
+    case 'snap': return checkSnap(inputs);
+  }
+}
+
 /** Result of an eligibility check for a single program. */
 export interface BenefitEligibility {
   eligible: boolean;

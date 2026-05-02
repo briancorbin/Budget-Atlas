@@ -1,7 +1,7 @@
 import type { BudgetResult } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt } from '@/lib/format';
-import { checkSnap, type BenefitEligibility, type BenefitId } from '@/lib/benefits';
+import { checkBenefit, type BenefitEligibility, type BenefitId } from '@/lib/benefits';
 import { SNAP_SOURCE } from '@/data/benefits';
 import { POVERTY_SOURCE } from '@/data/poverty';
 import { Cite, SectionTitle } from './ui';
@@ -44,11 +44,7 @@ export function Benefits({
     state: result.cityData.state,
   };
 
-  const evaluate = (id: BenefitId): BenefitEligibility => {
-    switch (id) {
-      case 'snap': return checkSnap(inputs);
-    }
-  };
+  const evaluate = (id: BenefitId): BenefitEligibility => checkBenefit(id, inputs);
 
   return (
     <div style={{ marginBottom: 40 }}>

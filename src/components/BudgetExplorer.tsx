@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FilingStatus, Lifestyle } from '@/types';
 import { theme as T } from '@/theme';
 import { computeBudget } from '@/lib/budget';
+import { checkBenefit, type BenefitId } from '@/lib/benefits';
 import { Masthead } from './Masthead';
 import { ScenarioPicker, CustomizePanel, type InputsState } from './Inputs';
 import { StatRow, StatusBanner } from './Summary';
@@ -39,6 +40,29 @@ export function BudgetExplorer() {
       return next;
     });
   }, []);
+
+  // Auto-drop any claimed benefit the household no longer qualifies for
+  // (e.g. user raised income, switched scenarios, moved to a state with a
+  // tighter threshold). "Claimed" means actively receiving — stale intent
+  // shouldn't linger as a misleading "✓ Claimed" badge while the budget
+  // calc silently refuses to apply it.
+  useEffect(() => {
+    if (claimedBenefits.size === 0) return;
+    const inputs = {
+      grossIncome: result.grossIncome,
+      householdSize: result.householdSize,
+      state: result.cityData.state,
+    };
+    const next = new Set(claimedBenefits);
+    let changed = false;
+    for (const id of claimedBenefits) {
+      if (!checkBenefit(id as BenefitId, inputs).eligible) {
+        next.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) setClaimedBenefits(next);
+  }, [result.grossIncome, result.householdSize, result.cityData.state, claimedBenefits]);
 
   const inputState: InputsState = {
     scenarioId, setScenarioId,

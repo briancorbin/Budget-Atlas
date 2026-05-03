@@ -283,7 +283,9 @@ function Intro() {
           margin: 0,
         }}
       >
-        A nightly{' '}
+        Spotted a citation that's broken or no longer says what we claim? Click{' '}
+        <em>Submit a review</em> on any source below to file a structured report — it becomes a row
+        in the public audit trail once accepted. A nightly{' '}
         <a
           href={`${GITHUB_REPO}/tree/main/audit/links`}
           target="_blank"
@@ -292,25 +294,7 @@ function Intro() {
         >
           link audit
         </a>{' '}
-        checks every URL on this page; broken citations get filed as{' '}
-        <a
-          href={`${GITHUB_REPO}/issues?q=is%3Aopen+label%3Aaudit%3Alink`}
-          target="_blank"
-          rel="noreferrer"
-          style={linkStyle}
-        >
-          GitHub issues
-        </a>{' '}
-        for triage. The full status report is at{' '}
-        <a
-          href={`${GITHUB_REPO}/blob/main/audit/links/status.md`}
-          target="_blank"
-          rel="noreferrer"
-          style={linkStyle}
-        >
-          <code style={codeStyle}>audit/links/status.md</code>
-        </a>
-        .
+        catches dead URLs automatically; everything else needs human eyes.
       </p>
     </div>
   );
@@ -471,7 +455,10 @@ function SourceRow({ source }: { source: Source }) {
         >
           {source.url}
         </div>
-        {reviews.length > 0 && <ReviewLog reviews={reviews} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          {reviews.length > 0 && <ReviewLog reviews={reviews} />}
+          <SubmitReviewLink source={source} />
+        </div>
       </div>
       <div
         style={{
@@ -498,6 +485,40 @@ function SourceRow({ source }: { source: Source }) {
         )}
       </div>
     </li>
+  );
+}
+
+function reviewSubmissionUrl(source: Source): string {
+  const params = new URLSearchParams({
+    template: 'source-review.yml',
+    title: `Review: ${source.label}`,
+    'source-url': source.url,
+    'review-date': new Date().toISOString().slice(0, 10),
+  });
+  return `${GITHUB_REPO}/issues/new?${params.toString()}`;
+}
+
+function SubmitReviewLink({ source }: { source: Source }) {
+  return (
+    <a
+      href={reviewSubmissionUrl(source)}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        fontWeight: 600,
+        color: T.accent,
+        textDecoration: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 10,
+      }}
+    >
+      <span aria-hidden="true">+</span> Submit a review
+    </a>
   );
 }
 
@@ -703,13 +724,4 @@ const linkStyle = {
   textDecoration: 'none',
   fontWeight: 600,
   borderBottom: `1px solid ${T.border}`,
-} as const;
-
-const codeStyle = {
-  fontFamily: fonts.mono,
-  fontSize: 12,
-  background: T.surface,
-  padding: '1px 6px',
-  border: `1px solid ${T.border}`,
-  borderRadius: 2,
 } as const;

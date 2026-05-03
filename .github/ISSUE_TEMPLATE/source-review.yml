@@ -1,0 +1,69 @@
+name: Source review
+description: Confirm a citation still backs the claim we make from it — or flag that it's drifted.
+title: 'Review: '
+labels: ['audit:review']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reviewing a citation. Your review becomes a durable row in [`audit/links/reviewed.tsv`](https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/audit/links/reviewed.tsv) — the public audit trail. A maintainer will batch accepted reviews into the file and close this issue.
+
+        New here? See [the audit guide](https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/audit/links/README.md) for what we mean by "review."
+
+  - type: input
+    id: source-url
+    attributes:
+      label: Source URL
+      description: The full URL of the citation you reviewed.
+      placeholder: https://example.gov/some-page
+    validations:
+      required: true
+
+  - type: input
+    id: review-date
+    attributes:
+      label: Date reviewed
+      description: The day you actually opened the URL and verified what's there. Format YYYY-MM-DD.
+      placeholder: '2026-05-03'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What did you find?
+      options:
+        - Still backs our claim — citation good as-is
+        - Still backs our claim — but the page has moved (URL change needed)
+        - Document was revised; data may need updating in the model
+        - Citation no longer backs our claim — needs replacement or removal
+        - Couldn't reach the URL (transient outage / region-blocked / paywall)
+        - Other (explain in notes)
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: What you verified, in your own words. Be specific — this is the audit trail.
+      placeholder: |
+        Opened the page, confirmed it still lists Handbook 4350.3 chapters. Chapter 3 (which we cite) is intact and unchanged from prior version. No replacement needed.
+    validations:
+      required: true
+
+  - type: input
+    id: replacement-url
+    attributes:
+      label: Replacement URL (optional)
+      description: If the citation should point at a different URL, paste it here. Otherwise leave blank.
+      placeholder: https://example.gov/new-canonical-page
+
+  - type: checkboxes
+    id: agreements
+    attributes:
+      label: Confirm
+      options:
+        - label: I actually opened the URL and read enough of the page to verify the claim. I'm not just checking that it loads.
+          required: true

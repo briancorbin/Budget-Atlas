@@ -803,8 +803,11 @@ function StatusDot({ kind }: { kind: 'broken' | 'overdue' | 'verified' }) {
           style={{
             position: 'absolute',
             bottom: 'calc(100% + 8px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            // Anchor to the dot's left edge rather than centering on it. The
+            // dot lives at the far left of each row, so a centered tooltip
+            // overflows the viewport on mobile. Growing rightward keeps it on
+            // screen at any width.
+            left: 0,
             padding: '8px 12px',
             background: T.ink,
             color: T.bg,
@@ -816,7 +819,7 @@ function StatusDot({ kind }: { kind: 'broken' | 'overdue' | 'verified' }) {
             borderRadius: 3,
             whiteSpace: 'normal',
             width: 'max-content',
-            maxWidth: 260,
+            maxWidth: 'min(260px, calc(100vw - 32px))',
             boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
             zIndex: 10,
             pointerEvents: 'none',

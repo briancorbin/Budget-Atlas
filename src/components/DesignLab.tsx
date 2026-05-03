@@ -1199,13 +1199,55 @@ function PopoverMockV3() {
 // existing TierPill (same shape as production) with a one-line description
 // of what each tier covers under that scheme.
 
+/**
+ * Color presets for tier pills. Each entry is a {bg, fg} pair tuned for the
+ * editorial palette. Add new presets here to compare them across candidates.
+ *
+ * Lab convention: vary the middle-tier color across candidates so we can
+ * eyeball olive / brown / inkSoft / etc. on the actual layout rather than
+ * picking abstractly.
+ */
+const TIER_COLORS = {
+  /** Forest green — Original / Primary tier, the editorial "positive" tone. */
+  green: { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive },
+  /** Editorial red — the original Reference color. Reads as "warning." */
+  red: { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent },
+  /** Muted warm brown (inkSoft). Neutral metadata color. */
+  inkSoft: { bg: 'rgba(90, 79, 66, 0.12)', fg: T.inkSoft },
+  /** Olive (chart palette #5C5C2D). Distinctive, editorial. */
+  olive: { bg: 'rgba(92, 92, 45, 0.14)', fg: '#5C5C2D' },
+  /** Warm brown (chart palette #7A4E2A). Slightly richer than inkSoft. */
+  brown: { bg: 'rgba(122, 78, 42, 0.14)', fg: '#7A4E2A' },
+  /** Slate-blue (aiAccent). Currently used for the bottom tier. */
+  slateBlue: { bg: 'rgba(62, 90, 122, 0.16)', fg: T.aiAccent },
+  /** Burnt orange (warning). Currently used for Estimate. */
+  amber: { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning },
+  /** Teal (chart palette #3A6E6E). Cool, editorial, distinct from slate-blue. */
+  teal: { bg: 'rgba(58, 110, 110, 0.14)', fg: '#3A6E6E' },
+  /** Mauve / wine (chart palette #8A4A6E). Warm, distinctive. */
+  mauve: { bg: 'rgba(138, 74, 110, 0.13)', fg: '#8A4A6E' },
+  /** Warm gray (inkMuted). Even more neutral than inkSoft. */
+  warmGray: { bg: 'rgba(133, 120, 106, 0.14)', fg: T.inkMuted },
+  /** Deep gold — somewhere between olive and amber. Custom shade. */
+  gold: { bg: 'rgba(154, 130, 50, 0.15)', fg: '#7A6628' },
+} as const;
+type TierColorKey = keyof typeof TIER_COLORS;
+
+/**
+ * Role within a 3- (or 4-) tier scheme. The picker at the top of the
+ * tier-naming section maps each role to a color preset; candidates use
+ * `role` rather than `color` so all of them re-render together when you
+ * swap the picker. Tier4 is only used by candidate A (which has Estimate).
+ */
+type TierRole = 'tier1' | 'tier2' | 'tier3' | 'tier4';
+
 interface TierCandidate {
   readonly key: string;
   readonly title: string;
   readonly description: string;
   readonly tiers: ReadonlyArray<{
     readonly label: string;
-    readonly tone: 'positive' | 'reference' | 'aggregator' | 'estimate';
+    readonly role: TierRole;
     readonly meaning: string;
   }>;
 }
@@ -1217,16 +1259,16 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     description:
       'Status quo. Reference is a catch-all spanning handbooks, surveys, research orgs, commercial aggregators, and state agency portals. Estimate is unused (zero rows). The familiar baseline.',
     tiers: [
-      { label: 'Original', tone: 'positive', meaning: 'Direct from the agency or data publisher.' },
+      { label: 'Original', role: 'tier1', meaning: 'Direct from the agency or data publisher.' },
       {
         label: 'Reference',
-        tone: 'reference',
+        role: 'tier2',
         meaning:
           'Everything else — handbooks, surveys, research, commercial aggregators, agency portals.',
       },
       {
         label: 'Estimate',
-        tone: 'estimate',
+        role: 'tier4',
         meaning: 'Approximations flagged honestly. (Currently unused.)',
       },
     ],
@@ -1239,19 +1281,19 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Primary',
-        tone: 'positive',
+        role: 'tier1',
         meaning:
           'Publisher of the underlying data or rule. Includes federal agencies + state agencies on their own programs.',
       },
       {
         label: 'Reference',
-        tone: 'reference',
+        role: 'tier2',
         meaning:
           'Peer-respected third-party interpretation, methodology document, or original research-org survey.',
       },
       {
         label: 'Aggregator',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning:
           'Commercial or crowd-sourced data product — methodology proprietary or community-driven.',
       },
@@ -1265,19 +1307,19 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Primary',
-        tone: 'positive',
+        role: 'tier1',
         meaning:
           'Publisher of the underlying data or rule. Includes federal agencies + state agencies on their own programs.',
       },
       {
         label: 'Reference',
-        tone: 'reference',
+        role: 'tier2',
         meaning:
           'Peer-respected third-party interpretation, methodology document, or original research-org survey.',
       },
       {
         label: 'Commercial',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning:
           'For-profit data product or commercially-supported community site. Methodology proprietary or self-reported.',
       },
@@ -1291,19 +1333,19 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Primary',
-        tone: 'positive',
+        role: 'tier1',
         meaning:
           'Publisher of the underlying data or rule. Includes federal agencies + state agencies on their own programs.',
       },
       {
         label: 'Reference',
-        tone: 'reference',
+        role: 'tier2',
         meaning:
           'Peer-respected third-party interpretation, methodology document, or original research-org survey.',
       },
       {
         label: 'Industry',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning:
           'Industry-side data product or community site. Methodology proprietary or self-reported, not peer-reviewed.',
       },
@@ -1317,17 +1359,17 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Primary',
-        tone: 'positive',
+        role: 'tier1',
         meaning: 'Produces the data themselves. IRS, BLS, KFF surveys, Zillow, Care.com.',
       },
       {
         label: 'Secondary',
-        tone: 'reference',
+        role: 'tier2',
         meaning: 'Interprets primary sources. EPI, CBPP, HUD Handbook.',
       },
       {
         label: 'Tertiary',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning: 'Compiles primaries/secondaries. Tax Foundation, NCSL, Numbeo.',
       },
     ],
@@ -1340,17 +1382,17 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'High trust',
-        tone: 'positive',
+        role: 'tier1',
         meaning: 'Agency / statutory text / publisher of record.',
       },
       {
         label: 'Medium trust',
-        tone: 'reference',
+        role: 'tier2',
         meaning: 'Peer-respected research with public methodology.',
       },
       {
         label: 'Low trust',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning: 'Commercial or crowd-sourced — proprietary methodology.',
       },
     ],
@@ -1361,13 +1403,13 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     description:
       'Numeric. Low cognitive load (no vocabulary to learn) but no semantic content either — every reader has to look up what each number means.',
     tiers: [
-      { label: 'Tier 1', tone: 'positive', meaning: 'Agency / statutory / publisher of record.' },
+      { label: 'Tier 1', role: 'tier1', meaning: 'Agency / statutory / publisher of record.' },
       {
         label: 'Tier 2',
-        tone: 'reference',
+        role: 'tier2',
         meaning: 'Peer-respected research / handbook / methodology.',
       },
-      { label: 'Tier 3', tone: 'aggregator', meaning: 'Commercial or crowd-sourced aggregator.' },
+      { label: 'Tier 3', role: 'tier3', meaning: 'Commercial or crowd-sourced aggregator.' },
     ],
   },
   {
@@ -1378,17 +1420,17 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Publisher',
-        tone: 'positive',
+        role: 'tier1',
         meaning: 'Government agency or statutory authority producing the data/rule.',
       },
       {
         label: 'Research',
-        tone: 'reference',
+        role: 'tier2',
         meaning: 'Peer-respected research org or methodology document.',
       },
       {
         label: 'Aggregator',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning: 'Commercial or crowd-sourced data product.',
       },
     ],
@@ -1401,68 +1443,159 @@ const TIER_CANDIDATES: readonly TierCandidate[] = [
     tiers: [
       {
         label: 'Government',
-        tone: 'positive',
+        role: 'tier1',
         meaning: 'Federal or state agency / statutory text.',
       },
       {
         label: 'Research',
-        tone: 'reference',
+        role: 'tier2',
         meaning: 'Non-profit research org, peer-respected methodology.',
       },
       {
         label: 'Commercial',
-        tone: 'aggregator',
+        role: 'tier3',
         meaning: 'For-profit data products and crowd-sourced sites.',
       },
     ],
   },
 ];
 
+type RoleColors = Record<TierRole, TierColorKey>;
+
+const DEFAULT_ROLE_COLORS: RoleColors = {
+  tier1: 'green',
+  tier2: 'inkSoft',
+  tier3: 'slateBlue',
+  tier4: 'amber',
+};
+
+const ROLE_LABELS: Record<TierRole, string> = {
+  tier1: 'Top tier',
+  tier2: 'Middle tier',
+  tier3: 'Bottom tier',
+  tier4: 'Estimate (only A)',
+};
+
 function SectionTierNaming() {
+  // Picked-color state per role — drives every candidate's rendering. Swap
+  // colors at the top of the section and watch them flow through every
+  // candidate at once. Way faster than hand-editing each candidate object.
+  const [colors, setColors] = useState<RoleColors>(DEFAULT_ROLE_COLORS);
   return (
     <Section
       heading="Source tier — naming candidates"
-      subhead="Iterating on the labels in src/data/sources.ts before committing to a refactor. Each variation shows the candidate tier names rendered in pill form (same primitive used on /sources rows + citation popovers) with a one-line meaning."
+      subhead="Iterating on the labels in src/data/sources.ts before committing to a refactor. Click a swatch in the picker below to swap the color for that tier role — every candidate re-renders together so you can compare colors against multiple naming schemes at once."
     >
+      <div style={{ gridColumn: '1 / -1' }}>
+        <ColorPickerRow colors={colors} onChange={setColors} />
+      </div>
       {TIER_CANDIDATES.map((c) => (
         <Variation key={c.key} title={c.title} description={c.description}>
-          <TierCandidatePreview candidate={c} />
+          <TierCandidatePreview candidate={c} colors={colors} />
         </Variation>
       ))}
     </Section>
   );
 }
 
-function tierCandidateBg(tone: TierCandidate['tiers'][number]['tone']) {
-  if (tone === 'positive') return 'rgba(45, 80, 22, 0.12)';
-  // Reference tone uses a muted warm brown (inkSoft) rather than the
-  // accent red. Red implied "warning / lower quality" when really
-  // "Reference" just means "one step removed from the publisher" — a
-  // neutral relationship, not a negative judgement.
-  if (tone === 'reference') return 'rgba(90, 79, 66, 0.12)';
-  if (tone === 'aggregator') return 'rgba(62, 90, 122, 0.16)';
-  return 'rgba(184, 116, 43, 0.18)';
-}
-function tierCandidateFg(tone: TierCandidate['tiers'][number]['tone']) {
-  if (tone === 'positive') return T.positive;
-  if (tone === 'reference') return T.inkSoft;
-  if (tone === 'aggregator') return T.aiAccent;
-  return T.warning;
+function ColorPickerRow({
+  colors,
+  onChange,
+}: {
+  colors: RoleColors;
+  onChange: (c: RoleColors) => void;
+}) {
+  const presetKeys = Object.keys(TIER_COLORS) as TierColorKey[];
+  return (
+    <div
+      style={{
+        border: `1px solid ${T.border}`,
+        background: T.surface,
+        borderRadius: 4,
+        padding: 16,
+        marginBottom: 8,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      <div
+        style={{
+          fontSize: rem(11),
+          textTransform: 'uppercase',
+          letterSpacing: '0.18em',
+          color: T.inkMuted,
+          fontWeight: 600,
+        }}
+      >
+        Color picker — drives every candidate below
+      </div>
+      {(Object.keys(ROLE_LABELS) as TierRole[]).map((role) => (
+        <div
+          key={role}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+        >
+          <span
+            style={{
+              minWidth: 110,
+              fontSize: rem(12),
+              fontWeight: 600,
+              color: T.inkSoft,
+            }}
+          >
+            {ROLE_LABELS[role]}
+          </span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {presetKeys.map((k) => {
+              const isActive = colors[role] === k;
+              const preset = TIER_COLORS[k];
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => onChange({ ...colors, [role]: k })}
+                  aria-pressed={isActive}
+                  title={k}
+                  style={{
+                    cursor: 'pointer',
+                    border: isActive ? `2px solid ${T.ink}` : `1px solid ${T.border}`,
+                    background: preset.bg,
+                    color: preset.fg,
+                    padding: '4px 10px',
+                    borderRadius: 2,
+                    fontFamily: fonts.mono,
+                    fontSize: rem(10),
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {k}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function TierCandidatePreview({ candidate }: { candidate: TierCandidate }) {
+function TierCandidatePreview({
+  candidate,
+  colors,
+}: {
+  candidate: TierCandidate;
+  colors: RoleColors;
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Pill row — see the labels in their actual visual context. */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {candidate.tiers.map((t) => (
-          <Pill
-            key={t.label}
-            bg={tierCandidateBg(t.tone)}
-            fg={tierCandidateFg(t.tone)}
-            label={t.label}
-          />
-        ))}
+        {candidate.tiers.map((t) => {
+          const preset = TIER_COLORS[colors[t.role]];
+          return <Pill key={t.label} bg={preset.bg} fg={preset.fg} label={t.label} />;
+        })}
       </div>
       {/* Per-tier meaning. */}
       <ul
@@ -1470,8 +1603,10 @@ function TierCandidatePreview({ candidate }: { candidate: TierCandidate }) {
       >
         {candidate.tiers.map((t) => (
           <li key={t.label} style={{ marginBottom: 4 }}>
-            <span style={{ color: tierCandidateFg(t.tone), fontWeight: 700 }}>{t.label}</span> —{' '}
-            {t.meaning}
+            <span style={{ color: TIER_COLORS[colors[t.role]].fg, fontWeight: 700 }}>
+              {t.label}
+            </span>{' '}
+            — {t.meaning}
           </li>
         ))}
       </ul>

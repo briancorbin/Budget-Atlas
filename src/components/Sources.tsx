@@ -951,12 +951,16 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
 }
 
 function TierPill({ tier }: { tier: string }) {
+  // Reference tier uses a muted warm brown (inkSoft) rather than the
+  // accent red — red implied "warning / lower quality" when "Reference"
+  // really just means "one step removed from the publisher," a neutral
+  // relationship rather than a negative judgement.
   const palette =
     tier === 'original'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive }
       : tier === 'estimate'
         ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning }
-        : { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent };
+        : { bg: 'rgba(90, 79, 66, 0.12)', fg: T.inkSoft };
   return (
     <span
       style={{

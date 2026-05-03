@@ -1435,13 +1435,17 @@ function SectionTierNaming() {
 
 function tierCandidateBg(tone: TierCandidate['tiers'][number]['tone']) {
   if (tone === 'positive') return 'rgba(45, 80, 22, 0.12)';
-  if (tone === 'reference') return 'rgba(166, 38, 28, 0.10)';
+  // Reference tone uses a muted warm brown (inkSoft) rather than the
+  // accent red. Red implied "warning / lower quality" when really
+  // "Reference" just means "one step removed from the publisher" — a
+  // neutral relationship, not a negative judgement.
+  if (tone === 'reference') return 'rgba(90, 79, 66, 0.12)';
   if (tone === 'aggregator') return 'rgba(62, 90, 122, 0.16)';
   return 'rgba(184, 116, 43, 0.18)';
 }
 function tierCandidateFg(tone: TierCandidate['tiers'][number]['tone']) {
   if (tone === 'positive') return T.positive;
-  if (tone === 'reference') return T.accent;
+  if (tone === 'reference') return T.inkSoft;
   if (tone === 'aggregator') return T.aiAccent;
   return T.warning;
 }

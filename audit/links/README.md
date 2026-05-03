@@ -5,10 +5,27 @@ Reproducible audit of every external URL cited from the codebase — does it sti
 ## How it works
 
 1. **`check.sh`** extracts every `http(s)://` URL from [`src/data/sources.ts`](../../src/data/sources.ts) — the citation registry — hits each with curl, and writes a dated TSV to `results/`. Other URLs in the codebase (font CDN preconnects, repo links, build artifacts) aren't checked: only declared citations are auditable, by design.
-2. **`reviewed.tsv`** is a hand-maintained log of human reviews — one row per URL where a person has actually opened the link and confirmed the destination still cites what we claim. The script joins these into the output.
+2. **`reviewed.tsv`** is the unified resolution log (see below). One row per `URL · date · reviewer · notes` event.
 3. **`results/<date>.tsv`** captures the union: machine status (does it load?) + human review state (did someone verify the content?).
 
 A `200 OK` from curl only tells us _something_ loaded. Only a human can tell us whether the loaded page still cites the document we built the model around. Both columns matter.
+
+## `reviewed.tsv` is the unified resolution log
+
+**Every resolved audit issue — `audit:link` from the nightly bot or `audit:review` from a community submission — writes exactly one row to `reviewed.tsv`.** The row's notes explain what was done. Code changes (URL update in `sources.ts`, data-file edit, removal) happen in the same PR, but `reviewed.tsv` is always the durable "this got handled" log.
+
+Why one rule for all resolutions: it collapses the mental model. There's exactly one place to look for "what's been resolved lately." Whether the resolution was "validated as-is," "URL was moved and we updated it," "data needed correction," or "citation was retired," it shows up the same way.
+
+Worked examples:
+
+| Resolution                                | What happens                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Validated as-is**                       | Append row to `reviewed.tsv` with notes confirming the page still cites the claim. No other file changes.                                                                                                                                                                                      |
+| **URL moved, content unchanged**          | Edit `sources.ts` (URL string only) + append row to `reviewed.tsv` noting "URL was moved; content unchanged."                                                                                                                                                                                  |
+| **Document revised, data needs updating** | Edit the data file with the new numbers + edit `sources.ts` if the citation date changes + append row noting what was updated.                                                                                                                                                                 |
+| **Citation no longer backs the claim**    | Remove the entry from `sources.ts` (and any data point that depended on it) + append row noting "Citation no longer backs the claim; removed from registry." The historical row stays in `reviewed.tsv` as audit trail; it won't render on `/sources` since the URL is gone, which is correct. |
+
+The PR that lands the resolution should `Closes #N` to auto-close the originating issue.
 
 ## Running the audit
 
@@ -42,17 +59,17 @@ You must:
 
 Reviews that look AI-generated will be rejected. The submission form has a checkbox confirming this; treat it seriously. Ten honest human reviews are worth more than a hundred laundered through a chatbot — the audit is only as good as the discipline that backs it.
 
-## Recording a manual review
+## Recording a resolution
 
-When you've opened a URL and confirmed the cited content is still there:
+Whenever you resolve an audit issue (link or review) — append a row to `reviewed.tsv`:
 
 ```
 url<TAB>YYYY-MM-DD<TAB>your-handle<TAB>brief notes
 ```
 
-Append a row to `reviewed.tsv`. The next audit run will pick it up.
+Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. If the citation was retired, say so. The notes are the audit trail.
 
-Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. The notes are the audit trail.
+The next audit run picks it up; `status.md` regenerates with the latest review reflected on the relevant source row (or the row disappears, in the removal case).
 
 ## Automation
 
@@ -73,11 +90,11 @@ To seed issues manually from a local audit run: `yarn audit:seed-issues` (or `--
 
 ## Contributing a fix
 
-1. Run the audit. Pick a finding from `results/<latest>.tsv`.
-2. Open the URL yourself. Read the destination. Decide what's actually broken.
-3. If a replacement URL exists for the same document, update both the data file and the README in lockstep (citations are mirrored — see [CLAUDE.md](../../CLAUDE.md) on the citation discipline).
-4. Add a row to `reviewed.tsv` with your review notes.
-5. Open a PR. Commit message should distinguish _URL moved_ (cosmetic) from _citation was substantively wrong_ (epistemic). The HUD Handbook 4350.3 fix in commit [`342056b`](https://github.com/TheBudgetAtlas/thebudgetatlas/commit/342056b) is a worked example of the latter — wrong URL _and_ wrong date.
+1. Pick an open issue (`audit:link` from the nightly bot, or `audit:review` from a community submission).
+2. Open the URL yourself. Read the destination. Decide what the right outcome is.
+3. Apply the code change if any (`sources.ts` edit for URL changes / removals; data-file edit for value corrections).
+4. **Append a row to `reviewed.tsv`** describing the resolution — this is non-optional, even for "validated as-is."
+5. Open a PR with `Closes #N` in the description. Commit message should distinguish _URL moved_ (cosmetic) from _citation was substantively wrong_ (epistemic). The HUD Handbook 4350.3 fix in commit [`342056b`](https://github.com/TheBudgetAtlas/thebudgetatlas/commit/342056b) is a worked example of the latter — wrong URL _and_ wrong date.
 
 ## Known patterns to watch for
 

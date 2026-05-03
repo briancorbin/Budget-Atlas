@@ -62,17 +62,19 @@ jobs:
         run: node --experimental-strip-types scripts/source-inventory.mjs --check
 
       - name: Source registry — paired reviewed.tsv row for new sources
-        # PR-only: every newly-added source needs a matching row in
-        # audit/links/reviewed.tsv proving a human verified it. Skipped on
-        # push events because there's no clear "base" — the PR check
-        # already gated the merge.
-        if: github.event_name == 'pull_request'
+        # On PR: base = the PR's target branch (origin/$GITHUB_BASE_REF).
+        # On push: base = the previous tip of this branch
+        # (github.event.before). The push case is a tripwire — the PR
+        # check should already have gated the merge, but if main drifts
+        # (force-push, direct commit, branch-protection misconfig) we
+        # want to surface it, not hide it.
+        env:
+          AUDIT_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
         run: node scripts/check-source-pairing.mjs
 
       - name: reviewed.tsv — append-only enforcement
-        # PR-only: rows in reviewed.tsv are an immutable audit trail.
-        # Existing rows can't be modified, removed, or reordered into
-        # oblivion; new rows can be appended. Comments and blank lines
-        # are exempt (header docs may need legitimate edits).
-        if: github.event_name == 'pull_request'
+        # Same base-ref logic as above. Modifying or removing rows on
+        # main without a PR (somehow) should fail loud.
+        env:
+          AUDIT_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
         run: node scripts/check-reviewed-immutable.mjs

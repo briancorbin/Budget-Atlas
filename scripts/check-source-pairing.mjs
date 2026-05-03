@@ -34,9 +34,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCES_PATH = 'src/data/sources.ts';
 const REVIEWED_PATH = 'audit/links/reviewed.tsv';
 
-const BASE_REF = process.env.GITHUB_BASE_REF
-  ? `origin/${process.env.GITHUB_BASE_REF}`
-  : 'origin/main';
+// Base ref: workflow-supplied via AUDIT_BASE_REF (set explicitly per event
+// in ci.yml — PR target on pull_request, previous tip on push). Falls back
+// to origin/main for local invocations.
+const BASE_REF = process.env.AUDIT_BASE_REF || 'origin/main';
 
 function gitShow(ref, path) {
   return execFileSync('git', ['show', `${ref}:${path}`], {

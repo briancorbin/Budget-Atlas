@@ -244,7 +244,7 @@ lines.push('');
 lines.push('## 3. Original-tier sources never reviewed');
 lines.push('');
 lines.push(
-  '_Highest-stakes queue. By rule these reviews are 100% human, no AI assistance — open the URL, read the destination, append a row to `audit/links/reviewed.tsv` describing what you saw._',
+  '_Highest-stakes queue. These need a `kind=human` review — open the URL, read the destination yourself, append a row to `audit/links/reviewed.tsv` describing what you saw. (`kind=ai` rows count elsewhere in the audit, but this queue is specifically the eyes-on-source one.)_',
 );
 lines.push('');
 if (originalUnreviewed.length === 0) {

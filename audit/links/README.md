@@ -74,17 +74,18 @@ Requires bash + curl + grep + xargs + awk. Takes ~1 minute over all ~230 URLs at
 | `404`         | Page is gone        | Replace the citation or remove the data point                                     |
 | `000` / `ERR` | DNS/TLS/timeout     | Manual browser check; might be a transient outage or a domain that's gone         |
 
-## Reviews must be 100% human
+## Reviews record what kind of verification happened
 
-This is the load-bearing rule of the audit. **No AI assistance.** The whole point of human review is to catch the failure mode where a page loads but no longer cites what we claim — exactly the failure that automated checking can't detect (and that AI summarization can _create_ by hallucinating support that isn't there).
+The audit's value comes from honest accounting of how each citation got verified. The `kind` column on every review row makes that explicit:
 
-You must:
+- `human` — eyes-on-source, no AI assistance. Strongest evidence. You opened the URL yourself, read the destination, and confirmed the claim with your own eyes.
+- `ai` — AI was involved in proposing, extracting, or refreshing the entry. Whatever human review followed (a glance, a careful read, none) is self-reported and unverifiable, so the kind doesn't try to subdivide.
 
-- Open the URL yourself in a browser.
-- Read enough of the destination to verify the claim with your own eyes.
-- Write the notes in your own words, based on what you actually saw.
+The audit's job is to make the level of human involvement **transparent**, not **absent**. AI assistance is allowed and useful, especially during active solo development — the column is the honest record. Don't launder AI work as `human`: if you weren't eyes-on-source, it's `ai`.
 
-Reviews that look AI-generated will be rejected. The submission form has a checkbox confirming this; treat it seriously. Ten honest human reviews are worth more than a hundred laundered through a chatbot — the audit is only as good as the discipline that backs it.
+**Community-submitted reviews are `human`-only.** The `audit:report` issue template enforces this with explicit no-AI checkboxes — community channels are where bad-faith laundering hurts most, and we lean on the `human` discipline there to catch the failure mode where a page loads but no longer cites what we claim (the failure that AI summarization can _create_ by hallucinating support).
+
+Maintainer rows can be either kind, marked honestly. Ten honest entries are worth more than a hundred laundered — the audit is only as good as the discipline that backs it.
 
 ## Recording a resolution
 
@@ -96,13 +97,7 @@ id<TAB>YYYY-MM-DD<TAB>your-handle<TAB>kind<TAB>brief notes
 
 `id` is the stable source slug from `src/data/sources.ts` — the outer key in `SOURCES` (e.g. `kff-employer-health-benefits`) or a synthesized `state-${kind}-${code}` for the per-state agency maps (e.g. `state-dor-ca`, `state-snap-tx`). Keying by id rather than URL means review history follows the source through URL changes — when an agency reorganizes a citation's URL, the prior reviews stay attached.
 
-`kind` records what kind of verification happened — see the `reviewed.tsv` header for full definitions. Three values:
-
-- `human` — eyes-on-source, no AI assistance. Strongest evidence.
-- `ai-assisted` — AI helped extract/propose; a human gave it a look-over.
-- `ai-proposed` — AI proposed; human accepted without verification.
-
-The audit makes the level of human involvement transparent, not absent. AI assistance is allowed and useful — the row's `kind` records honestly what kind of review happened. **Community-submitted reviews are `human`-only** (the `audit:report` issue template enforces this with explicit no-AI checkboxes). Maintainer rows can be any kind, marked honestly.
+`kind` is `human` or `ai` (see definitions above). The earlier three-state vocabulary (`ai-assisted`, `ai-proposed`) still parses for backwards compatibility — both fold into `ai` at parse time. New rows should use `ai`.
 
 Legacy rows in 4-column format (pre-`kind` schema) parse as `kind=human`.
 

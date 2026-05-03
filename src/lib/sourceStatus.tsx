@@ -119,9 +119,25 @@ export const REVIEWS = (() => {
     if (!id) continue;
     // 4-col legacy: id, date, reviewer, notes — kind defaults to 'human'.
     // 5-col current: id, date, reviewer, kind, notes.
+    //
+    // Disambiguation rule: a 5+ column row is "5-column" iff column 4 is a
+    // recognised kind. If column 4 is NOT a recognised kind, we treat the
+    // row as malformed rather than falling back to legacy parsing — a typo
+    // like `humn` or `ai-asistted` would otherwise silently promote a row
+    // to kind='human' with the column shifted into notes. Loud failure
+    // beats silent misclassification when the whole point of the kind
+    // column is honest provenance.
     let kind: ReviewKind;
     let notes: string;
-    if (parts.length >= 5 && REVIEW_KIND_VALUES.has(parts[3])) {
+    if (parts.length >= 5) {
+      if (!REVIEW_KIND_VALUES.has(parts[3])) {
+        console.warn(
+          `[reviewed.tsv] Unrecognised kind "${parts[3]}" on row for "${id}". ` +
+            `Expected one of: ${Array.from(REVIEW_KIND_VALUES).join(', ')}. ` +
+            `Skipping row to avoid silent misclassification.`,
+        );
+        continue;
+      }
       kind = normaliseKind(parts[3]);
       notes = parts[4] ?? '';
     } else {

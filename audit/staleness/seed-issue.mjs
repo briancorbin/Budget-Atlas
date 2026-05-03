@@ -346,11 +346,41 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
+let issueNumber;
 if (existing) {
   console.log(`→ Updating existing issue #${existing.number}`);
   sh(['issue', 'edit', String(existing.number), '--repo', REPO, '--title', title, '--body', body]);
+  issueNumber = String(existing.number);
 } else {
   console.log(`→ Creating new staleness issue`);
-  sh(['issue', 'create', '--repo', REPO, '--title', title, '--body', body, '--label', LABEL]);
+  const url = sh([
+    'issue',
+    'create',
+    '--repo',
+    REPO,
+    '--title',
+    title,
+    '--body',
+    body,
+    '--label',
+    LABEL,
+  ]);
+  issueNumber = url.trim().split('/').pop();
 }
+
+// Pin the rolling issue so it stays at the top of the issues list. Pinning
+// an already-pinned issue is idempotent. GitHub allows up to 3 pinned
+// issues per repo; if pinning fails (e.g. quota), warn but don't fail the
+// workflow — the issue still exists and will be re-pinned next run if
+// quota frees up.
+try {
+  sh(['issue', 'pin', issueNumber, '--repo', REPO]);
+  console.log(`→ Pinned #${issueNumber} at the top of issues.`);
+} catch {
+  console.warn(
+    `⚠️  Could not pin issue #${issueNumber} (likely the 3-pinned-issues quota). ` +
+      `Issue exists and will be re-pinned next run if quota frees up.`,
+  );
+}
+
 console.log(`✨ Done.`);

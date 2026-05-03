@@ -5,7 +5,7 @@
 // Joins three inputs:
 //   1. src/data/sources.ts          → label, tier, date for each URL
 //   2. audit/links/results/<latest> → most recent curl status per URL
-//   3. audit/links/reviewed.tsv     → human-review log per URL
+//   3. audit/links/reviewed.tsv     → human-review log per source id
 //
 // Writes one markdown table sorted so the rows that need attention surface
 // first: broken before unreviewed, unreviewed before reviewed.
@@ -22,76 +22,93 @@ const RESULTS_DIR = resolve(ROOT, 'audit/links/results');
 const REVIEWED_TSV = resolve(ROOT, 'audit/links/reviewed.tsv');
 const OUT = resolve(ROOT, 'audit/links/status.md');
 
-// ── 1. Parse sources.ts to build URL → {label, tier} ─────────────────────
+// ── 1. Parse sources.ts to build id → { url, label, tier, addedBy, addedAt }
+//
+// Sources live in two structural shapes inside sources.ts:
+//
+//   const RAW_SOURCES = { 'foo-bar': { ... }, ... }                top-level
+//   const RAW_STATE_DOR: Record<...> = { AL: { ... }, ... }        state map
+//
+// Top-level entries' ids are the outer record keys verbatim. State-map
+// entries' ids are synthesized as `state-${kind}-${code.toLowerCase()}` to
+// match the `withStateIds(kind, RAW_*)` wrapping in src/data/sources.ts.
+// Track which RAW block we're inside, then synthesize ids on entry close.
+const STATE_KIND_BY_DECL = {
+  RAW_SOURCES: 'top',
+  RAW_STATE_DOR: 'dor',
+  RAW_STATE_SNAP_AGENCY: 'snap',
+  RAW_STATE_MEDICAID_AGENCY: 'medicaid',
+  RAW_STATE_CHIP_AGENCY: 'chip',
+};
+
 const sourcesText = readFileSync(SOURCES_TS, 'utf8');
 const sourceMeta = new Map();
+{
+  let block = null;
+  let pendingKey = null;
+  let pendingFields = null;
+  let inEntry = false;
 
-// Walk line-by-line tracking the most recent label seen, then attach it
-// to the next URL we encounter. Handles both inline entries
-// (`AL: { label: 'X', url: 'Y', ... }`) and multi-line entries where
-// `label:` and the string are on different lines.
-let pendingLabel = null;
-let labelOnNextLine = false;
-for (const raw of sourcesText.split('\n')) {
-  const line = raw.trim();
-
-  if (labelOnNextLine) {
-    const m = line.match(/^['"`]([^'"`]+)['"`]/);
-    if (m) {
-      pendingLabel = m[1];
-      labelOnNextLine = false;
+  for (const line of sourcesText.split('\n')) {
+    const blockMatch = /^(?:export\s+)?const\s+(RAW_\w+)\s*[:=]/.exec(line);
+    if (blockMatch) {
+      block = STATE_KIND_BY_DECL[blockMatch[1]] ?? null;
+      pendingKey = null;
+      pendingFields = null;
+      inEntry = false;
       continue;
     }
-  }
 
-  // `label: 'foo'` or `label: 'foo',` (single-line)
-  let m = line.match(/^label:\s*['"`]([^'"`]+)['"`]/);
-  if (m) {
-    pendingLabel = m[1];
-    continue;
-  }
-  // `label:` alone (multi-line continuation follows)
-  if (/^label:\s*$/.test(line)) {
-    labelOnNextLine = true;
-    continue;
-  }
-  // Inline: `{ label: 'foo', url: 'bar', ... }`
-  m = line.match(/label:\s*['"`]([^'"`]+)['"`]/);
-  if (m) {
-    pendingLabel = m[1];
-  }
+    if (block && /^\}/.test(line) && !inEntry) {
+      block = null;
+      continue;
+    }
 
-  const urlMatch = line.match(/url:\s*['"`]([^'"`]+)['"`]/);
-  if (urlMatch) {
-    const url = urlMatch[1];
-    const tierMatch = line.match(/tier:\s*['"`]([^'"`]+)['"`]/);
-    const addedByInline = line.match(/addedBy:\s*['"`]([^'"`]+)['"`]/);
-    const addedAtInline = line.match(/addedAt:\s*['"`]([^'"`]+)['"`]/);
-    sourceMeta.set(url, {
-      label: pendingLabel ?? url,
-      tier: tierMatch?.[1] ?? null,
-      addedBy: addedByInline?.[1] ?? null,
-      addedAt: addedAtInline?.[1] ?? null,
-    });
-  }
+    if (!block) continue;
 
-  // Tier / addedBy / addedAt on their own lines (multi-field entries in SOURCES)
-  const lastUrl = [...sourceMeta.keys()].pop();
-  if (!lastUrl) continue;
-  const existing = sourceMeta.get(lastUrl);
-  if (!existing) continue;
+    if (!inEntry) {
+      // Top-level keys can be quoted (`'foo-bar': {`) or bare identifiers
+      // (`insurekidsnow: {`) — JS allows the unquoted form when the key is
+      // a valid identifier. State-map keys are always two-letter codes.
+      const keyMatch =
+        block === 'top'
+          ? /^\s+(?:['"]([^'"]+)['"]|([A-Za-z_][\w-]*))\s*:\s*\{/.exec(line)
+          : /^\s+([A-Z]{2}):\s*\{/.exec(line);
+      if (keyMatch) {
+        pendingKey = keyMatch[1] ?? keyMatch[2];
+        pendingFields = {};
+        inEntry = true;
+      }
+      continue;
+    }
 
-  const tierLine = line.match(/^tier:\s*['"`]([^'"`]+)['"`]/);
-  if (tierLine && !existing.tier) {
-    sourceMeta.set(lastUrl, { ...existing, tier: tierLine[1] });
-  }
-  const addedByLine = line.match(/^addedBy:\s*['"`]([^'"`]+)['"`]/);
-  if (addedByLine && !existing.addedBy) {
-    sourceMeta.set(lastUrl, { ...sourceMeta.get(lastUrl), addedBy: addedByLine[1] });
-  }
-  const addedAtLine = line.match(/^addedAt:\s*['"`]([^'"`]+)['"`]/);
-  if (addedAtLine && !existing.addedAt) {
-    sourceMeta.set(lastUrl, { ...sourceMeta.get(lastUrl), addedAt: addedAtLine[1] });
+    const url = /url:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (url) pendingFields.url = url[1];
+    const label = /label:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (label) pendingFields.label = label[1];
+    const tier = /tier:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (tier) pendingFields.tier = tier[1];
+    const addedBy = /addedBy:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (addedBy) pendingFields.addedBy = addedBy[1];
+    const addedAt = /addedAt:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (addedAt) pendingFields.addedAt = addedAt[1];
+
+    if (/^\s{2,4}\},?\s*$/.test(line)) {
+      const id =
+        block === 'top'
+          ? pendingKey
+          : `state-${block}-${pendingKey.toLowerCase()}`;
+      sourceMeta.set(id, {
+        url: pendingFields.url ?? null,
+        label: pendingFields.label ?? id,
+        tier: pendingFields.tier ?? null,
+        addedBy: pendingFields.addedBy ?? null,
+        addedAt: pendingFields.addedAt ?? null,
+      });
+      pendingKey = null;
+      pendingFields = null;
+      inEntry = false;
+    }
   }
 }
 
@@ -113,33 +130,34 @@ for (const line of readFileSync(latestPath, 'utf8').split('\n').slice(1)) {
 }
 
 // ── 3. Read reviewed.tsv ─────────────────────────────────────────────────
-// A URL can have multiple reviews — historical audit trail. We render the
-// latest in the table and expose the count so multi-verified citations get
-// visual credit. All rows stay in the TSV regardless.
-const reviewsByUrl = new Map();
+// Reviews are keyed by source id (a stable slug), not URL — so review
+// history follows a citation through URL changes. A source can have
+// multiple reviews; we render the latest in the table and expose the
+// count so multi-verified citations get visual credit.
+const reviewsById = new Map();
 try {
   for (const line of readFileSync(REVIEWED_TSV, 'utf8').split('\n')) {
-    if (!line || line.startsWith('#') || line.startsWith('url\t')) continue;
-    const [url, date, reviewer, notes] = line.split('\t');
-    if (!url) continue;
-    if (!reviewsByUrl.has(url)) reviewsByUrl.set(url, []);
-    reviewsByUrl.get(url).push({ date, reviewer, notes: notes ?? '' });
+    if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
+    const [id, date, reviewer, notes] = line.split('\t');
+    if (!id) continue;
+    if (!reviewsById.has(id)) reviewsById.set(id, []);
+    reviewsById.get(id).push({ date, reviewer, notes: notes ?? '' });
   }
 } catch {
   // No reviewed.tsv yet — fine.
 }
-// Sort each URL's reviews newest-first so [0] is the latest.
-for (const list of reviewsByUrl.values()) {
+for (const list of reviewsById.values()) {
   list.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 }
 
 // ── 4. Build the rows ─────────────────────────────────────────────────────
 const rows = [];
-for (const [url, { label, tier }] of sourceMeta) {
-  const s = status.get(url);
-  const reviews = reviewsByUrl.get(url) ?? [];
-  const latest = reviews[0]; // newest-first after sort
+for (const [id, { url, label, tier, addedBy, addedAt }] of sourceMeta) {
+  const s = url ? status.get(url) : null;
+  const reviews = reviewsById.get(id) ?? [];
+  const latest = reviews[0];
   rows.push({
+    id,
     url,
     label,
     tier: tier ?? '—',
@@ -148,8 +166,8 @@ for (const [url, { label, tier }] of sourceMeta) {
     reviewer: latest?.reviewer ?? null,
     notes: latest?.notes ?? '',
     reviewCount: reviews.length,
-    addedBy: sourceMeta.get(url)?.addedBy ?? null,
-    addedAt: sourceMeta.get(url)?.addedAt ?? null,
+    addedBy,
+    addedAt,
   });
 }
 

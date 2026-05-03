@@ -39,8 +39,8 @@ The issue body groups the queue by tier and within each tier separates "never re
 
 ## How it works
 
-1. Reads `src/data/sources.ts` for the registry (URL → tier, `addedAt`).
-2. Reads `audit/links/reviewed.tsv` for the latest review date per URL.
+1. Reads `src/data/sources.ts` for the registry (id → url, tier, `addedAt`).
+2. Reads `audit/links/reviewed.tsv` for the latest review date per source id (the stable slug — see `audit/links/README.md` for the keying rationale).
 3. For each source:
    - If never reviewed → overdue. `daysSinceAdded` reports how long it's gone unverified (for triage signal).
    - If reviewed but the most recent review is older than the tier threshold → overdue by the difference.

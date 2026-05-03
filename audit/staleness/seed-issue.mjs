@@ -59,72 +59,113 @@ const DEFAULT_THRESHOLD_DAYS = 180;
 const TODAY = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// ── 1. Parse sources.ts to build URL → { label, tier, addedAt } ──────────
+// ── 1. Parse sources.ts to build id → { url, label, tier, addedAt } ──────
+//
+// Sources live in two structural shapes inside sources.ts:
+//
+//   const RAW_SOURCES = { 'foo-bar': { ... }, ... }                top-level
+//   const RAW_STATE_DOR: Record<...> = { AL: { ... }, ... }        state map
+//
+// Top-level entries' ids are the outer record keys verbatim. State-map
+// entries' ids are synthesized as `state-${kind}-${code.toLowerCase()}` to
+// match how src/data/sources.ts wraps them via `withStateIds(kind, RAW_*)`.
+// Track which RAW block we're inside as we scan, then synthesize ids on
+// entry close so reviews can be keyed off them.
+const STATE_KIND_BY_DECL = {
+  RAW_SOURCES: 'top',
+  RAW_STATE_DOR: 'dor',
+  RAW_STATE_SNAP_AGENCY: 'snap',
+  RAW_STATE_MEDICAID_AGENCY: 'medicaid',
+  RAW_STATE_CHIP_AGENCY: 'chip',
+};
+
 function parseSources() {
   const text = readFileSync(SOURCES_TS, 'utf8');
   const meta = new Map();
-  let pendingLabel = null;
-  let labelOnNextLine = false;
+
+  let block = null; // 'top' | 'dor' | 'snap' | 'medicaid' | 'chip' | null
+  let pendingKey = null;
+  let pendingFields = null;
+  let inEntry = false;
 
   for (const raw of text.split('\n')) {
-    const line = raw.trim();
+    const line = raw;
 
-    if (labelOnNextLine) {
-      const m = line.match(/^['"`]([^'"`]+)['"`]/);
-      if (m) {
-        pendingLabel = m[1];
-        labelOnNextLine = false;
-        continue;
+    // Block starts (column-0 const declaration).
+    const blockMatch = /^(?:export\s+)?const\s+(RAW_\w+)\s*[:=]/.exec(line);
+    if (blockMatch) {
+      block = STATE_KIND_BY_DECL[blockMatch[1]] ?? null;
+      pendingKey = null;
+      pendingFields = null;
+      inEntry = false;
+      continue;
+    }
+
+    // Block end (column-0 closing brace, with or without `as const ...`).
+    if (block && /^\}/.test(line) && !inEntry) {
+      block = null;
+      continue;
+    }
+
+    if (!block) continue;
+
+    // Detect entry start while we're between entries.
+    if (!inEntry) {
+      // Top-level keys can be quoted (`'foo-bar': {`) or bare identifiers
+      // (`insurekidsnow: {`) — JS allows the unquoted form when the key is
+      // a valid identifier. State-map keys are always two-letter codes.
+      const keyMatch =
+        block === 'top'
+          ? /^\s+(?:['"]([^'"]+)['"]|([A-Za-z_][\w-]*))\s*:\s*\{/.exec(line)
+          : /^\s+([A-Z]{2}):\s*\{/.exec(line);
+      if (keyMatch) {
+        pendingKey = keyMatch[1] ?? keyMatch[2];
+        pendingFields = {};
+        inEntry = true;
       }
-    }
-
-    let m = line.match(/^label:\s*['"`]([^'"`]+)['"`]/);
-    if (m) {
-      pendingLabel = m[1];
       continue;
     }
-    if (/^label:\s*$/.test(line)) {
-      labelOnNextLine = true;
-      continue;
-    }
-    m = line.match(/label:\s*['"`]([^'"`]+)['"`]/);
-    if (m) pendingLabel = m[1];
 
-    const urlMatch = line.match(/url:\s*['"`]([^'"`]+)['"`]/);
-    if (urlMatch) {
-      const url = urlMatch[1];
-      const tier = line.match(/tier:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null;
-      const addedAt = line.match(/addedAt:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null;
-      meta.set(url, { label: pendingLabel ?? url, tier, addedAt });
-    }
+    // Inside an entry — capture the four fields we care about.
+    const url = /url:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (url) pendingFields.url = url[1];
+    const label = /label:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (label) pendingFields.label = label[1];
+    const tier = /tier:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (tier) pendingFields.tier = tier[1];
+    const addedAt = /addedAt:\s*['"`]([^'"`]+)['"`]/.exec(line);
+    if (addedAt) pendingFields.addedAt = addedAt[1];
 
-    const lastUrl = [...meta.keys()].pop();
-    if (!lastUrl) continue;
-    const existing = meta.get(lastUrl);
-    if (!existing) continue;
-
-    const tierLine = line.match(/^tier:\s*['"`]([^'"`]+)['"`]/);
-    if (tierLine && !existing.tier) {
-      meta.set(lastUrl, { ...existing, tier: tierLine[1] });
-    }
-    const addedAtLine = line.match(/^addedAt:\s*['"`]([^'"`]+)['"`]/);
-    if (addedAtLine && !existing.addedAt) {
-      meta.set(lastUrl, { ...meta.get(lastUrl), addedAt: addedAtLine[1] });
+    // Entry close — commit and reset. Match `  },` or `  }` at typical indent.
+    if (/^\s{2,4}\},?\s*$/.test(line)) {
+      const id =
+        block === 'top'
+          ? pendingKey
+          : `state-${block}-${pendingKey.toLowerCase()}`;
+      meta.set(id, {
+        url: pendingFields.url ?? null,
+        label: pendingFields.label ?? id,
+        tier: pendingFields.tier ?? null,
+        addedAt: pendingFields.addedAt ?? null,
+      });
+      pendingKey = null;
+      pendingFields = null;
+      inEntry = false;
     }
   }
   return meta;
 }
 
-// ── 2. Parse reviewed.tsv to build URL → latest review ISO date ──────────
+// ── 2. Parse reviewed.tsv to build id → latest review ISO date ───────────
 function parseLatestReviews() {
   const map = new Map();
   try {
     for (const line of readFileSync(REVIEWED_TSV, 'utf8').split('\n')) {
-      if (!line || line.startsWith('#') || line.startsWith('url\t')) continue;
-      const [url, date] = line.split('\t');
-      if (!url || !date) continue;
-      const existing = map.get(url);
-      if (!existing || date > existing) map.set(url, date);
+      if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
+      const [id, date] = line.split('\t');
+      if (!id || !date) continue;
+      const existing = map.get(id);
+      if (!existing || date > existing) map.set(id, date);
     }
   } catch {
     // No reviewed.tsv yet — fine.
@@ -147,10 +188,10 @@ function parseLatestReviews() {
 // "we wrote this down" into "a human verified it," which it isn't.
 function computeOverdue(sourceMeta, latestReviews) {
   const overdue = [];
-  for (const [url, { label, tier, addedAt }] of sourceMeta) {
+  for (const [id, { url, label, tier, addedAt }] of sourceMeta) {
     const tierName = tier ?? 'unspecified';
     const thresholdDays = THRESHOLDS_DAYS[tier] ?? DEFAULT_THRESHOLD_DAYS;
-    const latestReview = latestReviews.get(url);
+    const latestReview = latestReviews.get(id);
 
     if (!latestReview) {
       // Never reviewed → overdue, with `daysSinceAdded` for triage signal.
@@ -162,6 +203,7 @@ function computeOverdue(sourceMeta, latestReviews) {
         }
       }
       overdue.push({
+        id,
         url,
         label,
         tier: tierName,
@@ -182,6 +224,7 @@ function computeOverdue(sourceMeta, latestReviews) {
     if (TODAY > dueDate) {
       const daysOverdue = Math.floor((TODAY - dueDate) / 86400000);
       overdue.push({
+        id,
         url,
         label,
         tier: tierName,

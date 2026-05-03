@@ -32,9 +32,18 @@
 
 import type { Source, StateCode } from '@/types';
 
-type SourceWithTier = Source & { readonly tier?: 'original' | 'reference' | 'estimate' };
+/**
+ * Source minus the id — the shape of raw literals declared in this file.
+ * Each literal omits id; we inject it from the record key (top-level
+ * SOURCES) or from a synthesized `state-${kind}-${code}` (state agency
+ * maps) in the wrapped exports below. Keeping id off the literals avoids
+ * thousands of lines of redundant `id: 'matches-the-key'` boilerplate.
+ */
+type SourceLiteral = Omit<Source, 'id'> & {
+  readonly tier?: 'original' | 'reference' | 'estimate';
+};
 
-export const SOURCES = {
+const RAW_SOURCES = {
   // ── Federal tax & wage base ────────────────────────────────────────────
   'irs-rev-proc-2025-32': {
     label: 'IRS Rev. Proc. 2025-32',
@@ -249,9 +258,34 @@ export const SOURCES = {
     addedBy: 'briancorbin',
     addedAt: '2026-05-02',
   },
-} as const satisfies Record<string, SourceWithTier>;
+} as const satisfies Record<string, SourceLiteral>;
 
-export type SourceId = keyof typeof SOURCES;
+export type SourceId = keyof typeof RAW_SOURCES;
+
+/**
+ * Top-level source registry. id injected from the record key so review
+ * history and citation lookups can use a stable slug that survives URL
+ * changes.
+ */
+export const SOURCES = Object.fromEntries(
+  Object.entries(RAW_SOURCES).map(([k, v]) => [k, { ...v, id: k }]),
+) as { readonly [K in SourceId]: Source };
+
+/**
+ * Wraps a state-keyed map so each entry carries a synthesized stable id
+ * (`state-${kind}-${code}`). Same goal as the SOURCES wrapper: review
+ * history follows the slug, not the URL.
+ */
+function withStateIds(
+  kind: string,
+  raw: Readonly<Record<StateCode, SourceLiteral>>,
+): Record<StateCode, Source> {
+  const out = {} as Record<StateCode, Source>;
+  for (const [code, src] of Object.entries(raw) as [StateCode, SourceLiteral][]) {
+    out[code] = { ...src, id: `state-${kind}-${code.toLowerCase()}` };
+  }
+  return out;
+}
 
 /** Cross-cutting (non-state-keyed) sources as a flat array. */
 export const FLAT_SOURCES: readonly Source[] = Object.values(SOURCES);
@@ -261,7 +295,7 @@ export const FLAT_SOURCES: readonly Source[] = Object.values(SOURCES);
  * State income-tax authority. URLs point to each agency's canonical homepage
  * rather than a specific PDF/page (deep links tend to break across tax years).
  */
-export const STATE_DOR: Record<StateCode, Source> = {
+const RAW_STATE_DOR: Record<StateCode, SourceLiteral> = {
   AL: {
     label: 'Alabama Department of Revenue',
     url: 'https://revenue.alabama.gov',
@@ -679,7 +713,9 @@ export const STATE_DOR: Record<StateCode, Source> = {
  * SNAP/food-assistance landing page where possible, else the agency
  * homepage. Subject to occasional reorganization at the state level.
  */
-export const STATE_SNAP_AGENCY: Record<StateCode, Source> = {
+export const STATE_DOR: Record<StateCode, Source> = withStateIds('dor', RAW_STATE_DOR);
+
+const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   AL: {
     label: 'AL DHR Food Assistance',
     url: 'https://dhr.alabama.gov/services/food-assistance/',
@@ -1096,7 +1132,12 @@ export const STATE_SNAP_AGENCY: Record<StateCode, Source> = {
  * CHIP brands (Florida KidCare, Georgia PeachCare, NY Child Health Plus,
  * MI MIChild, etc.).
  */
-export const STATE_MEDICAID_AGENCY: Record<StateCode, Source> = {
+export const STATE_SNAP_AGENCY: Record<StateCode, Source> = withStateIds(
+  'snap',
+  RAW_STATE_SNAP_AGENCY,
+);
+
+const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   AL: {
     label: 'Alabama Medicaid Agency',
     url: 'https://medicaid.alabama.gov',
@@ -1513,7 +1554,12 @@ export const STATE_MEDICAID_AGENCY: Record<StateCode, Source> = {
  * Child Health Plus, etc.) we cite that page; otherwise the state Medicaid
  * agency.
  */
-export const STATE_CHIP_AGENCY: Record<StateCode, Source> = {
+export const STATE_MEDICAID_AGENCY: Record<StateCode, Source> = withStateIds(
+  'medicaid',
+  RAW_STATE_MEDICAID_AGENCY,
+);
+
+const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   AL: {
     label: 'ALL Kids (AL CHIP)',
     url: 'https://www.allkids.org/',
@@ -1923,6 +1969,11 @@ export const STATE_CHIP_AGENCY: Record<StateCode, Source> = {
     addedAt: '2026-05-02',
   },
 };
+
+export const STATE_CHIP_AGENCY: Record<StateCode, Source> = withStateIds(
+  'chip',
+  RAW_STATE_CHIP_AGENCY,
+);
 
 /**
  * Every citation in the registry as a flat array — cross-cutting + per-state.

@@ -193,6 +193,14 @@ export type TaxBracket = readonly [number, number]; // [cap, rate]
  * See README "Sources" section for the master list.
  */
 export interface Source {
+  /**
+   * Stable slug that identifies the source across URL changes. Review history
+   * in `audit/links/reviewed.tsv` is keyed by this — so when a URL moves
+   * (agency restructures, slug rename), prior reviews still attach to the
+   * source. Top-level entries use their record key (e.g. `irs-rev-proc-2025-32`);
+   * state-keyed maps synthesize ids like `state-dor-ca`, `state-snap-tx`.
+   */
+  id: string;
   /** Short citation label, e.g. "IRS Rev. Proc. 2025-32". */
   label: string;
   /** Canonical URL the citation resolves to. */

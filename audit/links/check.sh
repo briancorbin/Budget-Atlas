@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Audit external links cited from the codebase.
 #
-# Extracts every http(s) URL from source files, hits each with curl, and joins
-# in any human-review records from `reviewed.tsv`. Writes a dated TSV to
-# `results/` with columns:
+# Extracts every http(s) URL from src/data/sources.ts and hits each with
+# curl. Writes a dated TSV to `results/` with columns:
 #
-#   status, url, final_url, reviewed_at, reviewed_by, review_notes
+#   status, url, final_url
 #
 # Curl tells us if a link loads; only a human can tell us whether the loaded
-# page still cites what we claim it cites. Both columns matter.
+# page still cites what we claim. The human-review log lives separately in
+# `reviewed.tsv`, keyed by source id (a stable slug) rather than URL — so
+# review history follows a citation across URL changes. Both inputs are
+# joined downstream by generate-status.mjs and the React /sources page.
 #
 # Usage:
 #   ./audit/links/check.sh
@@ -73,39 +75,17 @@ wait
 # writes finish in non-deterministic order otherwise).
 LC_ALL=C sort -t$'\t' -k2,2 -o "$RAW_FILE" "$RAW_FILE"
 
-# Join reviews (URL -> reviewed_at, reviewed_by, notes) into the raw curl output.
-# reviewed.tsv format: url \t YYYY-MM-DD \t reviewer \t notes (tab-separated)
-# Lines starting with # in reviewed.tsv are comments.
 {
-  printf 'status\turl\tfinal_url\treviewed_at\treviewed_by\treview_notes\n'
-  awk -F'\t' -v REV="$REVIEWS" '
-    BEGIN {
-      if (REV != "" && (getline line < REV) >= 0) {
-        close(REV)
-        while ((getline line < REV) > 0) {
-          if (line ~ /^#/ || line == "") continue
-          n = split(line, parts, "\t")
-          url = parts[1]
-          rev_at[url]   = (n >= 2) ? parts[2] : ""
-          rev_by[url]   = (n >= 3) ? parts[3] : ""
-          rev_notes[url] = (n >= 4) ? parts[4] : ""
-        }
-        close(REV)
-      }
-    }
-    {
-      u = $2
-      printf "%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $3, rev_at[u], rev_by[u], rev_notes[u]
-    }
-  ' "$RAW_FILE"
+  printf 'status\turl\tfinal_url\n'
+  cat "$RAW_FILE"
 } > "$OUT"
 
 echo ""
 echo "→ Status distribution:"
 awk -F'\t' 'NR>1 {print $1}' "$OUT" | sort | uniq -c | sort -rn
 echo ""
-REVIEWED=$(awk -F'\t' 'NR>1 && $4 != "" {c++} END {print c+0}' "$OUT")
-echo "→ Human-reviewed: $REVIEWED / $COUNT"
+REVIEWED=$(grep -cv -E '^(#|id\t|$)' "$REVIEWS" 2>/dev/null || echo 0)
+echo "→ Human-reviewed entries in reviewed.tsv: $REVIEWED"
 echo ""
 echo "→ Hard 404s:"
 awk -F'\t' 'NR>1 && $1=="404" {print "  "$2}' "$OUT" || true

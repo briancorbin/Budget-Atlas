@@ -61,14 +61,21 @@ const STATUS_BY_URL = (() => {
   return map;
 })();
 
+/**
+ * Parse `audit/links/reviewed.tsv` into a Map keyed by source id. Reviews
+ * are keyed by id (a stable slug), not URL — so when an agency reorganizes
+ * a citation's URL, the source's review history follows it. The audit
+ * results (latest.tsv) stay URL-keyed, since curl is the thing that's
+ * checking URLs.
+ */
 function parseReviews(tsv: string): Map<string, Review[]> {
   const map = new Map<string, Review[]>();
   for (const line of tsv.split('\n')) {
-    if (!line || line.startsWith('#') || line.startsWith('url\t')) continue;
-    const [url, date, reviewer, notes] = line.split('\t');
-    if (!url) continue;
-    if (!map.has(url)) map.set(url, []);
-    map.get(url)!.push({ date, reviewer, notes: notes ?? '' });
+    if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
+    const [id, date, reviewer, notes] = line.split('\t');
+    if (!id) continue;
+    if (!map.has(id)) map.set(id, []);
+    map.get(id)!.push({ date, reviewer, notes: notes ?? '' });
   }
   for (const list of map.values()) {
     list.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
@@ -198,11 +205,10 @@ const SUMMARY = (() => {
     else if (tier === 'reference') reference++;
     else if (tier === 'estimate') estimate++;
   }
-  const reviewedUrls = new Set<string>();
-  for (const url of REVIEWS.keys()) reviewedUrls.add(url);
+  const reviewedIds = new Set(REVIEWS.keys());
   let reviewed = 0;
   for (const s of ALL_SOURCES) {
-    if (reviewedUrls.has(s.url)) reviewed++;
+    if (reviewedIds.has(s.id)) reviewed++;
   }
 
   // Overdue: tier-aware staleness check. Never-reviewed sources count as
@@ -217,7 +223,7 @@ const SUMMARY = (() => {
     if (isBrokenStatus(STATUS_BY_URL.get(s.url))) broken++;
     const tier = (s as Source & { tier?: string }).tier ?? 'reference';
     const thresholdDays = STALENESS_THRESHOLDS_DAYS[tier] ?? STALENESS_DEFAULT_DAYS;
-    const latest = REVIEWS.get(s.url)?.[0];
+    const latest = REVIEWS.get(s.id)?.[0];
     if (!latest) {
       overdue++;
       continue;
@@ -241,7 +247,7 @@ const SUMMARY = (() => {
 function isOverdue(source: Source): boolean {
   const tier = source.tier ?? 'reference';
   const thresholdDays = STALENESS_THRESHOLDS_DAYS[tier] ?? STALENESS_DEFAULT_DAYS;
-  const latest = REVIEWS.get(source.url)?.[0];
+  const latest = REVIEWS.get(source.id)?.[0];
   if (!latest) return true;
   const reviewDate = new Date(latest.date + 'T00:00:00Z');
   if (Number.isNaN(reviewDate.valueOf())) return false;
@@ -617,7 +623,7 @@ function GroupSection({ group }: { group: Group }) {
 }
 
 function SourceRow({ source }: { source: Source }) {
-  const reviews = REVIEWS.get(source.url) ?? [];
+  const reviews = REVIEWS.get(source.id) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
   const broken = isBrokenStatus(STATUS_BY_URL.get(source.url));

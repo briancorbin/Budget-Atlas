@@ -178,7 +178,8 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 19,
     title: 'Dedicated sources page',
     category: 'UX & navigation',
-    status: 'planned',
+    status: 'shipped',
+    shippedAt: '2026-05-03',
     summary:
       'Today citations live inline next to the values that use them, plus a rotating footer block, plus a Sources section in the README. That works for "where did this number come from" but not for "show me everything this site is built on." Build a dedicated /sources page that pulls every Source constant in the codebase into one organized reference: grouped by type (federal tax, state tax, SNAP, Medicaid, CHIP, cost of living, minimum wage, etc.), with a state-by-state breakdown for the per-jurisdiction sources. Each entry shows the agency, the URL, what it covers, and last-checked date. Goal: make the editorial credibility legible — anyone landing on the site can see the whole bibliography in one place, the way a real reference work would have one.',
   },

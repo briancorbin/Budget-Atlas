@@ -11,6 +11,28 @@ import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
+import { StatusDot, ReportFlag, getStatusKind, type StatusKind } from '@/lib/sourceStatus';
+
+/**
+ * Roll a list of source statuses up to a single "worst" one. Broken
+ * dominates overdue dominates verified — the goal is honest signal
+ * (one bad apple drives the rollup), not optimism.
+ */
+function worstStatusOf(sources: readonly Source[]): StatusKind {
+  let worst: StatusKind = 'verified';
+  for (const s of sources) {
+    const k = getStatusKind(s);
+    if (k === 'broken') return 'broken';
+    if (k === 'overdue') worst = 'overdue';
+  }
+  return worst;
+}
+
+const STATUS_COLOR: Record<StatusKind, string> = {
+  broken: T.accent,
+  overdue: T.warning,
+  verified: T.positive,
+};
 
 /**
  * Editorial citation pill. Renders a small uppercase "SRC" badge in the
@@ -47,6 +69,7 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
   }, [open]);
 
   if (sources.length === 0) return null;
+  const worstStatus = worstStatusOf(sources);
 
   return (
     <span
@@ -60,11 +83,12 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
           setOpen((o) => !o);
         }}
         aria-expanded={open}
-        aria-label={`${sources.length} sources`}
+        aria-label={`${sources.length} sources, worst status: ${worstStatus}`}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: 5,
           fontSize: '0.62em',
           fontFamily: fonts.body,
           fontWeight: 700,
@@ -85,6 +109,19 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
           top: '-0.1em',
         }}
       >
+        {/* Group-status dot mirrors the worst per-row status — broken if any
+            source is unreachable, else overdue if any is stale, else verified.
+            Reader sees an honest health signal without opening the popover. */}
+        <span
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: STATUS_COLOR[worstStatus],
+            flexShrink: 0,
+          }}
+        />
         {sources.length === 1 ? 'source · 1 ↗' : `sources · ${sources.length} ↗`}
       </button>
       {open && (
@@ -110,35 +147,50 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
           }}
         >
           {sources.map((s, i) => (
-            <a
+            <div
               key={i}
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
               style={{
-                display: 'block',
-                padding: '6px 14px',
-                color: T.ink,
-                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+                padding: '6px 10px 6px 14px',
                 lineHeight: 1.4,
               }}
-              onMouseDown={(e) => e.stopPropagation()}
             >
-              <span>{s.label}</span> <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
-              <div
+              <span style={{ paddingTop: 4 }}>
+                <StatusDot kind={getStatusKind(s)} size={8} />
+              </span>
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                onMouseDown={(e) => e.stopPropagation()}
                 style={{
-                  fontSize: rem(11),
-                  color: T.inkMuted,
-                  marginTop: 2,
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
+                  flex: 1,
+                  minWidth: 0,
+                  color: T.ink,
+                  textDecoration: 'none',
                 }}
               >
-                {s.tier && <TierPill tier={s.tier} />}
-                {s.date && <span>{s.date}</span>}
-              </div>
-            </a>
+                <span>{s.label}</span>{' '}
+                <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
+                <div
+                  style={{
+                    fontSize: rem(11),
+                    color: T.inkMuted,
+                    marginTop: 2,
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {s.tier && <TierPill tier={s.tier} />}
+                  {s.date && <span>{s.date}</span>}
+                </div>
+              </a>
+              <ReportFlag source={s} />
+            </div>
           ))}
           <a
             href="/sources"

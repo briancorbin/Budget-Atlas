@@ -14,7 +14,6 @@
  * `audit/links/status.md` on GitHub.
  */
 
-import { useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { SectionTitle } from './ui';
 import {
@@ -25,63 +24,18 @@ import {
   STATE_CHIP_AGENCY,
 } from '@/data/sources';
 import type { Source } from '@/types';
-// Vite inlines these files' contents as strings at build time.
-import reviewedTsv from '../../audit/links/reviewed.tsv?raw';
-// `latest.tsv` is overwritten by audit/links/check.sh (run nightly in CI,
-// committed back to main alongside status.md). Importing only this stable
-// filename — instead of glob-importing all dated TSVs — keeps the bundle
-// small as the per-day history accumulates in results/.
-import latestResultsTsv from '../../audit/links/results/latest.tsv?raw';
+import {
+  REVIEWS,
+  STATUS_BY_URL,
+  STALENESS_THRESHOLDS_DAYS,
+  STALENESS_DEFAULT_DAYS,
+  isBrokenStatus,
+  isOverdue,
+  StatusDot,
+  type Review,
+} from '@/lib/sourceStatus';
 
 const GITHUB_REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
-
-interface Review {
-  date: string;
-  reviewer: string;
-  notes: string;
-}
-
-const REVIEWS = parseReviews(reviewedTsv);
-
-/** Status codes we consider "broken" for the rolling audit:link issue + UI display. */
-const BROKEN_STATUS_CODES = new Set(['404', '000', '000ERR', 'ERR', '999']);
-
-function isBrokenStatus(status: string | undefined): boolean {
-  if (!status) return false;
-  return BROKEN_STATUS_CODES.has(status);
-}
-
-const STATUS_BY_URL = (() => {
-  const map = new Map<string, string>();
-  for (const line of latestResultsTsv.split('\n').slice(1)) {
-    if (!line) continue;
-    const [status, url] = line.split('\t');
-    if (url) map.set(url, status);
-  }
-  return map;
-})();
-
-/**
- * Parse `audit/links/reviewed.tsv` into a Map keyed by source id. Reviews
- * are keyed by id (a stable slug), not URL — so when an agency reorganizes
- * a citation's URL, the source's review history follows it. The audit
- * results (latest.tsv) stay URL-keyed, since curl is the thing that's
- * checking URLs.
- */
-function parseReviews(tsv: string): Map<string, Review[]> {
-  const map = new Map<string, Review[]>();
-  for (const line of tsv.split('\n')) {
-    if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
-    const [id, date, reviewer, notes] = line.split('\t');
-    if (!id) continue;
-    if (!map.has(id)) map.set(id, []);
-    map.get(id)!.push({ date, reviewer, notes: notes ?? '' });
-  }
-  for (const list of map.values()) {
-    list.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
-  }
-  return map;
-}
 
 interface Group {
   readonly kicker: string;
@@ -182,18 +136,6 @@ const GROUPS: readonly Group[] = [
 
 const ALL_SOURCES = GROUPS.flatMap((g) => g.sources);
 
-/**
- * Tier review thresholds in days — must stay in sync with
- * `audit/staleness/seed-issue.mjs`. The Node script writes the issue;
- * this UI displays the at-a-glance count.
- */
-const STALENESS_THRESHOLDS_DAYS: Record<string, number> = {
-  original: 90,
-  reference: 180,
-  estimate: 365,
-};
-const STALENESS_DEFAULT_DAYS = 180;
-
 const SUMMARY = (() => {
   const total = ALL_SOURCES.length;
   let original = 0;
@@ -243,18 +185,6 @@ const SUMMARY = (() => {
   return { total, original, reference, estimate, reviewed, overdue, broken, verified };
 })();
 
-/** Per-source overdue check — same logic as SUMMARY's loop, used by row rendering. */
-function isOverdue(source: Source): boolean {
-  const tier = source.tier ?? 'reference';
-  const thresholdDays = STALENESS_THRESHOLDS_DAYS[tier] ?? STALENESS_DEFAULT_DAYS;
-  const latest = REVIEWS.get(source.id)?.[0];
-  if (!latest) return true;
-  const reviewDate = new Date(latest.date + 'T00:00:00Z');
-  if (Number.isNaN(reviewDate.valueOf())) return false;
-  const dueDate = new Date(reviewDate);
-  dueDate.setUTCDate(dueDate.getUTCDate() + thresholdDays);
-  return new Date() > dueDate;
-}
 
 export function Sources({ onBack }: { onBack: () => void }) {
   return (
@@ -747,95 +677,6 @@ function MetaStrip({
         />
       )}
     </div>
-  );
-}
-
-/**
- * Compact colored circle to the left of the source title indicating its
- * current state — Broken (red), Overdue (orange), or Verified (green).
- * Hovering reveals an editorial tooltip explaining the state in plain
- * language; aria-label exposes the same to assistive tech.
- */
-function StatusDot({ kind }: { kind: 'broken' | 'overdue' | 'verified' }) {
-  const [hover, setHover] = useState(false);
-  const palette =
-    kind === 'broken'
-      ? {
-          color: T.accent,
-          short: 'Broken',
-          long: 'URL is currently unreachable (404 / error). Needs a fix in sources.ts paired with a row in reviewed.tsv.',
-        }
-      : kind === 'overdue'
-        ? {
-            color: T.warning,
-            short: 'Overdue',
-            long: 'No human review within the tier-specific window. Pick this up during a periodic sweep.',
-          }
-        : {
-            color: T.positive,
-            short: 'Verified',
-            long: 'Loads correctly and has been reviewed by a human within its window.',
-          };
-  return (
-    <span
-      style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
-        flexShrink: 0,
-        alignSelf: 'center',
-        transform: 'translateY(1px)',
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocus={() => setHover(true)}
-      onBlur={() => setHover(false)}
-      tabIndex={0}
-      role="img"
-      aria-label={`${palette.short}: ${palette.long}`}
-    >
-      <span
-        style={{
-          display: 'inline-block',
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          background: palette.color,
-        }}
-      />
-      {hover && (
-        <span
-          role="tooltip"
-          style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            // Anchor to the dot's left edge rather than centering on it. The
-            // dot lives at the far left of each row, so a centered tooltip
-            // overflows the viewport on mobile. Growing rightward keeps it on
-            // screen at any width.
-            left: 0,
-            padding: '8px 12px',
-            background: T.ink,
-            color: T.bg,
-            fontSize: rem(12),
-            lineHeight: 1.4,
-            fontWeight: 400,
-            textTransform: 'none',
-            letterSpacing: '0.01em',
-            borderRadius: 3,
-            whiteSpace: 'normal',
-            width: 'max-content',
-            maxWidth: 'min(260px, calc(100vw - 32px))',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-            zIndex: 10,
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ fontWeight: 600, color: palette.color }}>{palette.short}</span>
-          <span style={{ color: T.bg }}> — {palette.long}</span>
-        </span>
-      )}
-    </span>
   );
 }
 

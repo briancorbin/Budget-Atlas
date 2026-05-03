@@ -14,6 +14,7 @@
  * `audit/links/status.md` on GitHub.
  */
 
+import { useState } from 'react';
 import { theme as T, fonts } from '@/theme';
 import { SectionTitle } from './ui';
 import {
@@ -24,8 +25,13 @@ import {
   STATE_CHIP_AGENCY,
 } from '@/data/sources';
 import type { Source } from '@/types';
-// Vite inlines this file's contents as a string at build time.
+// Vite inlines these files' contents as strings at build time.
 import reviewedTsv from '../../audit/links/reviewed.tsv?raw';
+// `latest.tsv` is overwritten by audit/links/check.sh (run nightly in CI,
+// committed back to main alongside status.md). Importing only this stable
+// filename — instead of glob-importing all dated TSVs — keeps the bundle
+// small as the per-day history accumulates in results/.
+import latestResultsTsv from '../../audit/links/results/latest.tsv?raw';
 
 const GITHUB_REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
 
@@ -36,6 +42,24 @@ interface Review {
 }
 
 const REVIEWS = parseReviews(reviewedTsv);
+
+/** Status codes we consider "broken" for the rolling audit:link issue + UI display. */
+const BROKEN_STATUS_CODES = new Set(['404', '000', '000ERR', 'ERR', '999']);
+
+function isBrokenStatus(status: string | undefined): boolean {
+  if (!status) return false;
+  return BROKEN_STATUS_CODES.has(status);
+}
+
+const STATUS_BY_URL = (() => {
+  const map = new Map<string, string>();
+  for (const line of latestResultsTsv.split('\n').slice(1)) {
+    if (!line) continue;
+    const [status, url] = line.split('\t');
+    if (url) map.set(url, status);
+  }
+  return map;
+})();
 
 function parseReviews(tsv: string): Map<string, Review[]> {
   const map = new Map<string, Review[]>();
@@ -157,22 +181,22 @@ const ALL_SOURCES = GROUPS.flatMap((g) => g.sources);
  * this UI displays the at-a-glance count.
  */
 const STALENESS_THRESHOLDS_DAYS: Record<string, number> = {
-  primary: 90,
-  secondary: 180,
-  editorial: 365,
+  original: 90,
+  reference: 180,
+  estimate: 365,
 };
 const STALENESS_DEFAULT_DAYS = 180;
 
 const SUMMARY = (() => {
   const total = ALL_SOURCES.length;
-  let primary = 0;
-  let secondary = 0;
-  let editorial = 0;
+  let original = 0;
+  let reference = 0;
+  let estimate = 0;
   for (const s of ALL_SOURCES) {
     const tier = (s as Source & { tier?: string }).tier;
-    if (tier === 'primary') primary++;
-    else if (tier === 'secondary') secondary++;
-    else if (tier === 'editorial') editorial++;
+    if (tier === 'original') original++;
+    else if (tier === 'reference') reference++;
+    else if (tier === 'estimate') estimate++;
   }
   const reviewedUrls = new Set<string>();
   for (const url of REVIEWS.keys()) reviewedUrls.add(url);
@@ -188,12 +212,13 @@ const SUMMARY = (() => {
   // that surfaces the queue for triage.
   const today = new Date();
   let overdue = 0;
+  let broken = 0;
   for (const s of ALL_SOURCES) {
-    const tier = (s as Source & { tier?: string }).tier ?? 'secondary';
+    if (isBrokenStatus(STATUS_BY_URL.get(s.url))) broken++;
+    const tier = (s as Source & { tier?: string }).tier ?? 'reference';
     const thresholdDays = STALENESS_THRESHOLDS_DAYS[tier] ?? STALENESS_DEFAULT_DAYS;
     const latest = REVIEWS.get(s.url)?.[0];
     if (!latest) {
-      // Never reviewed → overdue.
       overdue++;
       continue;
     }
@@ -204,8 +229,26 @@ const SUMMARY = (() => {
     if (today > dueDate) overdue++;
   }
 
-  return { total, primary, secondary, editorial, reviewed, overdue };
+  // verified = loading correctly AND reviewed within tier window
+  let verified = 0;
+  for (const s of ALL_SOURCES) {
+    if (!isBrokenStatus(STATUS_BY_URL.get(s.url)) && !isOverdue(s)) verified++;
+  }
+  return { total, original, reference, estimate, reviewed, overdue, broken, verified };
 })();
+
+/** Per-source overdue check — same logic as SUMMARY's loop, used by row rendering. */
+function isOverdue(source: Source): boolean {
+  const tier = source.tier ?? 'reference';
+  const thresholdDays = STALENESS_THRESHOLDS_DAYS[tier] ?? STALENESS_DEFAULT_DAYS;
+  const latest = REVIEWS.get(source.url)?.[0];
+  if (!latest) return true;
+  const reviewDate = new Date(latest.date + 'T00:00:00Z');
+  if (Number.isNaN(reviewDate.valueOf())) return false;
+  const dueDate = new Date(reviewDate);
+  dueDate.setUTCDate(dueDate.getUTCDate() + thresholdDays);
+  return new Date() > dueDate;
+}
 
 export function Sources({ onBack }: { onBack: () => void }) {
   return (
@@ -224,6 +267,7 @@ export function Sources({ onBack }: { onBack: () => void }) {
         <Header onBack={onBack} />
         <Intro />
         <Summary />
+        <ThresholdsNote />
         {GROUPS.map((g) => (
           <GroupSection key={g.title} group={g} />
         ))}
@@ -339,20 +383,84 @@ function Intro() {
   );
 }
 
+function ThresholdsNote() {
+  return (
+    <div
+      style={{
+        fontSize: 13,
+        color: T.inkSoft,
+        marginTop: 12,
+        padding: '12px 16px',
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        borderRadius: 4,
+        maxWidth: 680,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: T.inkMuted,
+          fontWeight: 600,
+          marginBottom: 8,
+        }}
+      >
+        Source classes & review windows
+      </div>
+      <div style={{ lineHeight: 1.6 }}>
+        Every citation has a class that determines how often it should be re-verified by a human:
+      </div>
+      <ul style={{ margin: '6px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
+        <li>
+          <strong>Original</strong> — every <strong>90 days</strong>. The rule's own publication
+          (IRS Rev. Proc., HHS Poverty Guidelines, BLS CEX). Highest stakes if drifted.
+        </li>
+        <li>
+          <strong>Reference</strong> — every <strong>180 days</strong>. Operational handbooks,
+          agency landing pages, industry surveys. Drift more slowly.
+        </li>
+        <li>
+          <strong>Estimate</strong> — every <strong>365 days</strong>. Approximations flagged
+          honestly. Drift tolerance is part of the design.
+        </li>
+      </ul>
+      <div style={{ marginTop: 10, color: T.inkMuted, fontSize: 12, lineHeight: 1.6 }}>
+        A source is <strong style={{ color: T.positive }}>Verified</strong> when it loads correctly{' '}
+        <em>and</em> has been reviewed within its window;{' '}
+        <strong style={{ color: T.warning }}>Overdue</strong> when no human has verified it in time;{' '}
+        <strong style={{ color: T.accent }}>Broken</strong> when curl can't reach it. Sources with
+        no review row at all are flagged Overdue immediately, regardless of when they were added.
+      </div>
+    </div>
+  );
+}
+
 function Summary() {
   const stats: ReadonlyArray<{
     label: string;
     value: number;
-    tone?: 'accent' | 'positive' | 'warning';
+    tone?: 'accent' | 'positive' | 'warning' | 'broken';
   }> = [
     { label: 'Total cited', value: SUMMARY.total },
-    { label: 'Primary sources', value: SUMMARY.primary, tone: 'positive' },
-    { label: 'Secondary', value: SUMMARY.secondary },
+    { label: 'Original', value: SUMMARY.original, tone: 'positive' },
+    { label: 'Reference', value: SUMMARY.reference },
+    {
+      label: 'Verified',
+      value: SUMMARY.verified,
+      tone: SUMMARY.verified > 0 ? 'positive' : undefined,
+    },
     { label: 'Human-reviewed', value: SUMMARY.reviewed, tone: 'accent' },
     {
       label: 'Overdue',
       value: SUMMARY.overdue,
       tone: SUMMARY.overdue > 0 ? 'warning' : undefined,
+    },
+    {
+      label: 'Broken',
+      value: SUMMARY.broken,
+      tone: SUMMARY.broken > 0 ? 'broken' : undefined,
     },
   ];
   return (
@@ -383,7 +491,9 @@ function Summary() {
                     ? T.positive
                     : s.tone === 'warning'
                       ? T.warning
-                      : T.ink,
+                      : s.tone === 'broken'
+                        ? T.accent
+                        : T.ink,
             }}
           >
             {s.value}
@@ -470,6 +580,13 @@ function SourceRow({ source }: { source: Source }) {
   const reviews = REVIEWS.get(source.url) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
+  const broken = isBrokenStatus(STATUS_BY_URL.get(source.url));
+  const overdue = isOverdue(source);
+  const statusKind: 'broken' | 'overdue' | 'verified' = broken
+    ? 'broken'
+    : overdue
+      ? 'overdue'
+      : 'verified';
 
   // Single-column stacked layout. Title leads (it's the content); metadata
   // strip contextualizes it; URL is the reference / wayfinding; actions
@@ -485,22 +602,24 @@ function SourceRow({ source }: { source: Source }) {
         gap: 10,
       }}
     >
-      <a
-        href={source.url}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          color: T.ink,
-          textDecoration: 'none',
-          borderBottom: `1px solid ${T.border}`,
-          fontSize: 16,
-          fontWeight: 500,
-          lineHeight: 1.35,
-          alignSelf: 'flex-start',
-        }}
-      >
-        {source.label}
-      </a>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <StatusDot kind={statusKind} />
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: T.ink,
+            textDecoration: 'none',
+            borderBottom: `1px solid ${T.border}`,
+            fontSize: 16,
+            fontWeight: 500,
+            lineHeight: 1.35,
+          }}
+        >
+          {source.label}
+        </a>
+      </div>
 
       <MetaStrip
         tier={tier}
@@ -582,6 +701,92 @@ function MetaStrip({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Compact colored circle to the left of the source title indicating its
+ * current state — Broken (red), Overdue (orange), or Verified (green).
+ * Hovering reveals an editorial tooltip explaining the state in plain
+ * language; aria-label exposes the same to assistive tech.
+ */
+function StatusDot({ kind }: { kind: 'broken' | 'overdue' | 'verified' }) {
+  const [hover, setHover] = useState(false);
+  const palette =
+    kind === 'broken'
+      ? {
+          color: T.accent,
+          short: 'Broken',
+          long: 'URL is currently unreachable (404 / error). Needs a fix in sources.ts paired with a row in reviewed.tsv.',
+        }
+      : kind === 'overdue'
+        ? {
+            color: T.warning,
+            short: 'Overdue',
+            long: 'No human review within the tier-specific window. Pick this up during a periodic sweep.',
+          }
+        : {
+            color: T.positive,
+            short: 'Verified',
+            long: 'Loads correctly and has been reviewed by a human within its window.',
+          };
+  return (
+    <span
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        alignSelf: 'center',
+        transform: 'translateY(1px)',
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      tabIndex={0}
+      role="img"
+      aria-label={`${palette.short}: ${palette.long}`}
+    >
+      <span
+        style={{
+          display: 'inline-block',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: palette.color,
+        }}
+      />
+      {hover && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '8px 12px',
+            background: T.ink,
+            color: T.bg,
+            fontSize: 12,
+            lineHeight: 1.4,
+            fontWeight: 400,
+            textTransform: 'none',
+            letterSpacing: '0.01em',
+            borderRadius: 3,
+            whiteSpace: 'normal',
+            width: 'max-content',
+            maxWidth: 260,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontWeight: 600, color: palette.color }}>{palette.short}</span>
+          <span style={{ color: T.bg }}> — {palette.long}</span>
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -739,9 +944,9 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
 
 function TierPill({ tier }: { tier: string }) {
   const palette =
-    tier === 'primary'
+    tier === 'original'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive }
-      : tier === 'editorial'
+      : tier === 'estimate'
         ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning }
         : { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent };
   return (

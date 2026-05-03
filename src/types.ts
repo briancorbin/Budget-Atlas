@@ -201,13 +201,13 @@ export interface Source {
   date?: string;
   /**
    * Epistemic weight of the source:
-   *   - `'primary'`   — direct from the agency / data publisher (IRS, BLS, eCFR)
-   *   - `'secondary'` — operational handbook, agency landing page, industry survey,
+   *   - `'original'`   — direct from the agency / data publisher (IRS, BLS, eCFR)
+   *   - `'reference'` — operational handbook, agency landing page, industry survey,
    *                     think-tank methodology
-   *   - `'editorial'` — approximation flagged honestly rather than dressed up as
+   *   - `'estimate'` — approximation flagged honestly rather than dressed up as
    *                     a hard number
    */
-  tier?: 'primary' | 'secondary' | 'editorial';
+  tier?: 'original' | 'reference' | 'estimate';
   /** Audit attribution: who added this citation to the registry (handle / name). */
   addedBy?: string;
   /** Audit attribution: when this citation was added (YYYY-MM-DD). */

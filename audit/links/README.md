@@ -128,5 +128,5 @@ To run manually: `yarn audit:seed-issues` (or `--dry-run` to preview).
 
 - **The `date` field that lies.** Citations entered from semantic memory often have the year the citation was _entered_, not the year the document was _published_. Cross-check against the document's actual revision date.
 - **Deep PDF links rot fastest.** Prefer the canonical landing page; the agency is more likely to maintain that URL than a `/sites/dfiles/...` deep link.
-- **Primary > secondary.** When a secondary source (operational handbook) cites a primary source (federal register notice, statute), prefer the primary. It's more durable and more rigorous.
+- **Original > reference.** When a reference source (operational handbook) cites an original source (federal register notice, statute, agency rule publication), prefer the original. It's more durable and more rigorous.
 - **Continuously-updated regulations beat dated handbooks.** If the eCFR has the same rule as a 2013 handbook, cite the eCFR — it has version history baked in.

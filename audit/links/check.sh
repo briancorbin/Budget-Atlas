@@ -113,6 +113,11 @@ echo ""
 echo "→ Regenerating audit/links/status.md..."
 node "$DIR/generate-status.mjs"
 
+# Stable-filename copy of the latest run, used by the React /sources page so
+# the built bundle imports only one TSV instead of every dated one. Always
+# overwritten; dated files in results/ remain as the per-day audit history.
+cp "$OUT" "$DIR/results/latest.tsv"
+
 echo ""
 echo "→ Results: $OUT"
 echo ""

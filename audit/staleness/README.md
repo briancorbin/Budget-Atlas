@@ -15,13 +15,13 @@ A 200 OK from curl is necessary but not sufficient. Staleness is the rule that k
 
 Each `Source` in `src/data/sources.ts` carries a `tier` field that determines how often it should be re-verified:
 
-| Tier        | Threshold | Rationale                                                                                                  |
-| ----------- | --------: | ---------------------------------------------------------------------------------------------------------- |
-| `primary`   |   90 days | Direct from agency / data publisher (IRS, BLS, eCFR). High-stakes if drifted; quick re-verification.       |
-| `secondary` |  180 days | Operational handbooks, agency landing pages, industry surveys, think-tank methodology. Drifts more slowly. |
-| `editorial` |  365 days | Approximations flagged honestly. Drift tolerance is part of the design — these aren't precise.             |
+| Tier        | Threshold | Rationale                                                                                                                    |
+| ----------- | --------: | ---------------------------------------------------------------------------------------------------------------------------- |
+| `original`  |   90 days | The rule's own publication (IRS Rev. Proc., HHS Poverty Guidelines, BLS CEX). High-stakes if drifted; quick re-verification. |
+| `reference` |  180 days | Operational handbooks, agency landing pages, industry surveys, think-tank methodology. Drift more slowly.                    |
+| `estimate`  |  365 days | Approximations flagged honestly. Drift tolerance is part of the design — these aren't precise.                               |
 
-Sources missing a tier fall back to the secondary threshold.
+Sources missing a tier fall back to the reference threshold.
 
 ## Never-reviewed = overdue from day one
 
@@ -44,7 +44,7 @@ The issue body groups the queue by tier and within each tier separates "never re
 3. For each source:
    - If never reviewed → overdue. `daysSinceAdded` reports how long it's gone unverified (for triage signal).
    - If reviewed but the most recent review is older than the tier threshold → overdue by the difference.
-4. Sorts by tier (primary first), then never-reviewed before stale-reviewed, then by days overdue.
+4. Sorts by tier (original first), then never-reviewed before stale-reviewed, then by days overdue.
 5. Manages a single rolling GitHub issue with the `audit:staleness` label:
    - 0 overdue + open issue → close with a "queue clear" comment
    - > 0 overdue + no issue → create

@@ -18,9 +18,9 @@
 // body are aspirational visual that resets each run.
 //
 // Tier thresholds:
-//   primary    90 days   (direct from agency / data publisher)
-//   secondary  180 days  (operational handbooks, agency landing pages, surveys)
-//   editorial  365 days  (approximations flagged honestly)
+//   original    90 days   (direct from agency / data publisher)
+//   reference   180 days  (operational handbooks, agency landing pages, surveys)
+//   estimate    365 days  (approximations flagged honestly)
 //
 // Never-reviewed sources are overdue from day one — no `addedAt` grace
 // period. The audit's job is to represent how much human verification has
@@ -50,9 +50,9 @@ const REPO = 'TheBudgetAtlas/thebudgetatlas';
 const LABEL = 'audit:staleness';
 
 const THRESHOLDS_DAYS = {
-  primary: 90,
-  secondary: 180,
-  editorial: 365,
+  original: 90,
+  reference: 180,
+  estimate: 365,
 };
 const DEFAULT_THRESHOLD_DAYS = 180;
 
@@ -194,8 +194,8 @@ function computeOverdue(sourceMeta, latestReviews) {
   }
 
   // Sort: never-reviewed first (most damning), then stale-reviewed by days
-  // overdue, all grouped by tier (primary first).
-  const tierOrder = { primary: 0, secondary: 1, editorial: 2, unspecified: 3 };
+  // overdue, all grouped by tier (original first).
+  const tierOrder = { original: 0, reference: 1, estimate: 2, unspecified: 3 };
   overdue.sort(
     (a, b) =>
       (tierOrder[a.tier] ?? 99) - (tierOrder[b.tier] ?? 99) ||
@@ -208,19 +208,19 @@ function computeOverdue(sourceMeta, latestReviews) {
 
 // ── 4. Build issue title + body ──────────────────────────────────────────
 function buildTitle(overdue) {
-  const counts = { primary: 0, secondary: 0, editorial: 0, unspecified: 0 };
+  const counts = { original: 0, reference: 0, estimate: 0, unspecified: 0 };
   for (const r of overdue) counts[r.tier]++;
   const parts = [];
-  if (counts.primary) parts.push(`${counts.primary} primary`);
-  if (counts.secondary) parts.push(`${counts.secondary} secondary`);
-  if (counts.editorial) parts.push(`${counts.editorial} editorial`);
+  if (counts.original) parts.push(`${counts.original} original`);
+  if (counts.reference) parts.push(`${counts.reference} reference`);
+  if (counts.estimate) parts.push(`${counts.estimate} estimate`);
   if (counts.unspecified) parts.push(`${counts.unspecified} untiered`);
   const breakdown = parts.length ? ` (${parts.join(', ')})` : '';
   return `Source review queue: ${overdue.length} overdue${breakdown}`;
 }
 
 function buildBody(overdue, checkedUrls) {
-  const byTier = { primary: [], secondary: [], editorial: [], unspecified: [] };
+  const byTier = { original: [], reference: [], estimate: [], unspecified: [] };
   for (const r of overdue) byTier[r.tier].push(r);
 
   const lines = [
@@ -270,9 +270,9 @@ function buildBody(overdue, checkedUrls) {
     return out;
   };
 
-  lines.push(...renderTier('primary', byTier.primary));
-  lines.push(...renderTier('secondary', byTier.secondary));
-  lines.push(...renderTier('editorial', byTier.editorial));
+  lines.push(...renderTier('original', byTier.original));
+  lines.push(...renderTier('reference', byTier.reference));
+  lines.push(...renderTier('estimate', byTier.estimate));
   if (byTier.unspecified.length) lines.push(...renderTier('untiered', byTier.unspecified));
 
   lines.push(

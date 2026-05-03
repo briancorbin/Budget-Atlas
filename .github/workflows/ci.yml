@@ -68,3 +68,11 @@ jobs:
         # already gated the merge.
         if: github.event_name == 'pull_request'
         run: node scripts/check-source-pairing.mjs
+
+      - name: reviewed.tsv — append-only enforcement
+        # PR-only: rows in reviewed.tsv are an immutable audit trail.
+        # Existing rows can't be modified, removed, or reordered into
+        # oblivion; new rows can be appended. Comments and blank lines
+        # are exempt (header docs may need legitimate edits).
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-reviewed-immutable.mjs

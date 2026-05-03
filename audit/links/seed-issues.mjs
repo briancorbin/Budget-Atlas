@@ -102,7 +102,9 @@ const existingRaw = sh([
 const existing = JSON.parse(existingRaw || '[]');
 const tracked = new Set();
 for (const issue of existing) {
-  const m = issue.body?.match(/Broken URL:\s*(\S+)/);
+  // Body has `**Broken URL:** <url>` — match the URL specifically rather than
+  // \S+ which greedily captures the markdown bold-close `**` token.
+  const m = issue.body?.match(/Broken URL:[*\s]*(https?:\/\/\S+)/);
   if (m) tracked.add(m[1]);
 }
 console.log(

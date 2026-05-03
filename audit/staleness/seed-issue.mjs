@@ -260,7 +260,7 @@ function buildTitle(overdue) {
 }
 
 function buildBody(overdue, checkedUrls) {
-  const byTier = { original: [], reference: [], estimate: [], unspecified: [] };
+  const byTier = { primary: [], reference: [], commercial: [], unspecified: [] };
   for (const r of overdue) byTier[r.tier].push(r);
 
   const lines = [
@@ -276,9 +276,9 @@ function buildBody(overdue, checkedUrls) {
     ``,
     `| Tier | Threshold | Rationale |`,
     `| --- | ---: | --- |`,
-    `| Primary | 90 days | Direct from agency / data publisher; high-stakes if drifted |`,
-    `| Secondary | 180 days | Operational handbooks, agency landing pages, surveys |`,
-    `| Editorial | 365 days | Approximations flagged honestly; lower drift sensitivity |`,
+    `| Primary | 90 days | Direct from agency / data publisher / state portal — high-stakes if drifted |`,
+    `| Reference | 180 days | Peer-respected research, methodology docs, operational handbooks |`,
+    `| Commercial | 90 days | Proprietary methodology — index data updates frequently, deserves the same cadence as primary |`,
     ``,
   ];
 
@@ -310,9 +310,9 @@ function buildBody(overdue, checkedUrls) {
     return out;
   };
 
-  lines.push(...renderTier('original', byTier.original));
+  lines.push(...renderTier('primary', byTier.primary));
   lines.push(...renderTier('reference', byTier.reference));
-  lines.push(...renderTier('estimate', byTier.estimate));
+  lines.push(...renderTier('commercial', byTier.commercial));
   if (byTier.unspecified.length) lines.push(...renderTier('untiered', byTier.unspecified));
 
   lines.push(

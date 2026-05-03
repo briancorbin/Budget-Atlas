@@ -140,14 +140,14 @@ const ALL_SOURCES = GROUPS.flatMap((g) => g.sources);
 
 const SUMMARY = (() => {
   const total = ALL_SOURCES.length;
-  let original = 0;
+  let primary = 0;
   let reference = 0;
-  let estimate = 0;
+  let commercial = 0;
   for (const s of ALL_SOURCES) {
     const tier = (s as Source & { tier?: string }).tier;
-    if (tier === 'original') original++;
+    if (tier === 'primary') primary++;
     else if (tier === 'reference') reference++;
-    else if (tier === 'estimate') estimate++;
+    else if (tier === 'commercial') commercial++;
   }
   // Overdue: tier-aware staleness check. Never-reviewed sources count as
   // overdue from day one — the audit's job is to honestly represent how
@@ -178,9 +178,9 @@ const SUMMARY = (() => {
   }
   return {
     total,
-    original,
+    primary,
     reference,
-    estimate,
+    commercial,
     overdue,
     broken,
     humanVerified,
@@ -353,41 +353,65 @@ function ThresholdsNote() {
         Source classes & review windows
       </div>
       <div style={{ lineHeight: 1.6 }}>
-        Every citation has a class that determines how often it should be re-verified by a human:
+        Every citation has a class that determines how often it should be re-verified:
       </div>
       <ul style={{ margin: '6px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
         <li>
-          <strong>Original</strong> — every <strong>90 days</strong>. The rule's own publication
-          (IRS Rev. Proc., HHS Poverty Guidelines, BLS CEX). Highest stakes if drifted.
+          <strong style={{ color: T.positive }}>Primary</strong> — every{' '}
+          <strong>{TIER_REVIEW_DAYS.primary} days</strong>. Direct from the agency or data
+          publisher: federal agencies (IRS, BLS, SSA, HUD, eCFR) and state agencies on their own
+          programs (state DORs, SNAP / Medicaid / CHIP portals). Highest stakes if drifted.
         </li>
         <li>
-          <strong>Reference</strong> — every <strong>180 days</strong>. Operational handbooks,
-          agency landing pages, industry surveys. Drift more slowly.
+          <strong style={{ color: T.aiAccent }}>Reference</strong> — every{' '}
+          <strong>{TIER_REVIEW_DAYS.reference} days</strong>. Peer-respected third-party
+          interpretation, methodology document, or research-org survey (KFF, EPI, CBPP, Tax
+          Foundation, NCSL, AAA, HUD Handbook, Child Care Aware). Public methodology, one step
+          removed from the publisher.
         </li>
         <li>
-          <strong>Estimate</strong> — every <strong>365 days</strong>. Approximations flagged
-          honestly. Drift tolerance is part of the design.
+          <strong style={{ color: T.commercialAccent }}>Commercial</strong> — every{' '}
+          <strong>{TIER_REVIEW_DAYS.commercial} days</strong>. Commercial or crowd-sourced data
+          product (Zillow, RentCafe, Care.com, Numbeo). Methodology proprietary or community-driven,
+          not peer-reviewed. Index-style data updates frequently, so the cadence matches Primary.
         </li>
       </ul>
       <div style={{ marginTop: 10, color: T.inkMuted, fontSize: rem(12), lineHeight: 1.6 }}>
-        A source is <strong style={{ color: T.positive }}>Verified</strong> when it loads correctly{' '}
-        <em>and</em> has been reviewed within its window;{' '}
-        <strong style={{ color: T.warning }}>Overdue</strong> when no human has verified it in time;{' '}
-        <strong style={{ color: T.accent }}>Broken</strong> when curl can't reach it. Sources with
-        no review row at all are flagged Overdue immediately, regardless of when they were added.
+        A source is <strong style={{ color: T.positive }}>Human verified</strong> when it loads
+        correctly <em>and</em> the most recent review was eyes-on-source by a human within its
+        window. <strong style={{ color: T.aiAccent }}>AI verified</strong> means within the window
+        but the most recent pass was AI-flavoured, awaiting a human signoff.{' '}
+        <strong style={{ color: T.warning }}>Overdue</strong> means no review of any kind in time;{' '}
+        <strong style={{ color: T.accent }}>Broken</strong> means curl can't reach the URL.
       </div>
     </div>
   );
 }
 
-type StatTone = 'accent' | 'positive' | 'warning' | 'broken' | 'ai';
+type StatTone = 'accent' | 'positive' | 'warning' | 'broken' | 'ai' | 'reference' | 'commercial';
+
+const TONE_COLOR: Record<StatTone | 'default', string> = {
+  accent: T.accent,
+  positive: T.positive,
+  warning: T.warning,
+  broken: T.accent,
+  // AI provenance and the Reference tier both render in slate-blue. They
+  // mean different things ("AI-reviewed" vs "Reference tier") but the
+  // user's design decision was to share the colour — Reference sits in
+  // the same "supporting / one step removed" register as AI-flavoured
+  // review, so the visual rhyme is intentional.
+  ai: T.aiAccent,
+  reference: T.aiAccent,
+  commercial: T.commercialAccent,
+  default: T.ink,
+};
 interface Stat {
   label: string;
   value: number;
   tone?: StatTone;
   /**
    * Optional editorial tooltip surfaced when the user hovers/focuses the
-   * label. Used to explain what each cell counts — what an "Original"
+   * label. Used to explain what each cell counts — what a "Primary"
    * source is, how long until a tier goes "Overdue," what makes a row
    * "AI verified" rather than "Human verified," etc.
    */
@@ -395,9 +419,9 @@ interface Stat {
 }
 
 const TIER_REVIEW_DAYS = {
-  original: STALENESS_THRESHOLDS_DAYS.original ?? STALENESS_DEFAULT_DAYS,
+  primary: STALENESS_THRESHOLDS_DAYS.primary ?? STALENESS_DEFAULT_DAYS,
   reference: STALENESS_THRESHOLDS_DAYS.reference ?? STALENESS_DEFAULT_DAYS,
-  estimate: STALENESS_THRESHOLDS_DAYS.estimate ?? STALENESS_DEFAULT_DAYS,
+  commercial: STALENESS_THRESHOLDS_DAYS.commercial ?? STALENESS_DEFAULT_DAYS,
 } as const;
 
 function Summary() {
@@ -409,23 +433,25 @@ function Summary() {
       label: 'Total cited',
       value: SUMMARY.total,
       tooltip:
-        'Every citation the model relies on, across all categories. Each source has a tier (Original / Reference / Estimate) that determines how often it gets re-reviewed.',
+        'Every citation the model relies on, across all categories. Each source has a tier (Primary / Reference / Commercial) that determines how often it gets re-reviewed.',
     },
     {
-      label: 'Original',
-      value: SUMMARY.original,
+      label: 'Primary',
+      value: SUMMARY.primary,
       tone: 'positive',
-      tooltip: `Direct from the agency or data publisher (IRS, BLS, eCFR, SSA, HUD, etc.). Highest-confidence tier. Re-reviewed every ${TIER_REVIEW_DAYS.original} days.`,
+      tooltip: `Direct from the agency or data publisher: federal agencies (IRS, BLS, SSA, HUD, eCFR) and state agencies on their own programs (state DORs, SNAP / Medicaid / CHIP portals). Highest-confidence tier. Re-reviewed every ${TIER_REVIEW_DAYS.primary} days.`,
     },
     {
       label: 'Reference',
       value: SUMMARY.reference,
-      tooltip: `Operational handbook, industry survey, think-tank methodology, or state-agency landing page — authoritative but one step removed from the publisher. Re-reviewed every ${TIER_REVIEW_DAYS.reference} days.`,
+      tone: 'reference',
+      tooltip: `Peer-respected third-party interpretation, methodology document, or research-org survey (KFF, EPI, CBPP, Tax Foundation, NCSL, AAA, HUD Handbook, Child Care Aware). Public methodology, one step removed from the publisher. Re-reviewed every ${TIER_REVIEW_DAYS.reference} days.`,
     },
     {
-      label: 'Estimate',
-      value: SUMMARY.estimate,
-      tooltip: `Approximation flagged honestly rather than dressed up as a hard number — used when no clean source exists for a value the model needs. Re-reviewed every ${TIER_REVIEW_DAYS.estimate} days.`,
+      label: 'Commercial',
+      value: SUMMARY.commercial,
+      tone: 'commercial',
+      tooltip: `Commercial or crowd-sourced data product (Zillow, RentCafe, Care.com, Numbeo). Methodology is proprietary or community-driven, not peer-reviewed; treat with appropriate skepticism. Re-reviewed every ${TIER_REVIEW_DAYS.commercial} days.`,
     },
   ];
   // Status row: per-source health, split by who did the most recent
@@ -437,31 +463,35 @@ function Summary() {
   // same kind of evidence as human review. Heading uses "Status" rather
   // than "State" to avoid colliding with the dozens of US-state-keyed
   // citations on this page.
+  // Status cells stay in their tone colour regardless of count — the
+  // colour is what the cell *means*, not "alert level." A cell at zero
+  // still represents the same concept and should read as the same colour
+  // as a cell at 50, just without anything in that bucket today.
   const status: ReadonlyArray<Stat> = [
     {
       label: 'Human verified',
       value: SUMMARY.humanVerified,
-      tone: SUMMARY.humanVerified > 0 ? 'positive' : undefined,
+      tone: 'positive',
       tooltip:
         'URL is live and the most recent review was eyes-on-source by a human within the tier window. The gold standard.',
     },
     {
       label: 'AI verified',
       value: SUMMARY.aiVerified,
-      tone: SUMMARY.aiVerified > 0 ? 'ai' : undefined,
+      tone: 'ai',
       tooltip:
         'URL is live and reviewed within the tier window, but the most recent review was AI-assisted rather than eyes-on-source by a human. Provisional — awaiting a human pass.',
     },
     {
       label: 'Overdue',
       value: SUMMARY.overdue,
-      tone: SUMMARY.overdue > 0 ? 'warning' : undefined,
-      tooltip: `No review within the tier-specific window (Original ${TIER_REVIEW_DAYS.original}d, Reference ${TIER_REVIEW_DAYS.reference}d, Estimate ${TIER_REVIEW_DAYS.estimate}d). Picked up during periodic sweeps.`,
+      tone: 'warning',
+      tooltip: `No review within the tier-specific window (Primary ${TIER_REVIEW_DAYS.primary}d, Reference ${TIER_REVIEW_DAYS.reference}d, Commercial ${TIER_REVIEW_DAYS.commercial}d). Picked up during periodic sweeps.`,
     },
     {
       label: 'Broken',
       value: SUMMARY.broken,
-      tone: SUMMARY.broken > 0 ? 'broken' : undefined,
+      tone: 'broken',
       tooltip:
         'URL is currently unreachable (404 or other error code from the periodic curl audit). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
     },
@@ -525,18 +555,7 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
  */
 function StatCell({ stat }: { stat: Stat }) {
   const [hover, setHover] = useState(false);
-  const valueColor =
-    stat.tone === 'accent'
-      ? T.accent
-      : stat.tone === 'positive'
-        ? T.positive
-        : stat.tone === 'warning'
-          ? T.warning
-          : stat.tone === 'broken'
-            ? T.accent
-            : stat.tone === 'ai'
-              ? T.aiAccent
-              : T.ink;
+  const valueColor = TONE_COLOR[stat.tone ?? 'default'];
   const interactive = !!stat.tooltip;
   // Slugify the label for use in element ids — labels like "Human verified"
   // would otherwise produce ids with spaces, which are invalid HTML and
@@ -605,17 +624,16 @@ function StatCell({ stat }: { stat: Stat }) {
             pointerEvents: 'none',
           }}
         >
-          {/* All tooltip text in cream-on-ink for guaranteed contrast.
-              Per-tone color lives on the large value above — using it in
-              the tooltip body too would put dark text (T.ink, T.positive,
-              T.aiAccent) against the dark T.ink background. The label is
-              still distinguishable via uppercase + bold weight. */}
+          {/* Tooltip label echoes the cell's tone colour so the tooltip
+              feels of-a-piece with the number above. Default-tone cells
+              (Total cited) keep the cream colour since their valueColor
+              is T.ink and dark-on-dark is unreadable. */}
           <span
             style={{
               fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              color: T.bg,
+              color: valueColor === T.ink ? T.bg : valueColor,
             }}
           >
             {stat.label}
@@ -963,15 +981,15 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
 
 function TierPill({ tier }: { tier: string }) {
   // Reference tier uses a muted warm brown (inkSoft) rather than the
-  // accent red — red implied "warning / lower quality" when "Reference"
-  // really just means "one step removed from the publisher," a neutral
-  // relationship rather than a negative judgement.
+  // Tier colours: green for primary, slate-blue for reference (one step
+  // removed but still authoritative — not a "warning" colour), gold for
+  // commercial (proprietary methodology, treat with appropriate skepticism).
   const palette =
-    tier === 'original'
+    tier === 'primary'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive }
-      : tier === 'estimate'
-        ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning }
-        : { bg: 'rgba(90, 79, 66, 0.12)', fg: T.inkSoft };
+      : tier === 'commercial'
+        ? { bg: 'rgba(122, 102, 40, 0.15)', fg: T.commercialAccent }
+        : { bg: 'rgba(62, 90, 122, 0.16)', fg: T.aiAccent };
   return (
     <span
       style={{

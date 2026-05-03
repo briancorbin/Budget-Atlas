@@ -88,9 +88,16 @@ export function isBrokenStatus(status: string | undefined): boolean {
  * this module drives the UI.
  */
 export const STALENESS_THRESHOLDS_DAYS: Record<string, number> = {
-  original: 90,
+  // Direct from the publisher; high-stakes if drifted.
+  primary: 90,
+  // Peer-respected third-party interpretation; medium drift risk.
   reference: 180,
-  estimate: 365,
+  // Commercial / crowd-sourced data products are MORE volatile than primary
+  // (Zillow's index updates monthly, RentCafe shifts constantly), so the
+  // window matches primary's 90-day cadence rather than getting a longer
+  // leash. Earlier draft used 365d; that was the relic of `estimate`'s
+  // "approximation, hardly changes" rationale, which doesn't apply here.
+  commercial: 90,
 };
 export const STALENESS_DEFAULT_DAYS = 180;
 

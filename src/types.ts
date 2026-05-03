@@ -208,14 +208,23 @@ export interface Source {
   /** Optional retrieval / publication date in ISO form. */
   date?: string;
   /**
-   * Epistemic weight of the source:
-   *   - `'original'`   — direct from the agency / data publisher (IRS, BLS, eCFR)
-   *   - `'reference'` — operational handbook, agency landing page, industry survey,
-   *                     think-tank methodology
-   *   - `'estimate'` — approximation flagged honestly rather than dressed up as
-   *                     a hard number
+   * Trust tier of the source — distance from the publisher of the underlying
+   * data and the methodology character behind it.
+   *
+   *   - `'primary'`     — direct from the agency / data publisher / statutory
+   *                       text. Includes federal agencies on their own data
+   *                       (IRS, BLS, SSA, HUD, eCFR) AND state agencies on
+   *                       their own programs (state DORs, state SNAP /
+   *                       Medicaid / CHIP portals).
+   *   - `'reference'`   — peer-respected third-party interpretation,
+   *                       methodology document, or original research-org
+   *                       survey (KFF, EPI, CBPP, Tax Foundation, NCSL,
+   *                       AAA, HUD Handbook, Child Care Aware).
+   *   - `'commercial'`  — commercial or crowd-sourced data product —
+   *                       methodology proprietary or community-driven, not
+   *                       peer-reviewed (Zillow, RentCafe, Care.com, Numbeo).
    */
-  tier?: 'original' | 'reference' | 'estimate';
+  tier?: 'primary' | 'reference' | 'commercial';
   /** Audit attribution: who added this citation to the registry (handle / name). */
   addedBy?: string;
   /** Audit attribution: when this citation was added (YYYY-MM-DD). */

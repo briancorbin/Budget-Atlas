@@ -16,7 +16,7 @@
  *   - Top-level sources with no detected usage outside src/data/sources.ts
  *     itself (candidates for removal).
  *   - Broken sources (already in queue #116; surfaced here too).
- *   - Original-tier sources that have never been reviewed (highest-stakes
+ *   - Primary-tier sources reviewed only by AI (highest-stakes
  *     queue for the human-only review sweep).
  *
  * Run via `yarn audit:inventory`.
@@ -64,10 +64,10 @@ const STATUS_BY_URL = (() => {
 })();
 
 // Track latest review per source as { date, hasHumanReview }. We need the
-// kind axis (not just date) to power the "originals reviewed only by AI"
+// kind axis (not just date) to power the "primary-tier sources reviewed only by AI"
 // queue — under the hard-stop rule every source has at least one review,
 // so "never reviewed" is no longer the useful triage question. The new
-// question is "which originals haven't had a human pass yet."
+// question is "which primaries haven't had a human pass yet."
 const VALID_KINDS = new Set(['human', 'ai', 'ai-assisted', 'ai-proposed']);
 const LATEST_REVIEW = (() => {
   const map = new Map(); // id -> { date, hasHumanReview }
@@ -173,11 +173,11 @@ for (const source of ALL_SOURCES) {
 // ── Priority queues ─────────────────────────────────────────────────────
 const unused = rows.filter((r) => r.isTopLevel && r.usage.length === 0);
 const broken = rows.filter((r) => r.broken);
-// "Originals never reviewed" used to mean "no row at all" — now logically
+// "Primaries never reviewed" used to mean "no row at all" — now logically
 // empty under the hard-stop rule (every source has ≥1 row). The useful
-// triage question instead is "which originals haven't had a human pass
+// triage question instead is "which primaries haven't had a human pass
 // yet" — i.e. only AI-flavoured reviews on the highest-stakes tier.
-const originalAiOnly = rows.filter((r) => r.tier === 'original' && !r.hasHumanReview);
+const primaryAiOnly = rows.filter((r) => r.tier === 'primary' && !r.hasHumanReview);
 
 // ── --check mode (CI-friendly) ──────────────────────────────────────────
 // `node scripts/source-inventory.mjs --check` exits non-zero if there are
@@ -264,19 +264,19 @@ if (broken.length === 0) {
 }
 lines.push('');
 
-// Priority queue 3 — original tier, AI-only reviews
-lines.push('## 3. Original-tier sources awaiting a human pass');
+// Priority queue 3 — primary tier, AI-only reviews
+lines.push('## 3. Primary-tier sources awaiting a human pass');
 lines.push('');
 lines.push(
   '_Highest-stakes queue. These have AI-flavoured reviews but no human eyes-on-source pass yet. Open the URL, read the destination yourself, append a `kind=human` row to `audit/links/reviewed.tsv` describing what you saw._',
 );
 lines.push('');
-if (originalAiOnly.length === 0) {
-  lines.push('_None — every original-tier source has at least one human review._');
+if (primaryAiOnly.length === 0) {
+  lines.push('_None — every primary-tier source has at least one human review._');
 } else {
   lines.push('| id | label | latest review | url |');
   lines.push('| --- | --- | --- | --- |');
-  for (const r of originalAiOnly) {
+  for (const r of primaryAiOnly) {
     lines.push(`| \`${r.id}\` | ${r.label} | ${r.latestReview ?? '—'} | <${r.url}> |`);
   }
 }
@@ -348,5 +348,5 @@ for (const prefix of stateMapPrefixes) {
 writeFileSync(OUT_MD, lines.join('\n') + '\n');
 console.log(`→ Wrote ${relative(ROOT, OUT_MD)}`);
 console.log(
-  `   ${rows.length} sources · ${unused.length} unused · ${broken.length} broken · ${originalAiOnly.length} originals awaiting human pass`,
+  `   ${rows.length} sources · ${unused.length} unused · ${broken.length} broken · ${primaryAiOnly.length} primaries awaiting human pass`,
 );

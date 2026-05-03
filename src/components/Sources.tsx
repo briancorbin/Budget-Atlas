@@ -307,7 +307,7 @@ function Intro() {
       >
         Spotted a citation that's broken or no longer says what we claim? Click{' '}
         <em>Report a problem</em> on any source below to file a structured report — a maintainer
-        will triage it, and the resolution becomes a row in the public audit trail. A nightly{' '}
+        will triage it, and the resolution lands as a row in the public audit trail. A nightly{' '}
         <a
           href={`${GITHUB_REPO}/tree/main/audit/links`}
           target="_blank"

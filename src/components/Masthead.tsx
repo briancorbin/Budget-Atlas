@@ -32,7 +32,8 @@ export function Masthead() {
         >
           The Budget Atlas · Vol. 2026
         </div>
-        <div
+        <nav
+          aria-label="Primary"
           style={{
             display: 'flex',
             alignItems: 'baseline',
@@ -41,9 +42,10 @@ export function Masthead() {
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             color: T.inkMuted,
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
           }}
         >
-          <span>An interactive examination</span>
           <a
             href="/about"
             onClick={(e) => {
@@ -92,7 +94,7 @@ export function Masthead() {
           >
             Roadmap →
           </a>
-        </div>
+        </nav>
       </div>
       <h1
         style={{

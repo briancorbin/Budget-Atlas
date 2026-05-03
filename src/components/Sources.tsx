@@ -415,76 +415,137 @@ function SourceRow({ source }: { source: Source }) {
   const reviews = REVIEWS.get(source.url) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
+
+  // Single-column stacked layout. Metadata strip up top, title + URL in the
+  // middle, actions (review log, submit button) below — review expansion
+  // gets the full row width without escaping a grid cell.
   return (
     <li
       style={{
-        padding: '14px 0',
+        padding: '18px 0',
         borderBottom: `1px solid ${T.border}`,
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) auto',
-        gap: 16,
-        alignItems: 'baseline',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {tier && <TierPill tier={tier} />}
-          <a
-            href={source.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              color: T.ink,
-              textDecoration: 'none',
-              borderBottom: `1px solid ${T.border}`,
-              fontSize: 15,
-              fontWeight: 500,
-            }}
-          >
-            {source.label}
-          </a>
-        </div>
+      <MetaStrip
+        tier={tier}
+        addedBy={source.addedBy ?? null}
+        addedAt={source.addedAt ?? null}
+        addedFallback={source.date ?? null}
+        latestReview={latest ?? null}
+        reviewCount={reviews.length}
+      />
+
+      <div>
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: T.ink,
+            textDecoration: 'none',
+            borderBottom: `1px solid ${T.border}`,
+            fontSize: 16,
+            fontWeight: 500,
+            lineHeight: 1.35,
+          }}
+        >
+          {source.label}
+        </a>
         <div
           style={{
             fontFamily: fonts.mono,
             fontSize: 11,
             color: T.inkMuted,
-            marginTop: 4,
+            marginTop: 6,
             wordBreak: 'break-all',
           }}
         >
           {source.url}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          {reviews.length > 0 && <ReviewLog reviews={reviews} />}
-          <SubmitReviewLink source={source} />
-        </div>
       </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: T.inkMuted,
-          textAlign: 'right',
-          lineHeight: 1.5,
-          minWidth: 140,
-        }}
-      >
-        <Attribution
-          label="Added"
-          handle={source.addedBy}
-          date={source.addedAt}
-          fallbackLabel={source.date}
-        />
-        {latest && (
-          <Attribution
-            label={`Reviewed${reviews.length > 1 ? ` ×${reviews.length}` : ''}`}
-            handle={latest.reviewer}
-            date={latest.date}
-            tone="positive"
-          />
-        )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+        {reviews.length > 0 && <ReviewLog reviews={reviews} />}
+        <SubmitReviewLink source={source} />
       </div>
     </li>
+  );
+}
+
+function MetaStrip({
+  tier,
+  addedBy,
+  addedAt,
+  addedFallback,
+  latestReview,
+  reviewCount,
+}: {
+  tier?: string;
+  addedBy: string | null;
+  addedAt: string | null;
+  addedFallback: string | null;
+  latestReview: Review | null;
+  reviewCount: number;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '6px 14px',
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        color: T.inkMuted,
+        fontWeight: 600,
+      }}
+    >
+      {tier && <TierPill tier={tier} />}
+      <MetaFact label="Added" date={addedAt ?? addedFallback} handle={addedBy} />
+      {latestReview && (
+        <MetaFact
+          label={`Reviewed${reviewCount > 1 ? ` ×${reviewCount}` : ''}`}
+          date={latestReview.date}
+          handle={latestReview.reviewer}
+          tone="positive"
+        />
+      )}
+    </div>
+  );
+}
+
+function MetaFact({
+  label,
+  date,
+  handle,
+  tone,
+}: {
+  label: string;
+  date: string | null;
+  handle: string | null;
+  tone?: 'positive';
+}) {
+  if (!date && !handle) return null;
+  const labelColor = tone === 'positive' ? T.positive : T.inkMuted;
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline' }}>
+      <span style={{ color: labelColor }}>{label}</span>
+      {date && <span style={{ color: T.inkSoft }}>{date}</span>}
+      {handle && (
+        <a
+          href={`https://github.com/${handle.replace(/^@/, '')}`}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: T.accent, textDecoration: 'none' }}
+        >
+          @{handle.replace(/^@/, '')}
+        </a>
+      )}
+    </span>
   );
 }
 
@@ -527,9 +588,11 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
   return (
     <details
       style={{
-        marginTop: 10,
         fontSize: 13,
-        maxWidth: 640,
+        // Comfortable reading measure when expanded — review notes get
+        // ~70ch width so quotes don't break into 6-word lines on mobile.
+        maxWidth: '70ch',
+        flex: '1 1 auto',
       }}
     >
       <summary
@@ -605,56 +668,6 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
         ))}
       </ol>
     </details>
-  );
-}
-
-function Attribution({
-  label,
-  handle,
-  date,
-  fallbackLabel,
-  tone,
-}: {
-  label: string;
-  handle?: string | null;
-  date?: string | null;
-  fallbackLabel?: string | null;
-  tone?: 'positive';
-}) {
-  if (!handle && !date && !fallbackLabel) return null;
-  return (
-    <div style={{ marginBottom: 4 }}>
-      <span
-        style={{
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          color: tone === 'positive' ? T.positive : T.inkMuted,
-          fontWeight: 600,
-          fontSize: 10,
-        }}
-      >
-        {label}
-      </span>{' '}
-      {date && <span>{date}</span>}
-      {!date && fallbackLabel && <span>{fallbackLabel}</span>}
-      {handle && (
-        <>
-          {' '}
-          <a
-            href={`https://github.com/${handle.replace(/^@/, '')}`}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            @{handle.replace(/^@/, '')}
-          </a>
-        </>
-      )}
-    </div>
   );
 }
 

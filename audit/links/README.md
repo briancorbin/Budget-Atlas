@@ -103,13 +103,14 @@ The next audit run picks it up; `status.md` regenerates with the latest review r
 The audit runs nightly via [GitHub Actions](../../.github/workflows/audit-links.yml) (09:00 UTC) and can be triggered manually from the Actions tab. The nightly job:
 
 1. Runs `check.sh` against the current `main` branch.
-2. Compares the resulting failures against open issues labeled [`audit:link`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Alink) (separate from [`audit:report`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Areport), which is for human-submitted reports).
-3. Creates a new issue per newly-broken URL (deduped by URL in body). Hard cap of 50 issues per run as a safety valve.
-4. Uploads the dated TSV as a workflow artifact (90-day retention).
+2. Maintains a single rolling [`audit:link`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Alink) issue with the current broken-citation queue, mirroring the staleness audit pattern. The issue is pinned to the top of the issues list.
+3. Uploads the dated TSV as a workflow artifact (90-day retention).
 
-Issues track `404`, `000`/`ERR`, and `999` outcomes. `200`/`3xx` aren't issued — they live in `reviewed.tsv` instead. `403` is excluded too (almost always bot-blocking that resolves under human eyes).
+Status codes flagged: `404`, `000`/`ERR`, and `999`. `200`/`3xx` live in `reviewed.tsv`; `403` is excluded (almost always bot-blocking that resolves under human eyes).
 
-To seed issues manually from a local audit run: `yarn audit:seed-issues` (or `--dry-run` to preview).
+The rolling-issue model means resolutions don't need `Closes #N` — the next audit run sees the URL is no longer broken and drops it from the issue body automatically. Per the unified resolution log, every fix PR appends a row to `reviewed.tsv` describing what changed.
+
+To run manually: `yarn audit:seed-issues` (or `--dry-run` to preview).
 
 ## At-a-glance status
 

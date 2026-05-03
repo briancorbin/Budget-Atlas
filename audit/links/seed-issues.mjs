@@ -1,24 +1,35 @@
 #!/usr/bin/env node
-// Seed GitHub issues for broken links surfaced by the latest link audit.
+// Maintain a single rolling GitHub issue for broken-citation triage.
 //
 // Reads the most recent TSV from audit/links/results/, finds entries that
-// curl couldn't reach (404, network errors, anti-bot 999), and creates
-// one issue per URL — deduped against existing open issues that carry the
-// `audit:link` label.
+// curl couldn't reach (404, network errors, anti-bot 999), and renders the
+// list as a single grouped checklist on a rolling `audit:link` issue.
 //
-// Status codes we treat as "create an issue":
+// State machine, mirroring the staleness audit:
+//
+//   0 broken + open issue       → close it with a "queue clear" comment
+//   0 broken + no open issue    → no-op
+//   >0 broken + no open issue   → create + pin
+//   >0 broken + open issue      → edit title + body in place + pin
+//
+// The rolling-issue model collapses 40+ individual broken-URL issues into
+// one inbox-friendly digest. The `reviewed.tsv` row + sources.ts edit
+// pattern (the unified resolution log) means each fix's PR doesn't need
+// `Closes #N` — the next audit run sees the URL is no longer broken and
+// drops it from the issue body automatically.
+//
+// Status codes:
 //   404           - page is gone
-//   000 / ERR     - DNS/TLS/timeout — likely dead domain or a real outage
-//   999           - LinkedIn-style anti-bot — sometimes resolves under human
-//                   eyes, but worth surfacing because if curl can't reach it,
-//                   plenty of users with privacy extensions also can't.
+//   000 / ERR     - DNS/TLS/timeout — likely dead domain or transient outage
+//   999           - LinkedIn-style anti-bot — surface because if curl can't
+//                   reach it, privacy-conscious users likely can't either
 //
-// Statuses we DON'T issue on:
-//   200 / 3xx     - it loaded; manual review tracked in reviewed.tsv instead
+// Statuses we DON'T flag:
+//   200 / 3xx     - it loaded; review state tracked in reviewed.tsv
 //   403           - bot-blocked; almost always fine in a real browser
 //
 // Usage:
-//   node audit/links/seed-issues.mjs               # create issues
+//   node audit/links/seed-issues.mjs               # update the rolling issue
 //   node audit/links/seed-issues.mjs --dry-run     # print what would happen
 //
 // Auth:
@@ -33,13 +44,9 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
 const RESULTS_DIR = resolve(__dirname, 'results');
+const SOURCES_TS = resolve(ROOT, 'src/data/sources.ts');
 const REPO = 'TheBudgetAtlas/thebudgetatlas';
 const LABEL = 'audit:link';
-
-// Safety cap. If the latest audit somehow shows hundreds of new failures,
-// abort instead of flooding the tracker — probably a regex / network issue,
-// not a real fleet of broken citations.
-const MAX_PER_RUN = 50;
 
 const ACTIONABLE = new Set(['404', '000', 'ERR', '999']);
 
@@ -49,7 +56,7 @@ function sh(args, opts = {}) {
   return execFileSync('gh', args, { encoding: 'utf8', ...opts }).trim();
 }
 
-// --- Locate the latest results TSV ---
+// ── 1. Locate the latest results TSV ─────────────────────────────────────
 let tsvs;
 try {
   tsvs = readdirSync(RESULTS_DIR)
@@ -64,9 +71,10 @@ if (tsvs.length === 0) {
   process.exit(1);
 }
 const latestPath = resolve(RESULTS_DIR, tsvs[tsvs.length - 1]);
+const latestDate = tsvs[tsvs.length - 1].replace('.tsv', '');
 console.log(`→ Reading ${latestPath}`);
 
-// --- Parse rows (skip header) ---
+// ── 2. Parse rows ────────────────────────────────────────────────────────
 const rows = readFileSync(latestPath, 'utf8')
   .split('\n')
   .slice(1)
@@ -77,124 +85,216 @@ const rows = readFileSync(latestPath, 'utf8')
   });
 
 const broken = rows.filter((r) => ACTIONABLE.has(r.status));
-console.log(`→ ${broken.length} actionable / ${rows.length} total URLs.`);
+console.log(`→ ${broken.length} broken / ${rows.length} total URLs.`);
+
+// ── 3. Look up registry metadata for each URL (label, file:line) ─────────
+//
+// Parse sources.ts once to build URL → { label, line } so the rolling
+// issue can show meaningful labels and citation locations without 40+
+// shell-out grep calls.
+function buildSourcesIndex() {
+  const text = readFileSync(SOURCES_TS, 'utf8');
+  const lines = text.split('\n');
+  const index = new Map();
+  let pendingLabel = null;
+  let labelOnNextLine = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (labelOnNextLine) {
+      const m = line.match(/^['"`]([^'"`]+)['"`]/);
+      if (m) {
+        pendingLabel = m[1];
+        labelOnNextLine = false;
+        continue;
+      }
+    }
+
+    let m = line.match(/^label:\s*['"`]([^'"`]+)['"`]/);
+    if (m) {
+      pendingLabel = m[1];
+      continue;
+    }
+    if (/^label:\s*$/.test(line)) {
+      labelOnNextLine = true;
+      continue;
+    }
+    m = line.match(/label:\s*['"`]([^'"`]+)['"`]/);
+    if (m) pendingLabel = m[1];
+
+    const urlMatch = line.match(/url:\s*['"`]([^'"`]+)['"`]/);
+    if (urlMatch) {
+      const url = urlMatch[1];
+      if (!index.has(url)) {
+        index.set(url, { label: pendingLabel ?? url, line: i + 1 });
+      }
+    }
+  }
+  return index;
+}
+
+const sourcesIndex = buildSourcesIndex();
+
+// ── 4. Build the issue body ──────────────────────────────────────────────
+function buildTitle(broken) {
+  const counts = { 404: 0, errors: 0, anti: 0 };
+  for (const r of broken) {
+    if (r.status === '404') counts['404']++;
+    else if (r.status === '000' || r.status === 'ERR') counts.errors++;
+    else if (r.status === '999') counts.anti++;
+  }
+  const parts = [];
+  if (counts['404']) parts.push(`${counts['404']} hard 404`);
+  if (counts.errors) parts.push(`${counts.errors} errors`);
+  if (counts.anti) parts.push(`${counts.anti} anti-bot`);
+  const breakdown = parts.length ? ` (${parts.join(', ')})` : '';
+  return `Broken citation queue: ${broken.length} broken${breakdown}`;
+}
+
+function buildBody(broken) {
+  const by404 = broken.filter((r) => r.status === '404');
+  const byErrors = broken.filter((r) => r.status === '000' || r.status === 'ERR');
+  const byAnti = broken.filter((r) => r.status === '999');
+
+  const lines = [
+    `## Broken citations — ${broken.length} total`,
+    ``,
+    `These citations are returning errors from the [nightly link audit](https://github.com/${REPO}/tree/main/audit/links). Each one needs either a URL fix in [\`src/data/sources.ts\`](https://github.com/${REPO}/blob/main/src/data/sources.ts) or removal of the citation entirely. Per the unified resolution log, **every fix PR also appends a row to [\`audit/links/reviewed.tsv\`](https://github.com/${REPO}/blob/main/audit/links/reviewed.tsv)** describing what was changed and why.`,
+    ``,
+    `The list regenerates with each nightly audit run; resolved citations disappear from this issue automatically as their fixes land. Checkboxes are aspirational visual — they reset on regenerate.`,
+    ``,
+    `_Last refresh reflects audit run ${latestDate}._`,
+    ``,
+  ];
+
+  const renderGroup = (heading, items, note) => {
+    if (items.length === 0) return [];
+    const out = [`### ${heading} (${items.length})`, ``];
+    if (note) out.push(`_${note}_`, ``);
+    for (const r of items) {
+      const meta = sourcesIndex.get(r.url);
+      const label = meta?.label ?? r.url;
+      const line = meta?.line ? `\`sources.ts:${meta.line}\`` : '_not found in registry_';
+      out.push(`- [ ] **[${label}](${r.url})** — ${line}`);
+    }
+    out.push('');
+    return out;
+  };
+
+  lines.push(...renderGroup('🔴 Hard 404 — page is gone', by404));
+  lines.push(
+    ...renderGroup(
+      '⚫ Network / DNS / timeout',
+      byErrors,
+      'Might be a transient outage. Manual browser check before fixing.',
+    ),
+  );
+  lines.push(
+    ...renderGroup(
+      '🚧 Anti-bot blocking',
+      byAnti,
+      'Often fine in a real browser. Manual check; if reachable, no fix needed beyond a reviewed.tsv row.',
+    ),
+  );
+
+  lines.push(
+    `---`,
+    ``,
+    `_Auto-refreshed nightly by [\`.github/workflows/audit-links.yml\`](https://github.com/${REPO}/blob/main/.github/workflows/audit-links.yml). To trigger immediately, [run the workflow manually](https://github.com/${REPO}/actions/workflows/audit-links.yml)._`,
+  );
+
+  return lines.join('\n');
+}
+
+// ── 5. Find existing open audit:link rolling issue ───────────────────────
+function findOpenRolling() {
+  const out = sh([
+    'issue',
+    'list',
+    '--repo',
+    REPO,
+    '--label',
+    LABEL,
+    '--state',
+    'open',
+    '--limit',
+    '50',
+    '--json',
+    'number,title,body',
+  ]);
+  const issues = JSON.parse(out || '[]');
+  // The rolling issue is identified by its title prefix. Pre-migration
+  // issues used "Broken link (404): ..." per-URL titles; the rolling one
+  // uses "Broken citation queue: ...".
+  return issues.find((i) => i.title.startsWith('Broken citation queue:')) ?? null;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────
+const existing = findOpenRolling();
 
 if (broken.length === 0) {
-  console.log('Nothing to do. ✨');
+  if (existing) {
+    console.log(`→ Closing existing rolling issue #${existing.number} (queue clear)`);
+    if (!DRY_RUN) {
+      sh([
+        'issue',
+        'comment',
+        String(existing.number),
+        '--repo',
+        REPO,
+        '--body',
+        '🎉 Broken-citation queue is clear — every cited URL is currently reachable. The next nightly audit will reopen this if anything breaks.',
+      ]);
+      sh(['issue', 'close', String(existing.number), '--repo', REPO, '--reason', 'completed']);
+    }
+  } else {
+    console.log('→ No broken URLs, no existing rolling issue. Nothing to do.');
+  }
   process.exit(0);
 }
 
-// --- Fetch already-open audit issues, build a URL → already-tracked index ---
-const existingRaw = sh([
-  'issue',
-  'list',
-  '--repo',
-  REPO,
-  '--label',
-  LABEL,
-  '--state',
-  'open',
-  '--limit',
-  '500',
-  '--json',
-  'number,title,body',
-]);
-const existing = JSON.parse(existingRaw || '[]');
-const tracked = new Set();
-for (const issue of existing) {
-  // Body has `**Broken URL:** <url>` — match the URL specifically rather than
-  // \S+ which greedily captures the markdown bold-close `**` token.
-  const m = issue.body?.match(/Broken URL:[*\s]*(https?:\/\/\S+)/);
-  if (m) tracked.add(m[1]);
-}
-console.log(
-  `→ ${existing.length} existing open audit issues; ${tracked.size} URLs already tracked.`,
-);
+const title = buildTitle(broken);
+const body = buildBody(broken);
 
-// --- Find the file:line citations for a URL via grep ---
-function findCitations(url) {
-  try {
-    const out = execFileSync(
-      'grep',
-      [
-        '-rn',
-        '--include=*.ts',
-        '--include=*.tsx',
-        '--include=*.md',
-        '--include=*.json',
-        '--include=*.html',
-        '--exclude-dir=node_modules',
-        '--exclude-dir=.yarn',
-        '--exclude-dir=dist',
-        '--exclude-dir=results',
-        '-F',
-        url,
-        ROOT,
-      ],
-      { encoding: 'utf8' },
-    );
-    return out
-      .trim()
-      .split('\n')
-      .map((line) => line.replace(`${ROOT}/`, ''))
-      .slice(0, 8);
-  } catch {
-    return [];
-  }
+if (DRY_RUN) {
+  console.log(`\n--- WOULD ${existing ? 'EDIT #' + existing.number : 'CREATE'} ---`);
+  console.log(`Title: ${title}`);
+  console.log(`\nBody:\n${body}`);
+  process.exit(0);
 }
 
-// --- Create issues for new failures ---
-const toCreate = broken.filter((r) => !tracked.has(r.url));
-console.log(`→ ${toCreate.length} new issue(s) to create${DRY_RUN ? ' (dry run)' : ''}.`);
+let issueNumber;
+if (existing) {
+  console.log(`→ Updating existing rolling issue #${existing.number}`);
+  sh(['issue', 'edit', String(existing.number), '--repo', REPO, '--title', title, '--body', body]);
+  issueNumber = String(existing.number);
+} else {
+  console.log(`→ Creating new rolling issue`);
+  const url = sh([
+    'issue',
+    'create',
+    '--repo',
+    REPO,
+    '--title',
+    title,
+    '--body',
+    body,
+    '--label',
+    LABEL,
+  ]);
+  issueNumber = url.trim().split('/').pop();
+}
 
-if (toCreate.length > MAX_PER_RUN) {
-  console.error(
-    `\n  Refusing to create ${toCreate.length} issues in one run (cap: ${MAX_PER_RUN}).\n  This usually means the audit script broke or the network is wedged. Investigate first.`,
+// Pin the rolling issue. Idempotent; warns and continues if quota hit.
+try {
+  sh(['issue', 'pin', issueNumber, '--repo', REPO]);
+  console.log(`→ Pinned #${issueNumber} at the top of issues.`);
+} catch {
+  console.warn(
+    `⚠️  Could not pin issue #${issueNumber} (likely the 3-pinned-issues quota). ` +
+      `Issue exists; will be re-pinned next run if quota frees up.`,
   );
-  process.exit(2);
 }
 
-let created = 0;
-for (const r of toCreate) {
-  const cites = findCitations(r.url);
-  const shortPath = r.url.replace(/^https?:\/\//, '').slice(0, 60);
-  const title = `Broken link (${r.status}): ${shortPath}`;
-  const body = [
-    `Detected by the [link audit](https://github.com/${REPO}/tree/main/audit/links).`,
-    ``,
-    `**Broken URL:** ${r.url}`,
-    `**curl status:** \`${r.status}\``,
-    r.finalUrl && r.finalUrl !== r.url ? `**Final URL after redirects:** ${r.finalUrl}` : '',
-    ``,
-    `### Cited from`,
-    cites.length
-      ? cites.map((c) => `- \`${c}\``).join('\n')
-      : '_No code locations found by grep — the URL may have already been removed, or the audit picked it up from a non-source file._',
-    ``,
-    `### How to resolve`,
-    `1. Open the URL yourself. See what's there.`,
-    `2. Find the canonical replacement, an equivalent authoritative source, or determine that the citation should be removed.`,
-    `3. Update the data file and any README references in lockstep (citations are mirrored).`,
-    `4. Add a row to [\`audit/links/reviewed.tsv\`](https://github.com/${REPO}/blob/main/audit/links/reviewed.tsv) with your review notes — that record carries forward across audit runs.`,
-    `5. PR with \`Closes #__\` in the description to auto-close this issue.`,
-    ``,
-    `See [\`audit/links/README.md\`](https://github.com/${REPO}/blob/main/audit/links/README.md) for the full audit philosophy and contribution flow.`,
-  ]
-    .filter((s) => s !== '')
-    .join('\n');
-
-  if (DRY_RUN) {
-    console.log(`\n  [dry-run] would create:`);
-    console.log(`    title: ${title}`);
-    console.log(`    body:\n${body.replace(/^/gm, '      ')}`);
-    continue;
-  }
-
-  console.log(`  → ${title}`);
-  sh(['issue', 'create', '--repo', REPO, '--title', title, '--body', body, '--label', LABEL]);
-  created++;
-}
-
-console.log(
-  `\n✨ Done. ${DRY_RUN ? 'Would create' : 'Created'} ${DRY_RUN ? toCreate.length : created} issue(s); skipped ${broken.length - toCreate.length} already-tracked.`,
-);
+console.log(`✨ Done.`);

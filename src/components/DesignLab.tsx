@@ -35,6 +35,7 @@ export function DesignLab({ onBack }: { onBack: () => void }) {
         <SectionRowVariations />
         <SectionSummaryVariations />
         <SectionPopoverVariations />
+        <SectionTierNaming />
       </div>
     </div>
   );
@@ -1055,6 +1056,243 @@ function PopoverMockV3() {
         </PopoverRow>
       ))}
     </PopoverShell>
+  );
+}
+
+// ── Section: Tier naming variations ──────────────────────────────────────
+//
+// "Reference" is currently a catch-all in src/data/sources.ts — operational
+// handbooks, peer-respected research orgs, commercial aggregators, and 200+
+// state-agency landing pages all share the label. "Estimate" is unused (zero
+// rows in the registry). We're considering renaming/restructuring the tier
+// vocabulary; this section shows the candidates side-by-side so we can
+// eyeball them in pill form before committing to a refactor.
+//
+// Each variation shows the three (or four) tier labels rendered as the
+// existing TierPill (same shape as production) with a one-line description
+// of what each tier covers under that scheme.
+
+interface TierCandidate {
+  readonly key: string;
+  readonly title: string;
+  readonly description: string;
+  readonly tiers: ReadonlyArray<{
+    readonly label: string;
+    readonly tone: 'positive' | 'reference' | 'aggregator' | 'estimate';
+    readonly meaning: string;
+  }>;
+}
+
+const TIER_CANDIDATES: readonly TierCandidate[] = [
+  {
+    key: 'current',
+    title: 'A — Current: Original / Reference / Estimate',
+    description:
+      'Status quo. Reference is a catch-all spanning handbooks, surveys, research orgs, commercial aggregators, and state agency portals. Estimate is unused (zero rows). The familiar baseline.',
+    tiers: [
+      { label: 'Original', tone: 'positive', meaning: 'Direct from the agency or data publisher.' },
+      {
+        label: 'Reference',
+        tone: 'reference',
+        meaning:
+          'Everything else — handbooks, surveys, research, commercial aggregators, agency portals.',
+      },
+      {
+        label: 'Estimate',
+        tone: 'estimate',
+        meaning: 'Approximations flagged honestly. (Currently unused.)',
+      },
+    ],
+  },
+  {
+    key: 'option-c',
+    title: 'B — Option C: Primary / Reference / Aggregator',
+    description:
+      'Domain-fitted. Drops Estimate, narrows Reference to peer-respected interpretation, adds Aggregator as an honest name for commercial / crowd-sourced data products.',
+    tiers: [
+      {
+        label: 'Primary',
+        tone: 'positive',
+        meaning:
+          'Publisher of the underlying data or rule. Includes federal agencies + state agencies on their own programs.',
+      },
+      {
+        label: 'Reference',
+        tone: 'reference',
+        meaning:
+          'Peer-respected third-party interpretation, methodology document, or original research-org survey.',
+      },
+      {
+        label: 'Aggregator',
+        tone: 'aggregator',
+        meaning:
+          'Commercial or crowd-sourced data product — methodology proprietary or community-driven.',
+      },
+    ],
+  },
+  {
+    key: 'pst-strict',
+    title: 'C — Primary / Secondary / Tertiary (academic, strict)',
+    description:
+      'Canonical academic taxonomy applied strictly — Primary = produces own data, Secondary = interprets primaries, Tertiary = compiles. Most things end up Primary (~225 / ~3 / ~3). Loses the trust gradient.',
+    tiers: [
+      {
+        label: 'Primary',
+        tone: 'positive',
+        meaning: 'Produces the data themselves. IRS, BLS, KFF surveys, Zillow, Care.com.',
+      },
+      {
+        label: 'Secondary',
+        tone: 'reference',
+        meaning: 'Interprets primary sources. EPI, CBPP, HUD Handbook.',
+      },
+      {
+        label: 'Tertiary',
+        tone: 'aggregator',
+        meaning: 'Compiles primaries/secondaries. Tax Foundation, NCSL, Numbeo.',
+      },
+    ],
+  },
+  {
+    key: 'trust-explicit',
+    title: 'D — High / Medium / Low trust',
+    description:
+      "Names the dimension explicitly. Pro: instantly clear what the gradient measures. Con: feels survey-rating-y; sounds like we're grading sources rather than describing their relationship to the data.",
+    tiers: [
+      {
+        label: 'High trust',
+        tone: 'positive',
+        meaning: 'Agency / statutory text / publisher of record.',
+      },
+      {
+        label: 'Medium trust',
+        tone: 'reference',
+        meaning: 'Peer-respected research with public methodology.',
+      },
+      {
+        label: 'Low trust',
+        tone: 'aggregator',
+        meaning: 'Commercial or crowd-sourced — proprietary methodology.',
+      },
+    ],
+  },
+  {
+    key: 'tier-numeric',
+    title: 'E — Tier 1 / Tier 2 / Tier 3',
+    description:
+      'Numeric. Low cognitive load (no vocabulary to learn) but no semantic content either — every reader has to look up what each number means.',
+    tiers: [
+      { label: 'Tier 1', tone: 'positive', meaning: 'Agency / statutory / publisher of record.' },
+      {
+        label: 'Tier 2',
+        tone: 'reference',
+        meaning: 'Peer-respected research / handbook / methodology.',
+      },
+      { label: 'Tier 3', tone: 'aggregator', meaning: 'Commercial or crowd-sourced aggregator.' },
+    ],
+  },
+  {
+    key: 'role-based',
+    title: 'F — Publisher / Research / Aggregator',
+    description:
+      "Role-based naming. Each tier names the kind of organisation behind the source. 'Publisher' is more specific than 'Primary' (a state DOR is both a Publisher and a Primary); 'Research' captures the middle tier's actual character.",
+    tiers: [
+      {
+        label: 'Publisher',
+        tone: 'positive',
+        meaning: 'Government agency or statutory authority producing the data/rule.',
+      },
+      {
+        label: 'Research',
+        tone: 'reference',
+        meaning: 'Peer-respected research org or methodology document.',
+      },
+      {
+        label: 'Aggregator',
+        tone: 'aggregator',
+        meaning: 'Commercial or crowd-sourced data product.',
+      },
+    ],
+  },
+  {
+    key: 'sector-based',
+    title: 'G — Government / Research / Commercial',
+    description:
+      "Sector-based naming. Maps cleanly to who produces each tier. Slight downside: KFF is a non-profit research org that happens to publish surveys — does that fit 'Research'? Yes, but worth noting the boundaries can blur.",
+    tiers: [
+      {
+        label: 'Government',
+        tone: 'positive',
+        meaning: 'Federal or state agency / statutory text.',
+      },
+      {
+        label: 'Research',
+        tone: 'reference',
+        meaning: 'Non-profit research org, peer-respected methodology.',
+      },
+      {
+        label: 'Commercial',
+        tone: 'aggregator',
+        meaning: 'For-profit data products and crowd-sourced sites.',
+      },
+    ],
+  },
+];
+
+function SectionTierNaming() {
+  return (
+    <Section
+      heading="Source tier — naming candidates"
+      subhead="Iterating on the labels in src/data/sources.ts before committing to a refactor. Each variation shows the candidate tier names rendered in pill form (same primitive used on /sources rows + citation popovers) with a one-line meaning."
+    >
+      {TIER_CANDIDATES.map((c) => (
+        <Variation key={c.key} title={c.title} description={c.description}>
+          <TierCandidatePreview candidate={c} />
+        </Variation>
+      ))}
+    </Section>
+  );
+}
+
+function tierCandidateBg(tone: TierCandidate['tiers'][number]['tone']) {
+  if (tone === 'positive') return 'rgba(45, 80, 22, 0.12)';
+  if (tone === 'reference') return 'rgba(166, 38, 28, 0.10)';
+  if (tone === 'aggregator') return 'rgba(62, 90, 122, 0.16)';
+  return 'rgba(184, 116, 43, 0.18)';
+}
+function tierCandidateFg(tone: TierCandidate['tiers'][number]['tone']) {
+  if (tone === 'positive') return T.positive;
+  if (tone === 'reference') return T.accent;
+  if (tone === 'aggregator') return T.aiAccent;
+  return T.warning;
+}
+
+function TierCandidatePreview({ candidate }: { candidate: TierCandidate }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Pill row — see the labels in their actual visual context. */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {candidate.tiers.map((t) => (
+          <Pill
+            key={t.label}
+            bg={tierCandidateBg(t.tone)}
+            fg={tierCandidateFg(t.tone)}
+            label={t.label}
+          />
+        ))}
+      </div>
+      {/* Per-tier meaning. */}
+      <ul
+        style={{ margin: 0, paddingLeft: 16, color: T.inkSoft, fontSize: rem(12), lineHeight: 1.5 }}
+      >
+        {candidate.tiers.map((t) => (
+          <li key={t.label} style={{ marginBottom: 4 }}>
+            <span style={{ color: tierCandidateFg(t.tone), fontWeight: 700 }}>{t.label}</span> —{' '}
+            {t.meaning}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

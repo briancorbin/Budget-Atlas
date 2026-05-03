@@ -594,8 +594,22 @@ function StatCell({ stat }: { stat: Stat }) {
             pointerEvents: 'none',
           }}
         >
-          <span style={{ fontWeight: 600, color: valueColor }}>{stat.label}</span>
-          <span> — {stat.tooltip}</span>
+          {/* All tooltip text in cream-on-ink for guaranteed contrast.
+              Per-tone color lives on the large value above — using it in
+              the tooltip body too would put dark text (T.ink, T.positive,
+              T.aiAccent) against the dark T.ink background. The label is
+              still distinguishable via uppercase + bold weight. */}
+          <span
+            style={{
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: T.bg,
+            }}
+          >
+            {stat.label}
+          </span>
+          <span style={{ color: T.bg }}> — {stat.tooltip}</span>
         </span>
       )}
     </div>

@@ -11,7 +11,7 @@ import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
-import { StatusDot, ReportFlag, getStatusKind, type StatusKind } from '@/lib/sourceStatus';
+import { StatusDot, ReportFlag, getStatusKind, REVIEWS, type StatusKind } from '@/lib/sourceStatus';
 
 /**
  * Roll a list of source statuses up to a single "worst" one. Broken
@@ -197,10 +197,30 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
                   }}
                 >
                   {s.tier && <TierPill tier={s.tier} />}
-                  {/* Provenance (human vs AI review) is conveyed by the
-                      StatusDot rendering: filled green = human-verified,
-                      hollow green ring = AI-reviewed awaiting a human pass.
-                      No separate pill needed. */}
+                  {(() => {
+                    // V3-style kind code prefix on the metadata line: a
+                    // tiny `H` (human-reviewed) or `AI` (AI-reviewed) in
+                    // editorial green, paired with the hollow-vs-filled
+                    // status dot above to reinforce provenance without
+                    // adding visual weight. Skip when there's no review
+                    // yet — the dot's overdue color says it.
+                    const latestKind = REVIEWS.get(s.id)?.[0]?.kind;
+                    if (!latestKind) return null;
+                    const code = latestKind === 'human' ? 'H' : 'AI';
+                    return (
+                      <span
+                        style={{
+                          fontFamily: fonts.mono,
+                          fontSize: rem(10),
+                          fontWeight: 700,
+                          letterSpacing: '0.05em',
+                          color: T.positive,
+                        }}
+                      >
+                        {code}
+                      </span>
+                    );
+                  })()}
                   {s.date && <span>{s.date}</span>}
                 </div>
               </a>

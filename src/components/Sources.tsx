@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { SectionTitle } from './ui';
 import {
   SOURCES,
@@ -298,7 +298,7 @@ function Header({ onBack }: { onBack: () => void }) {
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: rem(12),
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
           color: T.accent,
@@ -314,7 +314,7 @@ function Header({ onBack }: { onBack: () => void }) {
           onBack();
         }}
         style={{
-          fontSize: 12,
+          fontSize: rem(12),
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.inkSoft,
@@ -335,7 +335,7 @@ function Intro() {
       <div
         style={{
           fontFamily: fonts.display,
-          fontSize: 'clamp(28px, 7vw, 44px)',
+          fontSize: `clamp(${rem(28)}, 7vw, ${rem(44)})`,
           fontWeight: 500,
           lineHeight: 1.05,
           letterSpacing: '-0.01em',
@@ -346,7 +346,7 @@ function Intro() {
       </div>
       <p
         style={{
-          fontSize: 16,
+          fontSize: rem(16),
           lineHeight: 1.6,
           color: T.inkSoft,
           maxWidth: 680,
@@ -360,7 +360,7 @@ function Intro() {
       </p>
       <p
         style={{
-          fontSize: 14,
+          fontSize: rem(14),
           lineHeight: 1.6,
           color: T.inkMuted,
           maxWidth: 680,
@@ -392,7 +392,7 @@ function ThresholdsNote() {
   return (
     <div
       style={{
-        fontSize: 13,
+        fontSize: rem(13),
         color: T.inkSoft,
         marginTop: 12,
         marginBottom: 48,
@@ -404,7 +404,7 @@ function ThresholdsNote() {
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: rem(12),
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           color: T.inkMuted,
@@ -431,7 +431,7 @@ function ThresholdsNote() {
           honestly. Drift tolerance is part of the design.
         </li>
       </ul>
-      <div style={{ marginTop: 10, color: T.inkMuted, fontSize: 12, lineHeight: 1.6 }}>
+      <div style={{ marginTop: 10, color: T.inkMuted, fontSize: rem(12), lineHeight: 1.6 }}>
         A source is <strong style={{ color: T.positive }}>Verified</strong> when it loads correctly{' '}
         <em>and</em> has been reviewed within its window;{' '}
         <strong style={{ color: T.warning }}>Overdue</strong> when no human has verified it in time;{' '}
@@ -498,7 +498,7 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
     <div>
       <div
         style={{
-          fontSize: 10,
+          fontSize: rem(10),
           textTransform: 'uppercase',
           letterSpacing: '0.18em',
           color: T.inkMuted,
@@ -520,7 +520,7 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
             <div
               style={{
                 fontFamily: fonts.display,
-                fontSize: 32,
+                fontSize: rem(32),
                 fontWeight: 500,
                 lineHeight: 1,
                 color:
@@ -539,7 +539,7 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
             </div>
             <div
               style={{
-                fontSize: 12,
+                fontSize: rem(12),
                 textTransform: 'uppercase',
                 letterSpacing: '0.12em',
                 color: T.inkMuted,
@@ -561,7 +561,7 @@ function GroupSection({ group }: { group: Group }) {
       {group.description && (
         <p
           style={{
-            fontSize: 14,
+            fontSize: rem(14),
             color: T.inkSoft,
             margin: '0 0 16px',
             maxWidth: 640,
@@ -593,7 +593,7 @@ function GroupSection({ group }: { group: Group }) {
               {group.title}{' '}
               <span
                 style={{
-                  fontSize: 14,
+                  fontSize: rem(14),
                   color: T.inkMuted,
                   fontWeight: 400,
                 }}
@@ -652,7 +652,7 @@ function SourceRow({ source }: { source: Source }) {
             color: T.ink,
             textDecoration: 'none',
             borderBottom: `1px solid ${T.border}`,
-            fontSize: 16,
+            fontSize: rem(16),
             fontWeight: 500,
             lineHeight: 1.35,
           }}
@@ -673,7 +673,7 @@ function SourceRow({ source }: { source: Source }) {
       <div
         style={{
           fontFamily: fonts.mono,
-          fontSize: 12,
+          fontSize: rem(12),
           color: T.inkMuted,
           wordBreak: 'break-all',
         }}
@@ -723,7 +723,7 @@ function MetaStrip({
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '6px 14px',
-        fontSize: 12,
+        fontSize: rem(12),
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         color: T.inkMuted,
@@ -808,7 +808,7 @@ function StatusDot({ kind }: { kind: 'broken' | 'overdue' | 'verified' }) {
             padding: '8px 12px',
             background: T.ink,
             color: T.bg,
-            fontSize: 12,
+            fontSize: rem(12),
             lineHeight: 1.4,
             fontWeight: 400,
             textTransform: 'none',
@@ -878,7 +878,7 @@ function ReportProblemLink({ source }: { source: Source }) {
       target="_blank"
       rel="noreferrer"
       style={{
-        fontSize: 12,
+        fontSize: rem(12),
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         fontWeight: 600,
@@ -899,7 +899,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
   return (
     <details
       style={{
-        fontSize: 13,
+        fontSize: rem(13),
         // Comfortable reading measure when expanded — review notes get
         // ~70ch width so quotes don't break into 6-word lines on mobile.
         maxWidth: '70ch',
@@ -911,7 +911,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
           cursor: 'pointer',
           listStyle: 'none',
           color: T.positive,
-          fontSize: 12,
+          fontSize: rem(12),
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           fontWeight: 600,
@@ -937,7 +937,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
           <li key={`${r.date}-${r.reviewer}-${i}`} style={{ marginBottom: 12 }}>
             <div
               style={{
-                fontSize: 12,
+                fontSize: rem(12),
                 color: T.inkMuted,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -966,7 +966,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
             {r.notes && (
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: rem(13),
                   color: T.inkSoft,
                   fontStyle: 'italic',
                   lineHeight: 1.5,
@@ -992,7 +992,7 @@ function TierPill({ tier }: { tier: string }) {
   return (
     <span
       style={{
-        fontSize: 10,
+        fontSize: rem(10),
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         fontWeight: 600,
@@ -1025,7 +1025,7 @@ function Footer({ onBack }: { onBack: () => void }) {
         }}
         style={{
           fontFamily: fonts.body,
-          fontSize: 13,
+          fontSize: rem(13),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           padding: '10px 18px',

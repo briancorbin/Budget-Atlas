@@ -1,5 +1,5 @@
 import type { FilingStatus, Lifestyle, StateCode } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { CITIES, RENT_LOGIC_SOURCES, getCityData, stateSlug } from '@/data/cities';
 import { STATES, bracketRange } from '@/data/states';
@@ -92,7 +92,7 @@ export function CustomizePanel(s: InputsState) {
     width: '100%',
     padding: '10px 12px',
     fontFamily: fonts.mono,
-    fontSize: 18,
+    fontSize: rem(18),
     background: T.bg,
     border: `1px solid ${T.border}`,
     color: T.ink,
@@ -103,14 +103,14 @@ export function CustomizePanel(s: InputsState) {
     width: '100%',
     padding: '10px 12px',
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: rem(14),
     background: T.bg,
     border: `1px solid ${T.border}`,
     color: T.ink,
     outline: 'none',
   };
   const labelStyle = {
-    fontSize: 12,
+    fontSize: rem(12),
     color: T.inkSoft,
     display: 'block' as const,
     marginBottom: 6,
@@ -128,7 +128,7 @@ export function CustomizePanel(s: InputsState) {
     >
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.accent,
@@ -165,13 +165,13 @@ export function CustomizePanel(s: InputsState) {
             gap: 8,
           }}
         >
-          <label style={{ fontSize: 12, color: T.inkSoft, letterSpacing: '0.05em' }}>
+          <label style={{ fontSize: rem(12), color: T.inkSoft, letterSpacing: '0.05em' }}>
             {s.twoIncome ? 'INCOME' : 'ANNUAL HOUSEHOLD INCOME'}
           </label>
           <button
             onClick={() => s.setTwoIncome(!s.twoIncome)}
             style={{
-              fontSize: 11,
+              fontSize: rem(11),
               letterSpacing: '0.08em',
               padding: '6px 12px',
               cursor: 'pointer',
@@ -243,11 +243,11 @@ export function CustomizePanel(s: InputsState) {
             gap: 8,
           }}
         >
-          <div style={{ fontSize: 11, color: T.inkMuted }}>
+          <div style={{ fontSize: rem(11), color: T.inkMuted }}>
             State min wage at 40 hrs/wk = {fmt(stateMinAnnual)}
           </div>
           {s.twoIncome && (
-            <div style={{ fontSize: 13, fontFamily: fonts.mono, color: T.ink }}>
+            <div style={{ fontSize: rem(13), fontFamily: fonts.mono, color: T.ink }}>
               HOUSEHOLD TOTAL{' '}
               <span style={{ color: T.accent, marginLeft: 6 }}>{fmt(totalIncome)}</span>
             </div>
@@ -288,7 +288,7 @@ export function CustomizePanel(s: InputsState) {
               ariaLabel="City or statewide locality"
             />
           </div>
-          <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 6 }}>
+          <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 6 }}>
             {(() => {
               const [lo, hi] = bracketRange(STATES[cityState].brackets[s.filing]);
               if (hi === 0) return 'No state income tax';
@@ -345,7 +345,7 @@ export function CustomizePanel(s: InputsState) {
             <option value="head">Head of household</option>
           </select>
           {s.twoIncome && s.filing !== 'married' && (
-            <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 6 }}>
+            <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 6 }}>
               Cohabitating · each files separately
             </div>
           )}
@@ -365,7 +365,7 @@ export function CustomizePanel(s: InputsState) {
                   color: s.kids === n ? T.bg : T.ink,
                   border: `1px solid ${s.kids === n ? T.ink : T.border}`,
                   fontFamily: fonts.mono,
-                  fontSize: 14,
+                  fontSize: rem(14),
                   cursor: 'pointer',
                 }}
               >
@@ -396,7 +396,7 @@ export function CustomizePanel(s: InputsState) {
                   color: s.lifestyle === v ? T.bg : T.ink,
                   border: `1px solid ${s.lifestyle === v ? T.ink : T.border}`,
                   fontFamily: fonts.body,
-                  fontSize: 13,
+                  fontSize: rem(13),
                   cursor: 'pointer',
                   letterSpacing: '0.02em',
                 }}

@@ -1,6 +1,6 @@
 import type { BudgetResult, FilingStatus, Lifestyle, StateCode } from '@/types';
 import { useMemo } from 'react';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtSigned } from '@/lib/format';
 import { CITIES, stateSlug } from '@/data/cities';
 import { STATES } from '@/data/states';
@@ -73,13 +73,15 @@ export function CityComparison({
       <SectionTitle kicker="The same income, somewhere else">A geographic comparison</SectionTitle>
 
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: 24 }}>
-        <div style={{ marginBottom: 18, fontFamily: fonts.body, fontSize: 14, color: T.inkSoft }}>
+        <div
+          style={{ marginBottom: 18, fontFamily: fonts.body, fontSize: rem(14), color: T.inkSoft }}
+        >
           Same household, same income — different city.
         </div>
         <div style={{ marginBottom: 24 }}>
           <label
             style={{
-              fontSize: 12,
+              fontSize: rem(12),
               color: T.inkSoft,
               display: 'block',
               marginBottom: 6,
@@ -114,7 +116,7 @@ export function CityComparison({
             />
           </div>
           {compare.cityData.kind === 'statewide' && (
-            <div style={{ fontSize: 11, color: T.accent, marginTop: 6 }}>
+            <div style={{ fontSize: rem(11), color: T.accent, marginTop: 6 }}>
               Statewide approximation
             </div>
           )}
@@ -140,7 +142,7 @@ export function CityComparison({
                       position: 'absolute',
                       top: 12,
                       right: 16,
-                      fontSize: 10,
+                      fontSize: rem(10),
                       letterSpacing: '0.15em',
                       color: T.positive,
                       fontWeight: 600,
@@ -149,13 +151,13 @@ export function CityComparison({
                     ▲ MORE LEFT OVER
                   </div>
                 )}
-                <div style={{ fontSize: 11, color: T.inkMuted, letterSpacing: '0.12em' }}>
+                <div style={{ fontSize: rem(11), color: T.inkMuted, letterSpacing: '0.12em' }}>
                   {side.label.toUpperCase()}
                 </div>
                 <div
                   style={{
                     fontFamily: fonts.display,
-                    fontSize: 22,
+                    fontSize: rem(22),
                     marginTop: 4,
                     marginBottom: 16,
                   }}
@@ -168,7 +170,7 @@ export function CityComparison({
                     gridTemplateColumns: 'auto 1fr',
                     columnGap: 24,
                     rowGap: 8,
-                    fontSize: 13,
+                    fontSize: rem(13),
                   }}
                 >
                   <span style={{ color: T.inkSoft }}>State tax</span>
@@ -193,13 +195,13 @@ export function CityComparison({
                   </span>
                 </div>
                 <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 18, paddingTop: 14 }}>
-                  <div style={{ fontSize: 11, color: T.inkMuted, letterSpacing: '0.12em' }}>
+                  <div style={{ fontSize: rem(11), color: T.inkMuted, letterSpacing: '0.12em' }}>
                     DISCRETIONARY / MO
                   </div>
                   <div
                     style={{
                       fontFamily: fonts.mono,
-                      fontSize: 26,
+                      fontSize: rem(26),
                       color: side.data.discretionary >= 0 ? T.positive : T.accent,
                     }}
                   >
@@ -215,7 +217,7 @@ export function CityComparison({
           style={{
             marginTop: 16,
             fontFamily: fonts.display,
-            fontSize: 16,
+            fontSize: rem(16),
             color: T.inkSoft,
             fontStyle: 'italic',
             lineHeight: 1.5,

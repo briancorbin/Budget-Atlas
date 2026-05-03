@@ -1,4 +1,4 @@
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
 
 export function Masthead() {
@@ -24,7 +24,7 @@ export function Masthead() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: rem(11),
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
               color: T.accent,
@@ -35,7 +35,7 @@ export function Masthead() {
           </div>
           <span
             style={{
-              fontSize: 11,
+              fontSize: rem(11),
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
               color: T.inkMuted,
@@ -51,7 +51,7 @@ export function Masthead() {
             display: 'flex',
             alignItems: 'baseline',
             gap: 18,
-            fontSize: 11,
+            fontSize: rem(11),
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             color: T.inkMuted,
@@ -114,7 +114,7 @@ export function Masthead() {
           fontFamily: fonts.display,
           // Floor low enough to read on iPhone widths (~32px on a 390px viewport
           // via 8vw); ceiling preserved at 64px for desktop drama.
-          fontSize: 'clamp(32px, 8vw, 64px)',
+          fontSize: `clamp(${rem(32)}, 8vw, ${rem(64)})`,
           fontWeight: 400,
           letterSpacing: '-0.025em',
           lineHeight: 1.05,
@@ -131,7 +131,7 @@ export function Masthead() {
       <div
         style={{
           fontFamily: fonts.display,
-          fontSize: 18,
+          fontSize: rem(18),
           color: T.inkSoft,
           maxWidth: 720,
           lineHeight: 1.5,

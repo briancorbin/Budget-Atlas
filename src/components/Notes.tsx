@@ -1,5 +1,5 @@
 import type { FilingStatus, Source } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { FEDERAL_TAX_SOURCE, SS_WAGE_BASE_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
 import { STATE_TAX_SOURCE, STATE_MIN_WAGE_SOURCE } from '@/data/states';
@@ -100,7 +100,7 @@ export function Notes({
           marginTop: 60,
           paddingTop: 24,
           borderTop: `1px solid ${T.border}`,
-          fontSize: 13,
+          fontSize: rem(13),
           color: T.inkSoft,
           fontFamily: fonts.body,
           lineHeight: 1.7,
@@ -113,7 +113,7 @@ export function Notes({
           <div key={n.title}>
             <div
               style={{
-                fontSize: 11,
+                fontSize: rem(11),
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
                 color: T.accent,

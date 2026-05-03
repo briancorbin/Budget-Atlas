@@ -22,6 +22,21 @@ export const fonts = {
   mono: '"IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace',
 } as const;
 
+/**
+ * Convert a pixel value to a rem string (relative to the root font-size).
+ *
+ * Why we use this everywhere for `fontSize`: rem-based sizing scales with
+ * the user's browser font-size preference (a real accessibility win for
+ * users who've bumped their default from 16px). Pixel values ignore that
+ * preference entirely. We keep designing in px (intuitive unit) and emit
+ * rem for the actual style.
+ *
+ * Spatial properties (padding, margin, gap, border-radius, etc.) stay in
+ * px — those are chrome dimensions, not text, and don't need to scale
+ * with the user's reading-size preference.
+ */
+export const rem = (px: number): string => `${px / 16}rem`;
+
 /** Categorical palette for expense charts. */
 export const PIE_COLORS = [
   '#A6261C',

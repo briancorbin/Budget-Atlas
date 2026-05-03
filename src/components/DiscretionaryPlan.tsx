@@ -1,5 +1,5 @@
 import type { BudgetResult } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { SectionTitle } from './ui';
 
@@ -63,7 +63,7 @@ export function DiscretionaryPlan({ result }: { result: BudgetResult }) {
         <div
           style={{
             fontFamily: fonts.display,
-            fontSize: 16,
+            fontSize: rem(16),
             color: T.inkSoft,
             marginBottom: 20,
             lineHeight: 1.5,
@@ -92,7 +92,7 @@ export function DiscretionaryPlan({ result }: { result: BudgetResult }) {
             >
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: rem(11),
                   color: T.inkMuted,
                   letterSpacing: '0.12em',
                   marginBottom: 6,
@@ -100,10 +100,10 @@ export function DiscretionaryPlan({ result }: { result: BudgetResult }) {
               >
                 {c.label}
               </div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 22, color: T.ink }}>
+              <div style={{ fontFamily: fonts.mono, fontSize: rem(22), color: T.ink }}>
                 {fmt(c.value)}/mo
               </div>
-              <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: rem(12), color: T.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
                 {c.sub}
               </div>
             </div>

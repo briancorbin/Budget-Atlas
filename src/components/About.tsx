@@ -1,4 +1,4 @@
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
 import { SectionTitle } from './ui';
 
@@ -49,7 +49,7 @@ function Header({ onBack }: { onBack: () => void }) {
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: rem(12),
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
           color: T.accent,
@@ -65,7 +65,7 @@ function Header({ onBack }: { onBack: () => void }) {
           onBack();
         }}
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.inkSoft,
@@ -86,7 +86,7 @@ function Intro() {
       <div
         style={{
           fontFamily: fonts.display,
-          fontSize: 'clamp(28px, 7vw, 44px)',
+          fontSize: `clamp(${rem(28)}, 7vw, ${rem(44)})`,
           fontWeight: 500,
           lineHeight: 1.05,
           letterSpacing: '-0.01em',
@@ -97,7 +97,7 @@ function Intro() {
       </div>
       <p
         style={{
-          fontSize: 16,
+          fontSize: rem(16),
           lineHeight: 1.55,
           color: T.inkSoft,
           maxWidth: 640,
@@ -114,7 +114,7 @@ function Intro() {
 }
 
 const proseStyle = {
-  fontSize: 16,
+  fontSize: rem(16),
   lineHeight: 1.65,
   color: T.ink,
   maxWidth: 680,
@@ -395,7 +395,7 @@ function Footer({ onBack }: { onBack: () => void }) {
         }}
         style={{
           fontFamily: fonts.body,
-          fontSize: 13,
+          fontSize: rem(13),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           cursor: 'pointer',

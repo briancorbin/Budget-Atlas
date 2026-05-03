@@ -1,6 +1,6 @@
 import type { BudgetResult } from '@/types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { theme as T, fonts, PIE_COLORS } from '@/theme';
+import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { SectionTitle, CustomTooltip } from './ui';
 
@@ -66,10 +66,12 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: 11, color: T.inkMuted, letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: rem(11), color: T.inkMuted, letterSpacing: '0.1em' }}>
                 TOTAL / MO
               </div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 24, color: T.ink, marginTop: 4 }}>
+              <div
+                style={{ fontFamily: fonts.mono, fontSize: rem(24), color: T.ink, marginTop: 4 }}
+              >
                 {fmt(result.totalExpenses)}
               </div>
             </div>
@@ -102,9 +104,9 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                     <span
                       style={{ width: 8, height: 8, background: color, display: 'inline-block' }}
                     />
-                    <span style={{ fontSize: 14, color: T.ink }}>{name}</span>
+                    <span style={{ fontSize: rem(14), color: T.ink }}>{name}</span>
                   </div>
-                  <span style={{ fontFamily: fonts.mono, fontSize: 14, color: T.ink }}>
+                  <span style={{ fontFamily: fonts.mono, fontSize: rem(14), color: T.ink }}>
                     {fmt(val)}
                   </span>
                 </div>
@@ -122,7 +124,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: rem(11),
                     color: T.inkMuted,
                     marginTop: 4,
                     fontFamily: fonts.mono,

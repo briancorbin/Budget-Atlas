@@ -7,7 +7,7 @@ import {
 } from 'react';
 import type { TooltipContentProps } from 'recharts';
 import type { Source } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
@@ -103,7 +103,7 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
             zIndex: 50,
             boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
             fontFamily: fonts.body,
-            fontSize: 12,
+            fontSize: rem(12),
             color: T.ink,
             textTransform: 'none',
             letterSpacing: 0,
@@ -127,7 +127,7 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
             >
               <span>{s.label}</span> <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
               {s.date && (
-                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 1 }}>{s.date}</div>
+                <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 1 }}>{s.date}</div>
               )}
             </a>
           ))}
@@ -316,7 +316,7 @@ export function SearchableSelect<T extends string>({
           width: '100%',
           padding: '10px 32px 10px 12px',
           fontFamily: fonts.body,
-          fontSize: 14,
+          fontSize: rem(14),
           background: T.bg,
           border: `1px solid ${T.border}`,
           color: T.ink,
@@ -331,7 +331,7 @@ export function SearchableSelect<T extends string>({
           top: '50%',
           transform: 'translateY(-50%)',
           color: T.inkMuted,
-          fontSize: 11,
+          fontSize: rem(11),
           pointerEvents: 'none',
         }}
       >
@@ -358,7 +358,7 @@ export function SearchableSelect<T extends string>({
             <div
               style={{
                 padding: '10px 12px',
-                fontSize: 13,
+                fontSize: rem(13),
                 color: T.inkMuted,
                 fontFamily: fonts.body,
               }}
@@ -384,7 +384,7 @@ export function SearchableSelect<T extends string>({
                   padding: '8px 12px',
                   cursor: 'pointer',
                   fontFamily: fonts.body,
-                  fontSize: 14,
+                  fontSize: rem(14),
                   background: active ? T.bgAlt : 'transparent',
                   color: T.ink,
                   display: 'flex',
@@ -394,7 +394,7 @@ export function SearchableSelect<T extends string>({
                 }}
               >
                 <span>{o.label}</span>
-                {o.hint && <span style={{ color: T.inkMuted, fontSize: 12 }}>{o.hint}</span>}
+                {o.hint && <span style={{ color: T.inkMuted, fontSize: rem(12) }}>{o.hint}</span>}
               </div>
             );
           })}
@@ -419,7 +419,7 @@ export function Stat({
     <div style={{ padding: '14px 16px', background: T.surface, border: `1px solid ${T.border}` }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: T.inkMuted,
@@ -432,7 +432,7 @@ export function Stat({
       <div
         style={{
           fontFamily: fonts.mono,
-          fontSize: 22,
+          fontSize: rem(22),
           fontWeight: 500,
           color: accent || T.ink,
           lineHeight: 1,
@@ -441,7 +441,7 @@ export function Stat({
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 6, fontFamily: fonts.body }}>
+        <div style={{ fontSize: rem(12), color: T.inkSoft, marginTop: 6, fontFamily: fonts.body }}>
           {sub}
         </div>
       )}
@@ -455,7 +455,7 @@ export function SectionTitle({ children, kicker }: { children: ReactNode; kicker
       {kicker && (
         <div
           style={{
-            fontSize: 11,
+            fontSize: rem(11),
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
             color: T.accent,
@@ -472,7 +472,7 @@ export function SectionTitle({ children, kicker }: { children: ReactNode; kicker
           fontFamily: fonts.display,
           // Slight clamp on the section title so long ones (e.g. "State CHIP
           // administering agencies") don't crowd the kicker on narrow widths.
-          fontSize: 'clamp(20px, 4.5vw, 26px)',
+          fontSize: `clamp(${rem(20)}, 4.5vw, ${rem(26)})`,
           fontWeight: 500,
           color: T.ink,
           letterSpacing: '-0.01em',
@@ -517,7 +517,7 @@ export function PageSources({
     >
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.accent,
@@ -529,7 +529,7 @@ export function PageSources({
       </div>
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           color: T.inkMuted,
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
@@ -557,7 +557,7 @@ export function PageSources({
       <div
         style={{
           marginTop: 18,
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.14em',
           textTransform: 'uppercase',
         }}
@@ -595,7 +595,7 @@ export function CustomTooltip({ active, payload, label }: TooltipContentProps) {
         border: `1px solid ${T.border}`,
         padding: '8px 12px',
         fontFamily: fonts.body,
-        fontSize: 13,
+        fontSize: rem(13),
       }}
     >
       <div style={{ color: T.inkMuted, marginBottom: 2 }}>{heading}</div>

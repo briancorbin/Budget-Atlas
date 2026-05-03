@@ -1,5 +1,5 @@
 import type { BudgetResult, Source } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import {
   checkBenefit,
@@ -146,7 +146,7 @@ export function Benefits({
             background: T.bgAlt,
             border: `1px solid ${T.border}`,
             fontFamily: fonts.body,
-            fontSize: 13,
+            fontSize: rem(13),
             color: T.inkSoft,
           }}
         >
@@ -161,7 +161,7 @@ export function Benefits({
       <div
         style={{
           marginTop: 12,
-          fontSize: 12,
+          fontSize: rem(12),
           color: T.inkMuted,
           fontFamily: fonts.body,
           lineHeight: 1.6,
@@ -227,7 +227,7 @@ function Card({
         <div
           style={{
             fontFamily: fonts.display,
-            fontSize: 18,
+            fontSize: rem(18),
             fontWeight: 500,
             display: 'inline-flex',
             alignItems: 'center',
@@ -243,7 +243,7 @@ function Card({
 
       <div
         style={{
-          fontSize: 13,
+          fontSize: rem(13),
           lineHeight: 1.5,
           color: claimed ? T.bgAlt : T.inkSoft,
           marginBottom: 8,
@@ -257,7 +257,7 @@ function Card({
           <div
             style={{
               fontFamily: fonts.mono,
-              fontSize: 16,
+              fontSize: rem(16),
               marginBottom: 4,
               color: claimed ? T.bg : T.positive,
               fontWeight: 600,
@@ -267,7 +267,7 @@ function Card({
           </div>
           <div
             style={{
-              fontSize: 11,
+              fontSize: rem(11),
               color: claimed ? T.bgAlt : T.inkMuted,
             }}
           >
@@ -275,7 +275,9 @@ function Card({
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 12, color: T.inkMuted, lineHeight: 1.5 }}>{eligibility.reason}</div>
+        <div style={{ fontSize: rem(12), color: T.inkMuted, lineHeight: 1.5 }}>
+          {eligibility.reason}
+        </div>
       )}
 
       {eligibility.policyNote && (
@@ -284,7 +286,7 @@ function Card({
             marginTop: 10,
             paddingTop: 10,
             borderTop: `1px dashed ${claimed ? T.inkSoft : T.border}`,
-            fontSize: 11,
+            fontSize: rem(11),
             lineHeight: 1.5,
             color: claimed ? T.bgAlt : T.inkSoft,
             fontStyle: 'italic',
@@ -302,7 +304,7 @@ function EligibilityBadge({ eligible, claimed }: { eligible: boolean; claimed: b
     return (
       <span
         style={{
-          fontSize: 10,
+          fontSize: rem(10),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           color: T.bg,
@@ -322,7 +324,7 @@ function EligibilityBadge({ eligible, claimed }: { eligible: boolean; claimed: b
     return (
       <span
         style={{
-          fontSize: 10,
+          fontSize: rem(10),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           color: T.positive,
@@ -338,7 +340,7 @@ function EligibilityBadge({ eligible, claimed }: { eligible: boolean; claimed: b
   return (
     <span
       style={{
-        fontSize: 10,
+        fontSize: rem(10),
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
         color: T.inkMuted,

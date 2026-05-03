@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { ROADMAP, SHIPPED, type RoadmapItem, type RoadmapStatus } from '@/data/roadmap';
 import { SectionTitle } from './ui';
 
@@ -41,7 +41,7 @@ function Header({ onBack }: { onBack: () => void }) {
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: rem(12),
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
           color: T.accent,
@@ -57,7 +57,7 @@ function Header({ onBack }: { onBack: () => void }) {
           onBack();
         }}
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.inkSoft,
@@ -78,7 +78,7 @@ function Intro() {
       <div
         style={{
           fontFamily: fonts.display,
-          fontSize: 'clamp(28px, 7vw, 44px)',
+          fontSize: `clamp(${rem(28)}, 7vw, ${rem(44)})`,
           fontWeight: 500,
           lineHeight: 1.05,
           letterSpacing: '-0.01em',
@@ -89,7 +89,7 @@ function Intro() {
       </div>
       <p
         style={{
-          fontSize: 16,
+          fontSize: rem(16),
           lineHeight: 1.55,
           color: T.inkSoft,
           maxWidth: 640,
@@ -160,7 +160,7 @@ function PlannedCard({ item }: { item: RoadmapItem }) {
         <span
           style={{
             fontFamily: fonts.display,
-            fontSize: 22,
+            fontSize: rem(22),
             fontWeight: 500,
             color: T.ink,
             letterSpacing: '-0.005em',
@@ -175,7 +175,7 @@ function PlannedCard({ item }: { item: RoadmapItem }) {
       </div>
       <p
         style={{
-          fontSize: 14,
+          fontSize: rem(14),
           lineHeight: 1.6,
           color: T.inkSoft,
           margin: 0,
@@ -227,7 +227,7 @@ function ProgressStrip({ item }: { item: RoadmapItem }) {
         <div
           style={{
             fontFamily: fonts.mono,
-            fontSize: 11,
+            fontSize: rem(11),
             color: T.inkMuted,
             letterSpacing: '0.04em',
           }}
@@ -243,7 +243,7 @@ function CategoryTag({ category }: { category: string }) {
   return (
     <span
       style={{
-        fontSize: 10,
+        fontSize: rem(10),
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
         color: T.inkMuted,
@@ -270,7 +270,7 @@ function StatusBadge({ status }: { status: RoadmapStatus }) {
   return (
     <span
       style={{
-        fontSize: 10,
+        fontSize: rem(10),
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
         color: s.color,
@@ -366,7 +366,7 @@ function ShippedList() {
             <div
               style={{
                 fontFamily: fonts.display,
-                fontSize: 16,
+                fontSize: rem(16),
                 fontWeight: 500,
                 marginBottom: 8,
                 paddingRight: 70,
@@ -388,7 +388,7 @@ function ShippedList() {
             >
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: rem(10),
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   color: T.bg,
@@ -404,7 +404,7 @@ function ShippedList() {
               {item.shippedAt && (
                 <span
                   style={{
-                    fontSize: 10,
+                    fontSize: rem(10),
                     color: T.inkMuted,
                     fontFamily: fonts.mono,
                     letterSpacing: '0.04em',
@@ -416,7 +416,7 @@ function ShippedList() {
             </div>
             <p
               style={{
-                fontSize: 12.5,
+                fontSize: rem(12.5),
                 lineHeight: 1.55,
                 color: T.inkSoft,
                 margin: 0,
@@ -449,7 +449,7 @@ function Footer({ onBack }: { onBack: () => void }) {
         }}
         style={{
           fontFamily: fonts.body,
-          fontSize: 13,
+          fontSize: rem(13),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           cursor: 'pointer',
@@ -467,7 +467,7 @@ function Footer({ onBack }: { onBack: () => void }) {
       <div
         style={{
           marginTop: 24,
-          fontSize: 11,
+          fontSize: rem(11),
           color: T.inkMuted,
           letterSpacing: '0.18em',
           textTransform: 'uppercase',

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { BudgetResult, FilingStatus, TaxBracket } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { bracketBreakdown, type BracketRow } from '@/lib/tax';
 import { FEDERAL_BRACKETS_2026, FEDERAL_TAX_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
@@ -119,7 +119,7 @@ export function BracketWalkthrough({
         onClick={() => setOpen((o) => !o)}
         style={{
           fontFamily: fonts.body,
-          fontSize: 12,
+          fontSize: rem(12),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           cursor: 'pointer',
@@ -187,7 +187,7 @@ export function BracketWalkthrough({
               marginTop: 4,
               paddingTop: 16,
               borderTop: `1px dashed ${T.border}`,
-              fontSize: 12,
+              fontSize: rem(12),
               color: T.inkMuted,
               fontFamily: fonts.body,
               lineHeight: 1.6,
@@ -208,7 +208,7 @@ function FilerSection({ filer }: { filer: FilerWalk }) {
     <div style={{ marginBottom: 24 }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: T.inkSoft,
@@ -225,7 +225,7 @@ function FilerSection({ filer }: { filer: FilerWalk }) {
           flexWrap: 'wrap',
           gap: 18,
           marginBottom: 12,
-          fontSize: 13,
+          fontSize: rem(13),
           fontFamily: fonts.body,
           color: T.inkSoft,
         }}
@@ -254,7 +254,7 @@ function BracketTable({ rows, total }: { rows: BracketRow[]; total: number }) {
       style={{
         border: `1px solid ${T.border}`,
         fontFamily: fonts.mono,
-        fontSize: 13,
+        fontSize: rem(13),
         background: T.bg,
       }}
     >
@@ -264,7 +264,7 @@ function BracketTable({ rows, total }: { rows: BracketRow[]; total: number }) {
           gridTemplateColumns: '2fr 1fr 1.4fr 1.4fr',
           padding: '8px 12px',
           borderBottom: `1px solid ${T.border}`,
-          fontSize: 11,
+          fontSize: rem(11),
           color: T.inkMuted,
           letterSpacing: '0.08em',
           fontFamily: fonts.body,
@@ -296,7 +296,7 @@ function BracketTable({ rows, total }: { rows: BracketRow[]; total: number }) {
                   color: T.accent,
                   marginRight: 6,
                   fontFamily: fonts.body,
-                  fontSize: 10,
+                  fontSize: rem(10),
                   letterSpacing: '0.1em',
                   fontWeight: 600,
                 }}
@@ -321,7 +321,7 @@ function BracketTable({ rows, total }: { rows: BracketRow[]; total: number }) {
           fontWeight: 600,
         }}
       >
-        <span style={{ fontFamily: fonts.body, fontSize: 12, letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: fonts.body, fontSize: rem(12), letterSpacing: '0.08em' }}>
           SUBTOTAL
         </span>
         <span></span>
@@ -352,12 +352,12 @@ function CreditsSummary({
         background: T.bg,
         border: `1px solid ${T.border}`,
         fontFamily: fonts.mono,
-        fontSize: 13,
+        fontSize: rem(13),
       }}
     >
       <div
         style={{
-          fontSize: 11,
+          fontSize: rem(11),
           fontFamily: fonts.body,
           color: T.inkMuted,
           letterSpacing: '0.1em',
@@ -408,7 +408,7 @@ function Row({
         style={{
           fontFamily: fonts.body,
           color: T.inkSoft,
-          fontSize: 13,
+          fontSize: rem(13),
           fontWeight: bold ? 600 : 400,
         }}
       >

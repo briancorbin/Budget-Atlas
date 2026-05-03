@@ -1,5 +1,5 @@
 import type { BudgetResult } from '@/types';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtSigned, fmtPct } from '@/lib/format';
 import { Stat } from './ui';
 
@@ -57,7 +57,7 @@ export function StatusBanner({ result }: { result: BudgetResult }) {
         background: sustainable ? '#E8EBDF' : '#F1DBD8',
         borderLeft: `4px solid ${sustainable ? T.positive : T.accent}`,
         fontFamily: fonts.display,
-        fontSize: 17,
+        fontSize: rem(17),
         lineHeight: 1.5,
       }}
     >

@@ -9,7 +9,7 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import { theme as T, fonts } from '@/theme';
+import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
 import { SectionTitle, CustomTooltip } from './ui';
 import { STD_DEDUCTION_2026 } from '@/data/federalTax';
@@ -58,12 +58,12 @@ export function IncomeFlow({ result }: { result: BudgetResult }) {
           <BarChart data={[...data]} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 12, fontFamily: fonts.body, fill: T.inkSoft }}
+              tick={{ fontSize: rem(12), fontFamily: fonts.body, fill: T.inkSoft }}
               axisLine={{ stroke: T.border }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fontFamily: fonts.mono, fill: T.inkMuted }}
+              tick={{ fontSize: rem(11), fontFamily: fonts.mono, fill: T.inkMuted }}
               axisLine={{ stroke: T.border }}
               tickLine={false}
               tickFormatter={(v) => '$' + (v / 1000).toFixed(0) + 'k'}
@@ -77,7 +77,7 @@ export function IncomeFlow({ result }: { result: BudgetResult }) {
                 dataKey="value"
                 position="top"
                 formatter={(v) => fmt(v as number)}
-                style={{ fontSize: 11, fontFamily: fonts.mono, fill: T.inkSoft }}
+                style={{ fontSize: rem(11), fontFamily: fonts.mono, fill: T.inkSoft }}
               />
             </Bar>
           </BarChart>
@@ -91,29 +91,31 @@ export function IncomeFlow({ result }: { result: BudgetResult }) {
             marginTop: 20,
             paddingTop: 20,
             borderTop: `1px dashed ${T.border}`,
-            fontSize: 13,
+            fontSize: rem(13),
           }}
         >
           <Detail label="FEDERAL INCOME TAX" value={fmt(result.federalTax) + '/yr'}>
             {(result.ctc > 0 || result.eitc > 0) && (
-              <div style={{ fontSize: 11, color: T.positive, marginTop: 2 }}>
+              <div style={{ fontSize: rem(11), color: T.positive, marginTop: 2 }}>
                 Credits: {fmt(result.ctc + result.eitc)} {result.eitc > 0 ? '(CTC+EITC)' : '(CTC)'}
               </div>
             )}
           </Detail>
           <Detail label="STATE + LOCAL" value={fmt(result.stateTax + result.localTax) + '/yr'}>
-            <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>
+            <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 2 }}>
               {result.cityData.state} effective:{' '}
               {fmtPct(result.grossIncome > 0 ? result.stateTax / result.grossIncome : 0)}
             </div>
           </Detail>
           <Detail label="FICA (PAYROLL)" value={fmt(result.fica) + '/yr'}>
-            <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>
+            <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 2 }}>
               SS 6.2% + Medicare 1.45%
             </div>
           </Detail>
           <Detail label="EFFECTIVE TAX RATE" value={fmtPct(effRate)}>
-            <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>Of gross income</div>
+            <div style={{ fontSize: rem(11), color: T.inkMuted, marginTop: 2 }}>
+              Of gross income
+            </div>
           </Detail>
         </div>
       </div>
@@ -132,8 +134,8 @@ function Detail({
 }) {
   return (
     <div>
-      <div style={{ color: T.inkMuted, fontSize: 11, letterSpacing: '0.08em' }}>{label}</div>
-      <div style={{ fontFamily: fonts.mono, fontSize: 16, color: T.ink }}>{value}</div>
+      <div style={{ color: T.inkMuted, fontSize: rem(11), letterSpacing: '0.08em' }}>{label}</div>
+      <div style={{ fontFamily: fonts.mono, fontSize: rem(16), color: T.ink }}>{value}</div>
       {children}
     </div>
   );

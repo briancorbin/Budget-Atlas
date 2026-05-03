@@ -111,7 +111,7 @@ const STATUS_PALETTE: Record<
   broken: {
     color: T.accent,
     short: 'Broken',
-    long: 'URL is currently unreachable (404 / error). Needs a fix in sources.ts paired with a row in reviewed.tsv.',
+    long: 'URL is currently unreachable (404 / error). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
   },
   overdue: {
     color: T.warning,
@@ -219,10 +219,16 @@ export function StatusDot({
  */
 export function ReportFlag({ source }: { source: Source }) {
   const [hover, setHover] = useState(false);
+  // Pre-fill the form's required fields so the reporter lands one step
+  // closer to "submit." `report-date` defaults to today (UTC); the form
+  // copy asks for the day they actually saw the problem, which is
+  // overwhelmingly today — they can edit if it was earlier.
+  const today = new Date().toISOString().slice(0, 10);
   const params = new URLSearchParams({
     template: 'source-report.yml',
     title: `Report: ${source.label}`,
     'source-url': source.url,
+    'report-date': today,
   });
   const href = `${REPO}/issues/new?${params.toString()}`;
   return (

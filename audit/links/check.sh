@@ -110,6 +110,10 @@ echo ""
 echo "→ Hard 404s:"
 awk -F'\t' 'NR>1 && $1=="404" {print "  "$2}' "$OUT" || true
 echo ""
+echo "→ Regenerating audit/links/status.md..."
+node "$DIR/generate-status.mjs"
+
+echo ""
 echo "→ Results: $OUT"
 echo ""
 echo "Status code interpretation:"

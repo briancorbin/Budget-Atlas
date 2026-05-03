@@ -9,7 +9,8 @@
 # Lines starting with # are comments. Keep the format flat — this file is
 # joined into the audit results TSV by audit/links/check.sh.
 #
-# Reviewer can be a name, GitHub handle, or initials — be consistent.
+# Reviewer should be your GitHub username (no @ prefix). Renders as a profile
+# link in audit/links/status.md.
 #
 # url	reviewed_at	reviewed_by	notes
-https://www.hud.gov/hudclips/handbooks/housing-4350-3	2026-05-02	bcorbin	HUD Handbook 4350.3 REV-1, Change 4 (Nov 2013). Confirmed the landing page lists the handbook + chapters; Ch. 3 covers occupancy. Replaces the 404'd /sites/dfiles/OCHCO/documents/4350.3.pdf citation.
+https://www.hud.gov/hudclips/handbooks/housing-4350-3	2026-05-02	briancorbin	HUD Handbook 4350.3 REV-1, Change 4 (Nov 2013). Confirmed the landing page lists the handbook + chapters; Ch. 3 covers occupancy. Replaces the 404'd /sites/dfiles/OCHCO/documents/4350.3.pdf citation.

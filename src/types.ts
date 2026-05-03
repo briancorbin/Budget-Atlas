@@ -199,4 +199,8 @@ export interface Source {
   url: string;
   /** Optional retrieval / publication date in ISO form. */
   date?: string;
+  /** Audit attribution: who added this citation to the registry (handle / name). */
+  addedBy?: string;
+  /** Audit attribution: when this citation was added (YYYY-MM-DD). */
+  addedAt?: string;
 }

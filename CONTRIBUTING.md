@@ -48,6 +48,25 @@ Requires Node 20+. Yarn classic (1.x) is the package manager — install via `br
 
 `src/data/scenarios.ts`. Include a descriptive `label`, the income(s), filing status, city id, kids, and lifestyle. Add `incomeB` if it's a dual-earner scenario.
 
+### Adding a new citation
+
+All citations live in [`src/data/sources.ts`](./src/data/sources.ts) — the single registry. Don't define new `Source` literals outside this file; that defeats the registry and breaks the audit.
+
+When adding a citation, include `addedBy` (your **GitHub username**, no `@` prefix) and `addedAt` (today's date in `YYYY-MM-DD`):
+
+```ts
+'irs-rev-proc-2025-32': {
+  label: 'IRS Rev. Proc. 2025-32',
+  url: 'https://www.irs.gov/pub/irs-drop/rp-25-32.pdf',
+  date: '2025-10-09',
+  tier: 'primary',
+  addedBy: 'your-handle',
+  addedAt: '2026-MM-DD',
+},
+```
+
+These fields don't drive any UI — they're audit-trail metadata that surfaces in [`audit/links/status.md`](./audit/links/status.md). They DON'T change when an existing citation's URL gets updated (the citation is the same; the URL just moved). They DO get filled when a new citation is introduced.
+
 ### Auditing a cited link
 
 The project runs a public link audit because citations rot — agencies reorganize URLs, PDFs disappear, content gets superseded. Anyone can re-run it:

@@ -66,6 +66,7 @@ Manual runs go to the same rolling issue as the weekly cron. Re-running multiple
 - **Escalation when 2× past threshold.** The data is there; not implemented. Would surface as a separate label or a body-level "🚨 critical" section.
 - **Round-robin reviewer assignment.** Skipped while the project has effectively one reviewer. The CODEOWNERS-style dispatcher is straightforward to add when there are multiple maintainers.
 - **HTTP liveness in the staleness signal.** Deliberately separate — the link audit handles "does it load," the staleness audit handles "did anyone verify it." Mixing would let an automated link check launder as a human review.
+- **Per-cell source attribution in data files.** Today the audit tracks which Source objects in `sources.ts` have been verified. It doesn't know which specific data values (e.g. `nyc.rent1 = 4200`) trace back to which Source. Adding a `_sources` map per data row (or a `cite(value, sourceId)` helper) would let the staleness audit go further: when a Source is overdue, automatically flag every cell that cites it for re-verification. Most valuable for aggregate / methodology-driven values (city COL, state min wages, childcare); less valuable for exact-source values (federal tax brackets ← single IRS PDF). Defer until we've worked through 25-50 staleness items and have a feel for which sources are messy / multi-attributed enough to justify the per-cell investment. See conversation in commit history for full design tradeoffs.
 
 ## Resolution path
 

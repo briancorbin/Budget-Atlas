@@ -811,6 +811,8 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
                   </a>
                 </>
               )}
+              {' · '}
+              <ReviewKindPill kind={r.kind} />
             </div>
             {r.notes && (
               <div
@@ -852,6 +854,39 @@ function TierPill({ tier }: { tier: string }) {
       }}
     >
       {tier}
+    </span>
+  );
+}
+
+/**
+ * Compact pill rendering a review's kind — human / ai-assisted / ai-proposed.
+ * Surfaces the level of human involvement honestly: AI assistance is
+ * allowed and visible, not absent and laundered. Same shape as TierPill
+ * for visual consistency.
+ */
+function ReviewKindPill({ kind }: { kind: string }) {
+  const palette: { bg: string; fg: string; label: string } =
+    kind === 'human'
+      ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive, label: 'human' }
+      : kind === 'ai-assisted'
+        ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning, label: 'ai-assisted' }
+        : kind === 'ai-proposed'
+          ? { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent, label: 'ai-proposed' }
+          : { bg: 'rgba(0, 0, 0, 0.06)', fg: T.inkMuted, label: kind };
+  return (
+    <span
+      style={{
+        fontSize: rem(10),
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        fontWeight: 600,
+        background: palette.bg,
+        color: palette.fg,
+        padding: '2px 8px',
+        borderRadius: 2,
+      }}
+    >
+      {palette.label}
     </span>
   );
 }

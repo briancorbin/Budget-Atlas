@@ -91,10 +91,20 @@ Reviews that look AI-generated will be rejected. The submission form has a check
 Whenever you resolve an audit issue (link or review) — append a row to `reviewed.tsv`:
 
 ```
-id<TAB>YYYY-MM-DD<TAB>your-handle<TAB>brief notes
+id<TAB>YYYY-MM-DD<TAB>your-handle<TAB>kind<TAB>brief notes
 ```
 
 `id` is the stable source slug from `src/data/sources.ts` — the outer key in `SOURCES` (e.g. `kff-employer-health-benefits`) or a synthesized `state-${kind}-${code}` for the per-state agency maps (e.g. `state-dor-ca`, `state-snap-tx`). Keying by id rather than URL means review history follows the source through URL changes — when an agency reorganizes a citation's URL, the prior reviews stay attached.
+
+`kind` records what kind of verification happened — see the `reviewed.tsv` header for full definitions. Three values:
+
+- `human` — eyes-on-source, no AI assistance. Strongest evidence.
+- `ai-assisted` — AI helped extract/propose; a human gave it a look-over.
+- `ai-proposed` — AI proposed; human accepted without verification.
+
+The audit makes the level of human involvement transparent, not absent. AI assistance is allowed and useful — the row's `kind` records honestly what kind of review happened. **Community-submitted reviews are `human`-only** (the `audit:report` issue template enforces this with explicit no-AI checkboxes). Maintainer rows can be any kind, marked honestly.
+
+Legacy rows in 4-column format (pre-`kind` schema) parse as `kind=human`.
 
 Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. If the citation was retired, say so. The notes are the audit trail.
 

@@ -25,11 +25,22 @@ import latestResultsTsv from '../../audit/links/results/latest.tsv?raw';
 
 const REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
 
+export type ReviewKind = 'human' | 'ai-assisted' | 'ai-proposed';
+
 export interface Review {
   date: string;
   reviewer: string;
+  /**
+   * What kind of verification this row records. Legacy rows (4-column
+   * format, pre-kind-column) default to `human` since that's what they
+   * were before the schema change. New rows declare it explicitly. See
+   * audit/links/reviewed.tsv header for the full definitions.
+   */
+  kind: ReviewKind;
   notes: string;
 }
+
+const REVIEW_KIND_VALUES: ReadonlySet<string> = new Set(['human', 'ai-assisted', 'ai-proposed']);
 
 /** Status codes that classify a citation as broken in the UI + audit issue. */
 export const BROKEN_STATUS_CODES = new Set(['404', '000', '000ERR', 'ERR', '999']);
@@ -71,10 +82,22 @@ export const REVIEWS = (() => {
   const map = new Map<string, Review[]>();
   for (const line of reviewedTsv.split('\n')) {
     if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
-    const [id, date, reviewer, notes] = line.split('\t');
+    const parts = line.split('\t');
+    const [id, date, reviewer] = parts;
     if (!id) continue;
+    // 4-col legacy: id, date, reviewer, notes — kind defaults to 'human'.
+    // 5-col current: id, date, reviewer, kind, notes.
+    let kind: ReviewKind;
+    let notes: string;
+    if (parts.length >= 5 && REVIEW_KIND_VALUES.has(parts[3])) {
+      kind = parts[3] as ReviewKind;
+      notes = parts[4] ?? '';
+    } else {
+      kind = 'human';
+      notes = parts[3] ?? '';
+    }
     if (!map.has(id)) map.set(id, []);
-    map.get(id)!.push({ date, reviewer, notes: notes ?? '' });
+    map.get(id)!.push({ date, reviewer, kind, notes });
   }
   for (const list of map.values()) {
     list.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));

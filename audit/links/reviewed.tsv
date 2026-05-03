@@ -1,22 +1,17 @@
-# Human review log for cited sources — the unified resolution log.
+# Review log for cited sources — the unified resolution log.
 #
 # Add a row when:
 #
-#   1. You ADD a new entry to src/data/sources.ts. The act of adding a source
-#      presupposes a human verified it; the row here is the proof. Without
-#      this row, the staleness audit will flag the new source as overdue
-#      immediately, by design — forcing the question "did a human actually
-#      open this URL?"
-#   2. You RESOLVE an audit issue (audit:link or audit:report). Whether the
-#      resolution was URL change / data update / removal / "validated as-is,"
-#      one row lands here describing what was done.
-#   3. You DO A PERIODIC REVIEW (maintainer / trusted reviewer sweep) and
-#      have just verified that an existing citation still backs the claim.
+#   1. You ADD a new entry to src/data/sources.ts.
+#   2. You RESOLVE an audit issue (audit:link or audit:report).
+#   3. You DO A PERIODIC REVIEW and verify a citation still backs the claim.
 #
-# A 200 from curl only tells you something loaded — only a human can tell
-# you whether what loaded is still the right document.
+# The audit makes the level of human involvement transparent rather than
+# absent: AI assistance is allowed and useful, especially during active
+# development; the row's `kind` column records honestly what kind of
+# review happened.
 #
-# Format: id \t YYYY-MM-DD \t reviewer \t notes (tab-separated)
+# Format: id \t YYYY-MM-DD \t reviewer \t kind \t notes (tab-separated)
 # Lines starting with # are comments.
 #
 # `id` is the stable source slug from src/data/sources.ts — the outer key
@@ -25,10 +20,23 @@
 # `state-dor-ca`, `state-snap-tx`). Keying by id rather than URL means
 # review history follows the source through URL changes.
 #
+# `kind` records what kind of verification happened:
+#
+#   - `human`        — eyes-on-source, no AI assistance. Strongest evidence.
+#                      Use for community-submitted reviews and any time you
+#                      personally read the destination.
+#   - `ai-assisted`  — AI helped extract or propose; a human gave it a
+#                      look-over. Honest middle ground for active dev work.
+#   - `ai-proposed`  — AI proposed; human accepted without verification.
+#                      The lowest-confidence kind. Showing this in the audit
+#                      is the point — it's signal, not shame.
+#
 # Reviewer should be your GitHub username (no @ prefix). Renders as a
 # profile link in audit/links/status.md.
 #
-# id	reviewed_at	reviewed_by	notes
+# Legacy rows (pre-kind column, 4 fields) parse as kind=`human`.
+#
+# id	reviewed_at	reviewed_by	kind	notes
 hud-handbook-4350-3	2026-05-02	briancorbin	HUD Handbook 4350.3 REV-1, Change 4 (Nov 2013). Confirmed the landing page lists the handbook + chapters; Ch. 3 covers occupancy. Replaces the 404'd /sites/dfiles/OCHCO/documents/4350.3.pdf citation.
 kff-employer-health-benefits	2026-05-03	briancorbin	KFF moved the annual survey to a year-stable series archive. Confirmed the page links to the latest (2025) report with the figures we anchor employer health-insurance employee-share to. Replaces the 404'd /health-costs/report/employer-health-benefits-annual-survey/.
 care-com-childcare	2026-05-03	briancorbin	Care.com renamed the cost-of-care landing page. Confirmed the new URL hosts the current Cost of Care Report with per-metro childcare cost figures. Replaces the 404'd /c/cost-of-childcare/.

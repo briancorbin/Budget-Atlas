@@ -131,14 +131,26 @@ for (const line of readFileSync(latestPath, 'utf8').split('\n').slice(1)) {
 // history follows a citation through URL changes. A source can have
 // multiple reviews; we render the latest in the table and expose the
 // count so multi-verified citations get visual credit.
+// 4-col legacy rows: id, date, reviewer, notes — kind defaults to 'human'.
+// 5-col current: id, date, reviewer, kind, notes.
+const VALID_KINDS = new Set(['human', 'ai-assisted', 'ai-proposed']);
 const reviewsById = new Map();
 try {
   for (const line of readFileSync(REVIEWED_TSV, 'utf8').split('\n')) {
     if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
-    const [id, date, reviewer, notes] = line.split('\t');
+    const parts = line.split('\t');
+    const [id, date, reviewer] = parts;
     if (!id) continue;
+    let kind, notes;
+    if (parts.length >= 5 && VALID_KINDS.has(parts[3])) {
+      kind = parts[3];
+      notes = parts[4] ?? '';
+    } else {
+      kind = 'human';
+      notes = parts[3] ?? '';
+    }
     if (!reviewsById.has(id)) reviewsById.set(id, []);
-    reviewsById.get(id).push({ date, reviewer, notes: notes ?? '' });
+    reviewsById.get(id).push({ date, reviewer, kind, notes });
   }
 } catch {
   // No reviewed.tsv yet — fine.

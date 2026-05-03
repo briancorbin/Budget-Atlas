@@ -13,13 +13,43 @@
  * single page — for now this is the lighter-weight option.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { Cite } from './ui';
 import type { Source } from '@/types';
 import type { ReviewKind } from '@/lib/sourceStatus';
 
+/**
+ * Each lab section gets an entry here. The sidebar reads this list to
+ * build navigation; the main column maps over it to render. Adding a
+ * new iteration topic means adding one row + writing one component.
+ */
+const LAB_SECTIONS: ReadonlyArray<{
+  readonly id: string;
+  readonly nav: string;
+  readonly count: number;
+  readonly Component: React.ComponentType;
+}> = [
+  { id: 'rows', nav: 'Sources row — kind pill', count: 9, Component: SectionRowVariations },
+  { id: 'summary', nav: 'Summary stats', count: 3, Component: SectionSummaryVariations },
+  { id: 'popover', nav: 'Citation popover', count: 3, Component: SectionPopoverVariations },
+  { id: 'tiers', nav: 'Source tier naming', count: 7, Component: SectionTierNaming },
+];
+
 export function DesignLab({ onBack }: { onBack: () => void }) {
+  // Selected section is sourced from the URL hash so deep-linking and the
+  // browser back button work naturally. Default to the first section if
+  // there's no hash or the hash doesn't match a known id.
+  const [selected, setSelected] = useState<string>(() => initialSection());
+
+  useEffect(() => {
+    const onHashChange = () => setSelected(initialSection());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const current = LAB_SECTIONS.find((s) => s.id === selected) ?? LAB_SECTIONS[0];
+
   return (
     <div
       style={{
@@ -30,14 +60,111 @@ export function DesignLab({ onBack }: { onBack: () => void }) {
         padding: '40px 24px 80px',
       }}
     >
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1320, margin: '0 auto' }}>
         <Banner onBack={onBack} />
-        <SectionRowVariations />
-        <SectionSummaryVariations />
-        <SectionPopoverVariations />
-        <SectionTierNaming />
+        <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
+          <Sidebar
+            selected={current.id}
+            onSelect={(id) => {
+              // Update both state and hash — keeps the URL shareable while
+              // avoiding the browser's default jump-to-anchor behaviour
+              // (we'd rather have the section animate in at the top of the
+              // main column than scroll-jump).
+              setSelected(id);
+              window.history.replaceState(null, '', `#${id}`);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+          <main style={{ flex: 1, minWidth: 0 }}>
+            <current.Component />
+          </main>
+        </div>
       </div>
     </div>
+  );
+}
+
+function initialSection(): string {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash.replace(/^#/, '');
+  return LAB_SECTIONS.some((s) => s.id === hash) ? hash : (LAB_SECTIONS[0]?.id ?? '');
+}
+
+/**
+ * Sticky sidebar listing every lab section. Click a row to switch the
+ * main column to that section — only one section renders at a time so
+ * the page stays scoped to whatever iteration topic you're focused on.
+ */
+function Sidebar({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  return (
+    <nav
+      aria-label="Design lab sections"
+      style={{
+        position: 'sticky',
+        top: 24,
+        flexShrink: 0,
+        width: 220,
+        padding: '16px 0',
+        fontSize: rem(13),
+      }}
+    >
+      <div
+        style={{
+          fontSize: rem(10),
+          textTransform: 'uppercase',
+          letterSpacing: '0.18em',
+          color: T.inkMuted,
+          fontWeight: 600,
+          marginBottom: 12,
+          paddingLeft: 12,
+        }}
+      >
+        Sections
+      </div>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {LAB_SECTIONS.map((s) => {
+          const isActive = selected === s.id;
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(s.id)}
+                aria-current={isActive ? 'page' : undefined}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: 8,
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderLeft: isActive ? `2px solid ${T.accent}` : `2px solid ${T.border}`,
+                  background: isActive ? T.bgAlt : 'transparent',
+                  color: isActive ? T.ink : T.inkSoft,
+                  fontFamily: 'inherit',
+                  fontSize: 'inherit',
+                  fontWeight: isActive ? 600 : 400,
+                  lineHeight: 1.3,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>{s.nav}</span>
+                <span
+                  style={{
+                    fontFamily: fonts.mono,
+                    fontSize: rem(10),
+                    color: T.inkMuted,
+                    flexShrink: 0,
+                  }}
+                >
+                  {s.count}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 

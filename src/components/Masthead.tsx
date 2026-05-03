@@ -21,16 +21,29 @@ export function Masthead() {
           gap: 12,
         }}
       >
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: '0.3em',
-            textTransform: 'uppercase',
-            color: T.accent,
-            fontWeight: 600,
-          }}
-        >
-          The Budget Atlas · Vol. 2026
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: T.accent,
+              fontWeight: 600,
+            }}
+          >
+            The Budget Atlas · Vol. 2026
+          </div>
+          <span
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: T.inkMuted,
+              fontWeight: 500,
+            }}
+          >
+            An interactive examination
+          </span>
         </div>
         <nav
           aria-label="Primary"

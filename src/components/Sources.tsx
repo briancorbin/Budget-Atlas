@@ -265,12 +265,17 @@ export function Sources({ onBack }: { onBack: () => void }) {
     >
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
         <Header onBack={onBack} />
-        <Intro />
-        <Summary />
-        <ThresholdsNote />
-        {GROUPS.map((g) => (
-          <GroupSection key={g.title} group={g} />
-        ))}
+        {/* Inner column caps content at editorial measure (~680), left-
+            aligned with the header so the page reads as a single column with
+            a wider header / footer chrome. */}
+        <div style={{ maxWidth: 680 }}>
+          <Intro />
+          <Summary />
+          <ThresholdsNote />
+          {GROUPS.map((g) => (
+            <GroupSection key={g.title} group={g} />
+          ))}
+        </div>
         <Footer onBack={onBack} />
       </div>
     </div>
@@ -390,11 +395,11 @@ function ThresholdsNote() {
         fontSize: 13,
         color: T.inkSoft,
         marginTop: 12,
-        padding: '12px 16px',
+        marginBottom: 48,
+        padding: '16px 24px',
         background: T.surface,
         border: `1px solid ${T.border}`,
         borderRadius: 4,
-        maxWidth: 680,
       }}
     >
       <div
@@ -437,31 +442,36 @@ function ThresholdsNote() {
   );
 }
 
+type StatTone = 'accent' | 'positive' | 'warning' | 'broken';
+interface Stat {
+  label: string;
+  value: number;
+  tone?: StatTone;
+}
+
 function Summary() {
-  const stats: ReadonlyArray<{
-    label: string;
-    value: number;
-    tone?: 'accent' | 'positive' | 'warning' | 'broken';
-  }> = [
+  // Two semantic rows: composition (what's in the registry by class) on top,
+  // current state (how the registry is doing) below. Each row gets four
+  // cells, fits cleanly without auto-fit awkwardness.
+  const composition: ReadonlyArray<Stat> = [
     { label: 'Total cited', value: SUMMARY.total },
     { label: 'Original', value: SUMMARY.original, tone: 'positive' },
     { label: 'Reference', value: SUMMARY.reference },
+    { label: 'Estimate', value: SUMMARY.estimate },
+  ];
+  const state: ReadonlyArray<Stat> = [
+    { label: 'Human-reviewed', value: SUMMARY.reviewed, tone: 'accent' },
     {
       label: 'Verified',
       value: SUMMARY.verified,
       tone: SUMMARY.verified > 0 ? 'positive' : undefined,
     },
-    { label: 'Human-reviewed', value: SUMMARY.reviewed, tone: 'accent' },
     {
       label: 'Overdue',
       value: SUMMARY.overdue,
       tone: SUMMARY.overdue > 0 ? 'warning' : undefined,
     },
-    {
-      label: 'Broken',
-      value: SUMMARY.broken,
-      tone: SUMMARY.broken > 0 ? 'broken' : undefined,
-    },
+    { label: 'Broken', value: SUMMARY.broken, tone: SUMMARY.broken > 0 ? 'broken' : undefined },
   ];
   return (
     <section
@@ -471,47 +481,77 @@ function Summary() {
         background: T.surface,
         border: `1px solid ${T.border}`,
         borderRadius: 4,
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 18,
       }}
     >
-      {stats.map((s) => (
-        <div key={s.label}>
-          <div
-            style={{
-              fontFamily: fonts.display,
-              fontSize: 32,
-              fontWeight: 500,
-              lineHeight: 1,
-              color:
-                s.tone === 'accent'
-                  ? T.accent
-                  : s.tone === 'positive'
-                    ? T.positive
-                    : s.tone === 'warning'
-                      ? T.warning
-                      : s.tone === 'broken'
-                        ? T.accent
-                        : T.ink,
-            }}
-          >
-            {s.value}
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-              color: T.inkMuted,
-              marginTop: 4,
-            }}
-          >
-            {s.label}
-          </div>
-        </div>
-      ))}
+      <StatRow heading="Composition" stats={composition} />
+      <div style={{ height: 1, background: T.border, opacity: 0.6 }} />
+      <StatRow heading="State" stats={state} />
     </section>
+  );
+}
+
+function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Stat> }) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 10,
+          textTransform: 'uppercase',
+          letterSpacing: '0.18em',
+          color: T.inkMuted,
+          fontWeight: 600,
+          marginBottom: 12,
+        }}
+      >
+        {heading}
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 16,
+        }}
+      >
+        {stats.map((s) => (
+          <div key={s.label}>
+            <div
+              style={{
+                fontFamily: fonts.display,
+                fontSize: 32,
+                fontWeight: 500,
+                lineHeight: 1,
+                color:
+                  s.tone === 'accent'
+                    ? T.accent
+                    : s.tone === 'positive'
+                      ? T.positive
+                      : s.tone === 'warning'
+                        ? T.warning
+                        : s.tone === 'broken'
+                          ? T.accent
+                          : T.ink,
+              }}
+            >
+              {s.value}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: T.inkMuted,
+                marginTop: 4,
+              }}
+            >
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

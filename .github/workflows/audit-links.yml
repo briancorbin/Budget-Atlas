@@ -5,6 +5,13 @@ name: Audit links
 # ones (deduped against the existing audit:link issues).
 #
 # Manual runs are also welcome via the "Run workflow" button on the Actions tab.
+#
+# TODO(audit-ci): add a separate `pull_request` workflow that enforces the
+# unified-resolution-log rule — any PR closing an audit:link or audit:review
+# issue (via Closes/Fixes/Resolves #N) must add ≥1 row to
+# audit/links/reviewed.tsv. Defer until either (a) we forget the convention
+# in practice, or (b) someone other than the maintainer files the first
+# audit-resolving PR. See audit/links/README.md "unified resolution log".
 
 on:
   schedule:

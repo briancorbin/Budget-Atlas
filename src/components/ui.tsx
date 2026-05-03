@@ -11,19 +11,24 @@ import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
-import { StatusDot, ReportFlag, getStatusKind, REVIEWS, type StatusKind } from '@/lib/sourceStatus';
+import { StatusDot, ReportFlag, getStatusKind, type StatusKind } from '@/lib/sourceStatus';
 
 /**
  * Roll a list of source statuses up to a single "worst" one. Broken
- * dominates overdue dominates verified — the goal is honest signal
- * (one bad apple drives the rollup), not optimism.
+ * dominates overdue dominates ai-verified dominates verified — the goal
+ * is honest signal (one un-human-vetted apple in the bundle should flag
+ * the bundle), not optimism.
  */
 function worstStatusOf(sources: readonly Source[]): StatusKind {
   let worst: StatusKind = 'verified';
   for (const s of sources) {
     const k = getStatusKind(s);
     if (k === 'broken') return 'broken';
-    if (k === 'overdue') worst = 'overdue';
+    if (k === 'overdue') {
+      worst = 'overdue';
+    } else if (k === 'ai-verified' && worst === 'verified') {
+      worst = 'ai-verified';
+    }
   }
   return worst;
 }
@@ -32,6 +37,7 @@ const STATUS_COLOR: Record<StatusKind, string> = {
   broken: T.accent,
   overdue: T.warning,
   verified: T.positive,
+  'ai-verified': T.positive,
 };
 
 /**
@@ -110,15 +116,21 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
         }}
       >
         {/* Group-status dot mirrors the worst per-row status — broken if any
-            source is unreachable, else overdue if any is stale, else verified.
-            Reader sees an honest health signal without opening the popover. */}
+            source is unreachable, else overdue if any is stale, else
+            ai-verified if any is awaiting a human pass, else verified.
+            Hollow ring for ai-verified mirrors the per-row treatment so the
+            rollup speaks the same visual vocabulary as the rows it summarises. */}
         <span
           style={{
             display: 'inline-block',
             width: 6,
             height: 6,
             borderRadius: '50%',
-            background: STATUS_COLOR[worstStatus],
+            background: worstStatus === 'ai-verified' ? 'transparent' : STATUS_COLOR[worstStatus],
+            boxShadow:
+              worstStatus === 'ai-verified'
+                ? `inset 0 0 0 2px ${STATUS_COLOR[worstStatus]}`
+                : 'none',
             flexShrink: 0,
           }}
         />
@@ -185,16 +197,10 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
                   }}
                 >
                   {s.tier && <TierPill tier={s.tier} />}
-                  {(() => {
-                    // Surface the latest review's kind alongside the tier
-                    // pill so a reader sees at a glance whether the
-                    // citation was eyes-on-source verified vs AI-assisted.
-                    // Skip rendering for `human` (the baseline) to keep
-                    // the popover row uncluttered.
-                    const latestKind = REVIEWS.get(s.id)?.[0]?.kind;
-                    if (!latestKind || latestKind === 'human') return null;
-                    return <PopoverKindPill kind={latestKind} />;
-                  })()}
+                  {/* Provenance (human vs AI review) is conveyed by the
+                      StatusDot rendering: filled green = human-verified,
+                      hollow green ring = AI-reviewed awaiting a human pass.
+                      No separate pill needed. */}
                   {s.date && <span>{s.date}</span>}
                 </div>
               </a>
@@ -257,35 +263,6 @@ function TierPill({ tier }: { tier: string }) {
       }}
     >
       {tier}
-    </span>
-  );
-}
-
-/**
- * Popover-flavored review-kind pill. Same shape as TierPill so the two
- * read as a coordinated pair on a single popover row. Only rendered for
- * non-`human` kinds — `human` is the baseline expectation and showing
- * it would just add noise.
- */
-function PopoverKindPill({ kind }: { kind: 'ai-assisted' | 'ai-proposed' }) {
-  const palette =
-    kind === 'ai-assisted'
-      ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning }
-      : { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent };
-  return (
-    <span
-      style={{
-        fontSize: rem(10),
-        textTransform: 'uppercase',
-        letterSpacing: '0.1em',
-        fontWeight: 600,
-        background: palette.bg,
-        color: palette.fg,
-        padding: '2px 8px',
-        borderRadius: 2,
-      }}
-    >
-      {kind}
     </span>
   );
 }

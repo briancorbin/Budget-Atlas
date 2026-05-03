@@ -5,14 +5,15 @@
  * Intent: see multiple design variations side-by-side for the same data,
  * pick what reads best, then update the production component.
  *
- * Currently scoped to surfacing review `kind` (human / ai-assisted /
- * ai-proposed) on /sources rows, the summary block, and the citation
- * popover. Add new sections as future iteration questions come up.
+ * Currently scoped to surfacing review `kind` (human / ai) on /sources
+ * rows, the summary block, and the citation popover. Add new sections as
+ * future iteration questions come up.
  *
  * Storybook will replace this when the component vocabulary outgrows a
  * single page — for now this is the lighter-weight option.
  */
 
+import { useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { Cite } from './ui';
 import type { Source } from '@/types';
@@ -90,6 +91,7 @@ interface SyntheticRow {
   kind: ReviewKind | 'never';
   reviewedAt: string | null;
   reviewer: string | null;
+  broken?: boolean;
 }
 
 const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
@@ -100,14 +102,14 @@ const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
     reviewer: 'briancorbin',
   },
   {
-    source: makeSrc('lab-original-ai-assisted', 'BLS Consumer Expenditure Survey', 'original'),
-    kind: 'ai-assisted',
+    source: makeSrc('lab-original-ai-1', 'BLS Consumer Expenditure Survey', 'original'),
+    kind: 'ai',
     reviewedAt: '2026-05-03',
     reviewer: 'briancorbin',
   },
   {
-    source: makeSrc('lab-reference-ai-proposed', 'KFF Employer Health Benefits', 'reference'),
-    kind: 'ai-proposed',
+    source: makeSrc('lab-reference-ai-2', 'KFF Employer Health Benefits', 'reference'),
+    kind: 'ai',
     reviewedAt: '2026-05-02',
     reviewer: 'briancorbin',
   },
@@ -122,6 +124,24 @@ const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
     kind: 'human',
     reviewedAt: '2026-05-03',
     reviewer: 'briancorbin',
+  },
+  {
+    source: makeSrc(
+      'lab-reference-broken-human',
+      'Child Care Aware State Fact Sheets',
+      'reference',
+    ),
+    kind: 'human',
+    reviewedAt: '2026-04-10',
+    reviewer: 'briancorbin',
+    broken: true,
+  },
+  {
+    source: makeSrc('lab-reference-broken-ai', 'HUD FMR Archive Page', 'reference'),
+    kind: 'ai',
+    reviewedAt: '2026-04-22',
+    reviewer: 'briancorbin',
+    broken: true,
   },
 ];
 
@@ -167,16 +187,174 @@ function SectionRowVariations() {
       >
         <RowSetV4 />
       </Variation>
+      <Variation
+        title="V5 — Status dot turns blue when AI-only (no human yet)"
+        description="Encodes review provenance into the existing status dot: green = human-verified, blue = AI-reviewed but awaiting a human pass, amber = overdue/never. No extra pill needed."
+      >
+        <RowSetV5 />
+      </Variation>
+      <Variation
+        title="V6 — Hollow green ring when AI-only"
+        description="Same three-color palette. Filled green = human-verified; hollow green ring = AI-reviewed, awaiting a human pass. Says 'same kind of state, just provisional' — and degrades gracefully for colorblind users since shape carries info."
+      >
+        <RowSetV6 />
+      </Variation>
+      <Variation
+        title="V7 — Status dot stays health-only; small AI badge for provenance"
+        description="Dot encodes only URL health + recency (verified/overdue/broken). A separate AI badge flags provenance when a human hasn't reviewed yet. Treats the two axes as orthogonal."
+      >
+        <RowSetV7 />
+      </Variation>
+      <Variation
+        title='V8 — "Reviewed" label says "AI reviewed" or "Human reviewed"'
+        description="No new visual primitives. The verb itself carries the provenance, color-keyed (green = human, blue = AI). Maximum legibility, lowest visual cost — but the metadata line gets longer."
+      >
+        <RowSetV8 />
+      </Variation>
+      <Variation
+        title="V9 — V6 + V8 (hollow ring AND labeled verb)"
+        description="Belt-and-suspenders: hollow green ring for AI-only at the dot, plus the explicit 'AI reviewed' / 'Human reviewed' verb in the metadata line. Two reinforcing signals — redundant if you trust either one alone, robust if you don't."
+      >
+        <RowSetV9 />
+      </Variation>
     </Section>
+  );
+}
+
+const AI_ONLY_BLUE = '#3E5A7A';
+
+type LabStatus = 'verified' | 'overdue' | 'ai-only' | 'broken';
+
+const LAB_STATUS_PALETTE: Record<LabStatus, { color: string; short: string; long: string }> = {
+  verified: {
+    color: T.positive,
+    short: 'Verified',
+    long: 'Loads correctly and has been reviewed by a human within its window.',
+  },
+  overdue: {
+    color: T.warning,
+    short: 'Overdue',
+    long: 'No review within the tier-specific window. Pick this up during a periodic sweep.',
+  },
+  'ai-only': {
+    color: AI_ONLY_BLUE,
+    short: 'AI-reviewed',
+    long: 'Loads correctly and has been reviewed with AI assistance, but a human has not yet given it a pass.',
+  },
+  broken: {
+    color: T.accent,
+    short: 'Broken',
+    long: 'URL is currently unreachable (404 / error). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
+  },
+};
+
+function rowStatus(r: SyntheticRow): LabStatus {
+  if (r.broken) return 'broken';
+  if (r.kind === 'never') return 'overdue';
+  return 'verified';
+}
+
+function rowStatusV5(r: SyntheticRow): LabStatus {
+  if (r.broken) return 'broken';
+  if (r.kind === 'never') return 'overdue';
+  if (r.kind === 'human') return 'verified';
+  return 'ai-only';
+}
+
+function LabStatusDot({
+  status,
+  size = 10,
+  hollow = false,
+}: {
+  status: LabStatus;
+  size?: number;
+  /** When true, render the dot as a ring (filled border only). V6 uses this for `ai-only`. */
+  hollow?: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+  const basePalette = LAB_STATUS_PALETTE[status];
+  // Hollow rendering on a `verified` dot means "AI-reviewed, awaiting human" —
+  // override the tooltip copy so it doesn't falsely claim a human pass.
+  const palette =
+    hollow && status === 'verified'
+      ? {
+          color: basePalette.color,
+          short: 'AI-reviewed',
+          long: 'Loads correctly and has been reviewed with AI assistance, but a human has not yet given it a pass.',
+        }
+      : basePalette;
+  const ringWidth = Math.max(2, Math.round(size / 5));
+  return (
+    <span
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        alignSelf: 'flex-start',
+        marginTop: 5,
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      tabIndex={0}
+      role="img"
+      aria-label={`${palette.short}: ${palette.long}`}
+    >
+      <span
+        style={{
+          display: 'inline-block',
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          background: hollow ? 'transparent' : palette.color,
+          boxShadow: hollow ? `inset 0 0 0 ${ringWidth}px ${palette.color}` : 'none',
+        }}
+      />
+      {hover && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: 0,
+            padding: '8px 12px',
+            background: T.ink,
+            color: T.bg,
+            fontSize: rem(12),
+            fontFamily: fonts.body,
+            lineHeight: 1.4,
+            fontWeight: 400,
+            textTransform: 'none',
+            letterSpacing: '0.01em',
+            borderRadius: 3,
+            whiteSpace: 'normal',
+            width: 'max-content',
+            maxWidth: 'min(260px, calc(100vw - 32px))',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontWeight: 600, color: palette.color }}>{palette.short}</span>
+          <span style={{ color: T.bg }}> — {palette.long}</span>
+        </span>
+      )}
+    </span>
   );
 }
 
 function MockRow({
   children,
   status = 'verified',
+  hollow = false,
+  badge,
 }: {
   children: React.ReactNode;
-  status?: 'verified' | 'overdue';
+  status?: LabStatus;
+  hollow?: boolean;
+  badge?: React.ReactNode;
 }) {
   return (
     <div
@@ -190,26 +368,90 @@ function MockRow({
         borderRadius: 3,
       }}
     >
-      <span
-        style={{
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          background: status === 'verified' ? T.positive : T.warning,
-          flexShrink: 0,
-          marginTop: 5,
-        }}
-      />
+      <LabStatusDot status={status} hollow={hollow} />
+      {badge}
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
     </div>
   );
+}
+
+const AI_BADGE_BLUE = '#3E5A7A';
+
+function AiBadge() {
+  const [hover, setHover] = useState(false);
+  const long =
+    'AI helped propose or extract this entry; a human has not done an independent eyes-on-source pass.';
+  return (
+    <span
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      tabIndex={0}
+      role="img"
+      aria-label={`AI provenance. ${long}`}
+      style={{
+        position: 'relative',
+        alignSelf: 'flex-start',
+        marginTop: 3,
+        fontSize: rem(9),
+        fontFamily: fonts.mono,
+        fontWeight: 700,
+        letterSpacing: '0.05em',
+        padding: '2px 5px',
+        borderRadius: 2,
+        background: AI_BADGE_BLUE,
+        color: T.bg,
+        flexShrink: 0,
+        lineHeight: 1.2,
+      }}
+    >
+      AI
+      {hover && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: 0,
+            padding: '8px 12px',
+            background: T.ink,
+            color: T.bg,
+            fontSize: rem(12),
+            fontFamily: fonts.body,
+            lineHeight: 1.4,
+            fontWeight: 400,
+            textTransform: 'none',
+            letterSpacing: '0.01em',
+            borderRadius: 3,
+            whiteSpace: 'normal',
+            width: 'max-content',
+            maxWidth: 'min(260px, calc(100vw - 32px))',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontWeight: 600, color: AI_BADGE_BLUE }}>AI</span>
+          <span> — {long}</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** V7 dot mapping: provenance lives in the badge, so the dot ignores kind. */
+function rowStatusHealthOnly(r: SyntheticRow): LabStatus {
+  if (r.broken) return 'broken';
+  if (r.kind === 'never') return 'overdue';
+  return 'verified';
 }
 
 function RowSetV1() {
   return (
     <>
       {SYNTHETIC_ROWS.map((r) => (
-        <MockRow key={r.source.id} status={r.kind === 'never' ? 'overdue' : 'verified'}>
+        <MockRow key={r.source.id} status={rowStatus(r)}>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
           <div
             style={{
@@ -246,7 +488,7 @@ function RowSetV2() {
   return (
     <>
       {SYNTHETIC_ROWS.map((r) => (
-        <MockRow key={r.source.id} status={r.kind === 'never' ? 'overdue' : 'verified'}>
+        <MockRow key={r.source.id} status={rowStatus(r)}>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
           <div
             style={{
@@ -281,7 +523,7 @@ function RowSetV3() {
   return (
     <>
       {SYNTHETIC_ROWS.map((r) => (
-        <MockRow key={r.source.id} status={r.kind === 'never' ? 'overdue' : 'verified'}>
+        <MockRow key={r.source.id} status={rowStatus(r)}>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
           <div
             style={{
@@ -315,12 +557,11 @@ function RowSetV3() {
 }
 
 function RowSetV4() {
-  const icon = (k: ReviewKind | 'never') =>
-    k === 'human' ? '👤' : k === 'ai-assisted' ? '🤝' : k === 'ai-proposed' ? '🤖' : '·';
+  const icon = (k: ReviewKind | 'never') => (k === 'human' ? '👤' : k === 'ai' ? '🤖' : '·');
   return (
     <>
       {SYNTHETIC_ROWS.map((r) => (
-        <MockRow key={r.source.id} status={r.kind === 'never' ? 'overdue' : 'verified'}>
+        <MockRow key={r.source.id} status={rowStatus(r)}>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
           <div
             style={{
@@ -347,6 +588,220 @@ function RowSetV4() {
           </div>
         </MockRow>
       ))}
+    </>
+  );
+}
+
+function RowSetV5() {
+  return (
+    <>
+      {SYNTHETIC_ROWS.map((r) => (
+        <MockRow key={r.source.id} status={rowStatusV5(r)}>
+          <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
+          <div
+            style={{
+              fontSize: rem(11),
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: T.inkMuted,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              fontWeight: 600,
+            }}
+          >
+            <Pill
+              bg={tierBg(r.source.tier)}
+              fg={tierFg(r.source.tier)}
+              label={r.source.tier ?? '—'}
+            />
+            <span>
+              Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
+            </span>
+          </div>
+        </MockRow>
+      ))}
+    </>
+  );
+}
+
+function RowSetV6() {
+  return (
+    <>
+      {SYNTHETIC_ROWS.map((r) => {
+        // Health-only dot status; the hollow flag conveys "AI-only" on top.
+        const aiOnly = r.kind === 'ai';
+        const status = rowStatusHealthOnly(r);
+        return (
+          <MockRow
+            key={r.source.id}
+            status={status}
+            // Only hollow when the underlying state is "verified" — broken/overdue
+            // should stay solid so the alert reads loudly.
+            hollow={aiOnly && status === 'verified'}
+          >
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
+            <div
+              style={{
+                fontSize: rem(11),
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: T.inkMuted,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                fontWeight: 600,
+              }}
+            >
+              <Pill
+                bg={tierBg(r.source.tier)}
+                fg={tierFg(r.source.tier)}
+                label={r.source.tier ?? '—'}
+              />
+              <span>
+                Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
+              </span>
+            </div>
+          </MockRow>
+        );
+      })}
+    </>
+  );
+}
+
+function RowSetV7() {
+  return (
+    <>
+      {SYNTHETIC_ROWS.map((r) => {
+        const status = rowStatusHealthOnly(r);
+        const badge = r.kind === 'ai' ? <AiBadge /> : null;
+        return (
+          <MockRow key={r.source.id} status={status} badge={badge}>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
+            <div
+              style={{
+                fontSize: rem(11),
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: T.inkMuted,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                fontWeight: 600,
+              }}
+            >
+              <Pill
+                bg={tierBg(r.source.tier)}
+                fg={tierFg(r.source.tier)}
+                label={r.source.tier ?? '—'}
+              />
+              <span>
+                Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
+              </span>
+            </div>
+          </MockRow>
+        );
+      })}
+    </>
+  );
+}
+
+function RowSetV8() {
+  // "AI REVIEWED" / "HUMAN REVIEWED" prefix on the metadata line itself.
+  const prefix = (k: ReviewKind | 'never'): { text: string; color: string } | null => {
+    if (k === 'never') return null;
+    if (k === 'human') return { text: 'Human reviewed', color: T.positive };
+    return { text: 'AI reviewed', color: AI_BADGE_BLUE };
+  };
+  return (
+    <>
+      {SYNTHETIC_ROWS.map((r) => {
+        const p = prefix(r.kind);
+        return (
+          <MockRow key={r.source.id} status={rowStatusHealthOnly(r)}>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
+            <div
+              style={{
+                fontSize: rem(11),
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: T.inkMuted,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                fontWeight: 600,
+              }}
+            >
+              <Pill
+                bg={tierBg(r.source.tier)}
+                fg={tierFg(r.source.tier)}
+                label={r.source.tier ?? '—'}
+              />
+              <span>
+                {p ? (
+                  <span style={{ color: p.color, fontWeight: 700 }}>{p.text}</span>
+                ) : (
+                  <span>Never reviewed</span>
+                )}{' '}
+                {r.reviewedAt ?? ''} · {r.reviewer ? `@${r.reviewer}` : 'never'}
+              </span>
+            </div>
+          </MockRow>
+        );
+      })}
+    </>
+  );
+}
+
+function RowSetV9() {
+  const prefix = (k: ReviewKind | 'never'): { text: string; color: string } | null => {
+    if (k === 'never') return null;
+    if (k === 'human') return { text: 'Human reviewed', color: T.positive };
+    return { text: 'AI reviewed', color: AI_BADGE_BLUE };
+  };
+  return (
+    <>
+      {SYNTHETIC_ROWS.map((r) => {
+        const aiOnly = r.kind === 'ai';
+        const status = rowStatusHealthOnly(r);
+        const p = prefix(r.kind);
+        return (
+          <MockRow key={r.source.id} status={status} hollow={aiOnly && status === 'verified'}>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>{r.source.label}</div>
+            <div
+              style={{
+                fontSize: rem(11),
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: T.inkMuted,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                fontWeight: 600,
+              }}
+            >
+              <Pill
+                bg={tierBg(r.source.tier)}
+                fg={tierFg(r.source.tier)}
+                label={r.source.tier ?? '—'}
+              />
+              <span>
+                {p ? (
+                  <span style={{ color: p.color, fontWeight: 700 }}>{p.text}</span>
+                ) : (
+                  <span>Never reviewed</span>
+                )}{' '}
+                {r.reviewedAt ?? ''} · {r.reviewer ? `@${r.reviewer}` : 'never'}
+              </span>
+            </div>
+          </MockRow>
+        );
+      })}
     </>
   );
 }
@@ -386,8 +841,7 @@ const FAKE_SUMMARY = {
   reference: 218,
   estimate: 0,
   reviewedHuman: 5,
-  reviewedAiAssisted: 13,
-  reviewedAiProposed: 9,
+  reviewedAi: 22,
   unreviewed: 202,
   verified: 18,
   overdue: 211,
@@ -406,8 +860,7 @@ function SummaryV1() {
       <Divider />
       <StatRow heading="Review kinds">
         <Stat label="Human" value={FAKE_SUMMARY.reviewedHuman} tone="positive" />
-        <Stat label="AI-assisted" value={FAKE_SUMMARY.reviewedAiAssisted} tone="warning" />
-        <Stat label="AI-proposed" value={FAKE_SUMMARY.reviewedAiProposed} tone="accent" />
+        <Stat label="AI" value={FAKE_SUMMARY.reviewedAi} tone="warning" />
         <Stat label="Unreviewed" value={FAKE_SUMMARY.unreviewed} />
       </StatRow>
       <Divider />
@@ -435,8 +888,7 @@ function SummaryV2() {
         <Stat label="Overdue" value={FAKE_SUMMARY.overdue} tone="warning" />
         <Stat label="Broken" value={FAKE_SUMMARY.broken} tone="accent" />
         <Stat label="Human" value={FAKE_SUMMARY.reviewedHuman} tone="positive" small />
-        <Stat label="AI-asst" value={FAKE_SUMMARY.reviewedAiAssisted} tone="warning" small />
-        <Stat label="AI-prop" value={FAKE_SUMMARY.reviewedAiProposed} tone="accent" small />
+        <Stat label="AI" value={FAKE_SUMMARY.reviewedAi} tone="warning" small />
         <Stat label="Unrev" value={FAKE_SUMMARY.unreviewed} small />
       </StatRow>
     </SummaryShell>
@@ -462,31 +914,27 @@ function SummaryV3() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '120px repeat(4, 1fr)',
+          gridTemplateColumns: '120px repeat(3, 1fr)',
           gap: 8,
           fontSize: rem(13),
         }}
       >
         <span></span>
         <Cell label="Human" tone="positive" />
-        <Cell label="AI-asst" tone="warning" />
-        <Cell label="AI-prop" tone="accent" />
+        <Cell label="AI" tone="warning" />
         <Cell label="Unreviewed" />
 
         <RowLabel>Original</RowLabel>
         <Cell label="3" />
         <Cell label="2" />
-        <Cell label="0" />
         <Cell label="6" />
 
         <RowLabel>Reference</RowLabel>
         <Cell label="2" />
-        <Cell label="11" />
-        <Cell label="9" />
+        <Cell label="20" />
         <Cell label="196" />
 
         <RowLabel>Estimate</RowLabel>
-        <Cell label="0" />
         <Cell label="0" />
         <Cell label="0" />
         <Cell label="0" />
@@ -532,7 +980,7 @@ function PopoverMockV2() {
     <PopoverShell>
       {SYNTHETIC_ROWS.map((r, i) => (
         <PopoverRow key={i}>
-          <PopoverDot kind={r.kind} />
+          <PopoverDot row={r} />
           <div style={{ flex: 1 }}>
             <span style={{ color: T.ink }}>{r.source.label}</span>{' '}
             <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
@@ -565,13 +1013,12 @@ function PopoverMockV2() {
 }
 
 function PopoverMockV3() {
-  const code = (k: ReviewKind | 'never') =>
-    k === 'human' ? 'H' : k === 'ai-assisted' ? 'AI' : k === 'ai-proposed' ? 'AI-P' : '—';
+  const code = (k: ReviewKind | 'never') => (k === 'human' ? 'H' : k === 'ai' ? 'AI' : '—');
   return (
     <PopoverShell>
       {SYNTHETIC_ROWS.map((r, i) => (
         <PopoverRow key={i}>
-          <PopoverDot kind={r.kind} />
+          <PopoverDot row={r} />
           <div style={{ flex: 1 }}>
             <span style={{ color: T.ink }}>{r.source.label}</span>{' '}
             <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
@@ -711,14 +1158,12 @@ function tierFg(tier?: string) {
 }
 function kindBg(kind: ReviewKind | 'never') {
   if (kind === 'human') return 'rgba(45, 80, 22, 0.12)';
-  if (kind === 'ai-assisted') return 'rgba(184, 116, 43, 0.18)';
-  if (kind === 'ai-proposed') return 'rgba(166, 38, 28, 0.10)';
+  if (kind === 'ai') return 'rgba(62, 90, 122, 0.16)';
   return 'rgba(0, 0, 0, 0.06)';
 }
 function kindFg(kind: ReviewKind | 'never') {
   if (kind === 'human') return T.positive;
-  if (kind === 'ai-assisted') return T.warning;
-  if (kind === 'ai-proposed') return T.accent;
+  if (kind === 'ai') return T.aiAccent;
   return T.inkMuted;
 }
 
@@ -888,17 +1333,6 @@ function PopoverRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PopoverDot({ kind }: { kind: ReviewKind | 'never' }) {
-  return (
-    <span
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        background: kind === 'never' ? T.warning : T.positive,
-        flexShrink: 0,
-        marginTop: 6,
-      }}
-    />
-  );
+function PopoverDot({ row }: { row: SyntheticRow }) {
+  return <LabStatusDot status={rowStatusV5(row)} size={8} />;
 }

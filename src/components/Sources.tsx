@@ -31,6 +31,7 @@ import {
   STALENESS_DEFAULT_DAYS,
   isBrokenStatus,
   isOverdue,
+  getStatusKind,
   StatusDot,
   type Review,
 } from '@/lib/sourceStatus';
@@ -149,19 +150,17 @@ const SUMMARY = (() => {
   }
   // Split the reviewed count by kind of latest review so the summary
   // honestly reflects the level of human involvement, not just "any
-  // review at all." A source whose only review is `ai-proposed` should
+  // review at all." A source whose only review is AI-flavoured should
   // not be counted next to one with eyes-on-source verification.
   let reviewedHuman = 0;
-  let reviewedAiAssisted = 0;
-  let reviewedAiProposed = 0;
+  let reviewedAi = 0;
   for (const s of ALL_SOURCES) {
     const latest = REVIEWS.get(s.id)?.[0];
     if (!latest) continue;
-    if (latest.kind === 'ai-assisted') reviewedAiAssisted++;
-    else if (latest.kind === 'ai-proposed') reviewedAiProposed++;
+    if (latest.kind === 'ai') reviewedAi++;
     else reviewedHuman++;
   }
-  const reviewed = reviewedHuman + reviewedAiAssisted + reviewedAiProposed;
+  const reviewed = reviewedHuman + reviewedAi;
 
   // Overdue: tier-aware staleness check. Never-reviewed sources count as
   // overdue from day one — the audit's job is to honestly represent how
@@ -199,8 +198,7 @@ const SUMMARY = (() => {
     estimate,
     reviewed,
     reviewedHuman,
-    reviewedAiAssisted,
-    reviewedAiProposed,
+    reviewedAi,
     overdue,
     broken,
     verified,
@@ -399,7 +397,7 @@ function ThresholdsNote() {
   );
 }
 
-type StatTone = 'accent' | 'positive' | 'warning' | 'broken';
+type StatTone = 'accent' | 'positive' | 'warning' | 'broken' | 'ai';
 interface Stat {
   label: string;
   value: number;
@@ -417,14 +415,12 @@ function Summary() {
     { label: 'Estimate', value: SUMMARY.estimate },
   ];
   // Review-kind row: how much of our verification came from eyes-on-source
-  // vs AI-assisted vs AI-proposed. The audit's purpose is honesty about
-  // what's been verified and how — collapsing these into a single
-  // "reviewed" count would launder AI work as the same kind of evidence
-  // as human review.
+  // vs AI. The audit's purpose is honesty about what's been verified and
+  // how — collapsing these into a single "reviewed" count would launder AI
+  // work as the same kind of evidence as human review.
   const reviewKinds: ReadonlyArray<Stat> = [
     { label: 'Human', value: SUMMARY.reviewedHuman, tone: 'positive' },
-    { label: 'AI-assisted', value: SUMMARY.reviewedAiAssisted, tone: 'warning' },
-    { label: 'AI-proposed', value: SUMMARY.reviewedAiProposed, tone: 'accent' },
+    { label: 'AI', value: SUMMARY.reviewedAi, tone: 'ai' },
     { label: 'Unreviewed', value: SUMMARY.total - SUMMARY.reviewed },
   ];
   const state: ReadonlyArray<Stat> = [
@@ -501,7 +497,9 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
                         ? T.warning
                         : s.tone === 'broken'
                           ? T.accent
-                          : T.ink,
+                          : s.tone === 'ai'
+                            ? T.aiAccent
+                            : T.ink,
               }}
             >
               {s.value}
@@ -589,13 +587,7 @@ function SourceRow({ source }: { source: Source }) {
   const reviews = REVIEWS.get(source.id) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
-  const broken = isBrokenStatus(STATUS_BY_URL.get(source.url));
-  const overdue = isOverdue(source);
-  const statusKind: 'broken' | 'overdue' | 'verified' = broken
-    ? 'broken'
-    : overdue
-      ? 'overdue'
-      : 'verified';
+  const statusKind = getStatusKind(source);
 
   // Single-column stacked layout. Title leads (it's the content); metadata
   // strip contextualizes it; URL is the reference / wayfinding; actions
@@ -630,14 +622,7 @@ function SourceRow({ source }: { source: Source }) {
         </a>
       </div>
 
-      <MetaStrip
-        tier={tier}
-        addedBy={source.addedBy ?? null}
-        addedAt={source.addedAt ?? null}
-        addedFallback={source.date ?? null}
-        latestReview={latest ?? null}
-        reviewCount={reviews.length}
-      />
+      <MetaStrip tier={tier} latestReview={latest ?? null} reviewCount={reviews.length} />
 
       <div
         style={{
@@ -672,16 +657,10 @@ function SourceRow({ source }: { source: Source }) {
 
 function MetaStrip({
   tier,
-  addedBy,
-  addedAt,
-  addedFallback,
   latestReview,
   reviewCount,
 }: {
   tier?: string;
-  addedBy: string | null;
-  addedAt: string | null;
-  addedFallback: string | null;
   latestReview: Review | null;
   reviewCount: number;
 }) {
@@ -700,49 +679,52 @@ function MetaStrip({
       }}
     >
       {tier && <TierPill tier={tier} />}
-      {/* Surface the latest review's kind alongside the tier so a reader
-          can scan a row and see at a glance whether the verification was
-          eyes-on-source vs AI-assisted. Skip rendering for `human` to
-          reduce visual noise — human is the baseline expectation. */}
-      {latestReview && latestReview.kind !== 'human' && <ReviewKindPill kind={latestReview.kind} />}
-      <MetaFact label="Added" date={addedAt ?? addedFallback} handle={addedBy} />
-      {latestReview && (
-        <MetaFact
-          label={`Reviewed${reviewCount > 1 ? ` ×${reviewCount}` : ''}`}
-          date={latestReview.date}
-          handle={latestReview.reviewer}
-          tone="positive"
-        />
+      {latestReview ? (
+        <ReviewedFact latestReview={latestReview} reviewCount={reviewCount} />
+      ) : (
+        <span style={{ color: T.inkMuted }}>Never reviewed</span>
       )}
     </div>
   );
 }
 
-function MetaFact({
-  label,
-  date,
-  handle,
-  tone,
+/**
+ * Renders the "Human reviewed" / "AI reviewed" / "Never reviewed" line on a
+ * /sources row. The verb itself carries the provenance of the latest review:
+ *
+ *   - Human reviewed (green) — eyes-on-source, no AI assistance.
+ *   - AI reviewed (blue)     — AI-assisted or AI-proposed.
+ *
+ * This pairs with the hollow-green status dot rendered upstream when the
+ * latest review is AI-only — two reinforcing signals on the same row.
+ */
+function ReviewedFact({
+  latestReview,
+  reviewCount,
 }: {
-  label: string;
-  date: string | null;
-  handle: string | null;
-  tone?: 'positive';
+  latestReview: Review;
+  reviewCount: number;
 }) {
-  if (!date && !handle) return null;
-  const labelColor = tone === 'positive' ? T.positive : T.inkMuted;
+  const isAi = latestReview.kind === 'ai';
+  const verb = isAi ? 'AI reviewed' : 'Human reviewed';
+  const color = isAi ? T.aiAccent : T.positive;
+  const suffix = reviewCount > 1 ? ` ×${reviewCount}` : '';
+  const handle = latestReview.reviewer?.replace(/^@/, '') ?? null;
   return (
     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline' }}>
-      <span style={{ color: labelColor }}>{label}</span>
-      {date && <span style={{ color: T.inkSoft }}>{date}</span>}
+      <span style={{ color, fontWeight: 700 }}>
+        {verb}
+        {suffix}
+      </span>
+      <span style={{ color: T.inkSoft }}>{latestReview.date}</span>
       {handle && (
         <a
-          href={`https://github.com/${handle.replace(/^@/, '')}`}
+          href={`https://github.com/${handle}`}
           target="_blank"
           rel="noreferrer"
           style={{ color: T.accent, textDecoration: 'none' }}
         >
-          @{handle.replace(/^@/, '')}
+          @{handle}
         </a>
       )}
     </span>
@@ -898,20 +880,17 @@ function TierPill({ tier }: { tier: string }) {
 }
 
 /**
- * Compact pill rendering a review's kind — human / ai-assisted / ai-proposed.
- * Surfaces the level of human involvement honestly: AI assistance is
- * allowed and visible, not absent and laundered. Same shape as TierPill
- * for visual consistency.
+ * Compact pill rendering a review's kind — human / ai. Surfaces the level
+ * of human involvement honestly: AI assistance is allowed and visible, not
+ * absent and laundered. Same shape as TierPill for visual consistency.
  */
 function ReviewKindPill({ kind }: { kind: string }) {
   const palette: { bg: string; fg: string; label: string } =
     kind === 'human'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive, label: 'human' }
-      : kind === 'ai-assisted'
-        ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning, label: 'ai-assisted' }
-        : kind === 'ai-proposed'
-          ? { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent, label: 'ai-proposed' }
-          : { bg: 'rgba(0, 0, 0, 0.06)', fg: T.inkMuted, label: kind };
+      : kind === 'ai'
+        ? { bg: 'rgba(62, 90, 122, 0.16)', fg: T.aiAccent, label: 'ai' }
+        : { bg: 'rgba(0, 0, 0, 0.06)', fg: T.inkMuted, label: kind };
   return (
     <span
       style={{

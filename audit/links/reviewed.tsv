@@ -22,14 +22,19 @@
 #
 # `kind` records what kind of verification happened:
 #
-#   - `human`        — eyes-on-source, no AI assistance. Strongest evidence.
-#                      Use for community-submitted reviews and any time you
-#                      personally read the destination.
-#   - `ai-assisted`  — AI helped extract or propose; a human gave it a
-#                      look-over. Honest middle ground for active dev work.
-#   - `ai-proposed`  — AI proposed; human accepted without verification.
-#                      The lowest-confidence kind. Showing this in the audit
-#                      is the point — it's signal, not shame.
+#   - `human` — eyes-on-source, no AI assistance. Use this only when you
+#               personally read the destination and confirmed the cited
+#               figures. Required for community-submitted reviews via the
+#               audit:report issue template.
+#   - `ai`    — AI was involved in proposing, extracting, or refreshing
+#               this entry. Whatever human review followed (a glance, a
+#               careful read, none) is self-reported and unverifiable, so
+#               the kind doesn't try to subdivide. Be honest: if you
+#               weren't eyes-on-source, it's `ai`.
+#
+# An earlier three-state vocabulary (`ai-assisted`, `ai-proposed`) is
+# still accepted by the parser for backwards compatibility — both fold
+# into `ai` at parse time. New rows should use `ai`.
 #
 # Reviewer should be your GitHub username (no @ prefix). Renders as a
 # profile link in audit/links/status.md.

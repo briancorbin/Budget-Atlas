@@ -21,8 +21,13 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => {
     // Migrate legacy hash URLs (#/roadmap, #/about) to clean paths on first
     // load so old bookmarks and shared links still work.
-    if (window.location.hash) {
-      const legacy = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    //
+    // Match only the old hash-route pattern (`#/something`) — modern in-page
+    // anchor hashes like `#tiers` (used by /design-lab to deep-link a
+    // section) must pass through untouched, otherwise they get rewritten to
+    // `/` and the destination page never mounts the right section.
+    if (/^#\//.test(window.location.hash)) {
+      const legacy = window.location.hash.replace(/^#\//, '').toLowerCase();
       const target = legacy === 'roadmap' ? '/roadmap' : legacy === 'about' ? '/about' : '/';
       window.history.replaceState({}, '', target);
     }

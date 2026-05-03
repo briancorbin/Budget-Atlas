@@ -66,12 +66,13 @@ export function DesignLab({ onBack }: { onBack: () => void }) {
           <Sidebar
             selected={current.id}
             onSelect={(id) => {
-              // Update both state and hash — keeps the URL shareable while
-              // avoiding the browser's default jump-to-anchor behaviour
-              // (we'd rather have the section animate in at the top of the
-              // main column than scroll-jump).
+              // Push a new history entry rather than replacing — back/forward
+              // should step through `#rows` → `#summary` → `#tiers` like any
+              // navigation. We bypass the anchor jump-to-element because the
+              // section is rendered as the entire main column, not as a
+              // mid-page anchor; let scrollTo handle the smooth-scroll instead.
               setSelected(id);
-              window.history.replaceState(null, '', `#${id}`);
+              window.history.pushState(null, '', `#${id}`);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
@@ -216,9 +217,9 @@ function Banner({ onBack }: { onBack: () => void }) {
 
 interface SyntheticRow {
   source: Source;
-  kind: ReviewKind | 'never';
-  reviewedAt: string | null;
-  reviewer: string | null;
+  kind: ReviewKind;
+  reviewedAt: string;
+  reviewer: string;
   broken?: boolean;
 }
 
@@ -240,12 +241,6 @@ const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
     kind: 'ai',
     reviewedAt: '2026-05-02',
     reviewer: 'briancorbin',
-  },
-  {
-    source: makeSrc('lab-reference-never', 'Care.com Cost of Care Report', 'reference'),
-    kind: 'never',
-    reviewedAt: null,
-    reviewer: null,
   },
   {
     source: makeSrc('lab-estimate-human', 'BLS CEX Regional Tables', 'estimate'),
@@ -378,13 +373,13 @@ const LAB_STATUS_PALETTE: Record<LabStatus, { color: string; short: string; long
 
 function rowStatus(r: SyntheticRow): LabStatus {
   if (r.broken) return 'broken';
-  if (r.kind === 'never') return 'overdue';
+
   return 'verified';
 }
 
 function rowStatusV5(r: SyntheticRow): LabStatus {
   if (r.broken) return 'broken';
-  if (r.kind === 'never') return 'overdue';
+
   if (r.kind === 'human') return 'verified';
   return 'ai-only';
 }
@@ -571,7 +566,7 @@ function AiBadge() {
 /** V7 dot mapping: provenance lives in the badge, so the dot ignores kind. */
 function rowStatusHealthOnly(r: SyntheticRow): LabStatus {
   if (r.broken) return 'broken';
-  if (r.kind === 'never') return 'overdue';
+
   return 'verified';
 }
 
@@ -599,9 +594,7 @@ function RowSetV1() {
               fg={tierFg(r.source.tier)}
               label={r.source.tier ?? '—'}
             />
-            {r.kind !== 'never' && r.kind !== 'human' && (
-              <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />
-            )}
+            {r.kind !== 'human' && <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />}
             <span>
               Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
             </span>
@@ -636,7 +629,7 @@ function RowSetV2() {
               fg={tierFg(r.source.tier)}
               label={r.source.tier ?? '—'}
             />
-            {r.kind !== 'never' && <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />}
+            <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />
             <span>
               Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
             </span>
@@ -672,10 +665,8 @@ function RowSetV3() {
               label={r.source.tier ?? '—'}
             />
             <span>
-              Reviewed {r.reviewedAt ?? '—'} · {r.reviewer ? `@${r.reviewer}` : 'never'}
-              {r.kind !== 'never' && (
-                <span style={{ color: kindFg(r.kind), marginLeft: 6 }}>· {r.kind}</span>
-              )}
+              Reviewed {r.reviewedAt} · @{r.reviewer}
+              <span style={{ color: kindFg(r.kind), marginLeft: 6 }}>· {r.kind}</span>
             </span>
           </div>
         </MockRow>
@@ -969,8 +960,7 @@ const FAKE_SUMMARY = {
   reference: 218,
   estimate: 0,
   reviewedHuman: 5,
-  reviewedAi: 22,
-  unreviewed: 202,
+  reviewedAi: 224,
   verified: 18,
   overdue: 211,
   broken: 53,
@@ -989,7 +979,6 @@ function SummaryV1() {
       <StatRow heading="Review kinds">
         <Stat label="Human" value={FAKE_SUMMARY.reviewedHuman} tone="positive" />
         <Stat label="AI" value={FAKE_SUMMARY.reviewedAi} tone="warning" />
-        <Stat label="Unreviewed" value={FAKE_SUMMARY.unreviewed} />
       </StatRow>
       <Divider />
       <StatRow heading="State">
@@ -1017,7 +1006,6 @@ function SummaryV2() {
         <Stat label="Broken" value={FAKE_SUMMARY.broken} tone="accent" />
         <Stat label="Human" value={FAKE_SUMMARY.reviewedHuman} tone="positive" small />
         <Stat label="AI" value={FAKE_SUMMARY.reviewedAi} tone="warning" small />
-        <Stat label="Unrev" value={FAKE_SUMMARY.unreviewed} small />
       </StatRow>
     </SummaryShell>
   );
@@ -1042,7 +1030,7 @@ function SummaryV3() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '120px repeat(3, 1fr)',
+          gridTemplateColumns: '120px repeat(2, 1fr)',
           gap: 8,
           fontSize: rem(13),
         }}
@@ -1050,20 +1038,16 @@ function SummaryV3() {
         <span></span>
         <Cell label="Human" tone="positive" />
         <Cell label="AI" tone="warning" />
-        <Cell label="Unreviewed" />
 
         <RowLabel>Original</RowLabel>
         <Cell label="3" />
-        <Cell label="2" />
-        <Cell label="6" />
+        <Cell label="8" />
 
         <RowLabel>Reference</RowLabel>
         <Cell label="2" />
-        <Cell label="20" />
-        <Cell label="196" />
+        <Cell label="216" />
 
         <RowLabel>Estimate</RowLabel>
-        <Cell label="0" />
         <Cell label="0" />
         <Cell label="0" />
       </div>
@@ -1128,10 +1112,8 @@ function PopoverMockV2() {
                 fg={tierFg(r.source.tier)}
                 label={r.source.tier ?? '—'}
               />
-              {r.kind !== 'never' && (
-                <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />
-              )}
-              <span>{r.reviewedAt ?? '—'}</span>
+              <Pill bg={kindBg(r.kind)} fg={kindFg(r.kind)} label={r.kind} />
+              <span>{r.reviewedAt}</span>
             </div>
           </div>
         </PopoverRow>
@@ -1169,7 +1151,7 @@ function PopoverMockV3() {
               <span>
                 <span
                   style={{
-                    color: r.kind === 'never' ? T.inkMuted : kindFg(r.kind),
+                    color: kindFg(r.kind),
                     fontWeight: 700,
                     marginRight: 4,
                   }}

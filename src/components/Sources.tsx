@@ -154,22 +154,24 @@ const SUMMARY = (() => {
   // much human verification has happened, not to soft-start with addedAt
   // as a free pass. See audit/staleness/ for the rolling-issue workflow
   // that surfaces the queue for triage.
+  // Status classifier mirrors `getStatusKind` exactly so the four Status
+  // cells partition every source (sum equals total). Precedence: broken >
+  // overdue > ai-verified > human-verified. Counting broken and overdue
+  // independently would double-count any source that's both, breaking
+  // the row-level totals' agreement with the per-source dot.
+  let humanVerified = 0;
+  let aiVerified = 0;
   let overdue = 0;
   let broken = 0;
   for (const s of ALL_SOURCES) {
-    if (isBrokenStatus(STATUS_BY_URL.get(s.url))) broken++;
-    if (isOverdue(s)) overdue++;
-  }
-
-  // Verified splits by review kind: human-verified (eyes-on-source within
-  // window) vs AI-verified (within window but the latest review was
-  // AI-flavoured, awaiting a human pass). Both require the URL to be live;
-  // broken takes precedence in the per-row classifier.
-  let humanVerified = 0;
-  let aiVerified = 0;
-  for (const s of ALL_SOURCES) {
-    if (isBrokenStatus(STATUS_BY_URL.get(s.url))) continue;
-    if (isOverdue(s)) continue;
+    if (isBrokenStatus(STATUS_BY_URL.get(s.url))) {
+      broken++;
+      continue;
+    }
+    if (isOverdue(s)) {
+      overdue++;
+      continue;
+    }
     const latest = REVIEWS.get(s.id)?.[0];
     if (latest?.kind === 'ai') aiVerified++;
     else humanVerified++;
@@ -536,6 +538,13 @@ function StatCell({ stat }: { stat: Stat }) {
               ? T.aiAccent
               : T.ink;
   const interactive = !!stat.tooltip;
+  // Slugify the label for use in element ids — labels like "Human verified"
+  // would otherwise produce ids with spaces, which are invalid HTML and
+  // break the aria-describedby relationship for assistive tech.
+  const tipId = `stat-tip-${stat.label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}`;
   return (
     <div style={{ position: 'relative' }}>
       <div
@@ -555,7 +564,7 @@ function StatCell({ stat }: { stat: Stat }) {
         onFocus={() => interactive && setHover(true)}
         onBlur={() => setHover(false)}
         tabIndex={interactive ? 0 : -1}
-        aria-describedby={interactive ? `stat-tip-${stat.label}` : undefined}
+        aria-describedby={interactive ? tipId : undefined}
         style={{
           display: 'inline-block',
           fontSize: rem(12),
@@ -572,7 +581,7 @@ function StatCell({ stat }: { stat: Stat }) {
       </span>
       {interactive && hover && stat.tooltip && (
         <span
-          id={`stat-tip-${stat.label}`}
+          id={tipId}
           role="tooltip"
           style={{
             position: 'absolute',
@@ -757,6 +766,12 @@ function MetaStrip({
   reviewCount,
 }: {
   tier?: string;
+  // Hard-stop convention: every source has at least one row in
+  // reviewed.tsv (CI enforces it for new sources, backfill covered the
+  // rest). `latestReview` is therefore non-null in production. We type
+  // it as nullable for defensive compile-time safety only — if it does
+  // somehow arrive null, MetaStrip just renders the tier pill without
+  // metadata, which is loud enough that it'll get noticed in review.
   latestReview: Review | null;
   reviewCount: number;
 }) {
@@ -775,18 +790,14 @@ function MetaStrip({
       }}
     >
       {tier && <TierPill tier={tier} />}
-      {latestReview ? (
-        <ReviewedFact latestReview={latestReview} reviewCount={reviewCount} />
-      ) : (
-        <span style={{ color: T.inkMuted }}>Never reviewed</span>
-      )}
+      {latestReview && <ReviewedFact latestReview={latestReview} reviewCount={reviewCount} />}
     </div>
   );
 }
 
 /**
- * Renders the "Human reviewed" / "AI reviewed" / "Never reviewed" line on a
- * /sources row. The verb itself carries the provenance of the latest review:
+ * Renders the "Human reviewed" / "AI reviewed" line on a /sources row. The
+ * verb itself carries the provenance of the latest review:
  *
  *   - Human reviewed (green) — eyes-on-source, no AI assistance.
  *   - AI reviewed (blue)     — AI-assisted or AI-proposed.

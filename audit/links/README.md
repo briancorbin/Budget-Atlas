@@ -5,7 +5,7 @@ Reproducible audit of every external URL cited from the codebase — does it sti
 ## How it works
 
 1. **`check.sh`** extracts every `http(s)://` URL from [`src/data/sources.ts`](../../src/data/sources.ts) — the citation registry — hits each with curl, and writes a dated TSV to `results/`. Other URLs in the codebase (font CDN preconnects, repo links, build artifacts) aren't checked: only declared citations are auditable, by design.
-2. **`reviewed.tsv`** is the unified resolution log (see below). One row per `URL · date · reviewer · notes` event.
+2. **`reviewed.tsv`** is the unified resolution log (see below). One row per `id · date · reviewer · notes` event — keyed by stable source slug, not URL, so review history follows a citation across URL changes.
 3. **`results/<date>.tsv`** captures the union: machine status (does it load?) + human review state (did someone verify the content?).
 
 A `200 OK` from curl only tells us _something_ loaded. Only a human can tell us whether the loaded page still cites the document we built the model around. Both columns matter.
@@ -50,7 +50,7 @@ Worked examples:
 | **Validated as-is**                       | Append row to `reviewed.tsv` with notes confirming the page still cites the claim. No other file changes.                                                                                                                                                                                      |
 | **URL moved, content unchanged**          | Edit `sources.ts` (URL string only) + append row to `reviewed.tsv` noting "URL was moved; content unchanged."                                                                                                                                                                                  |
 | **Document revised, data needs updating** | Edit the data file with the new numbers + edit `sources.ts` if the citation date changes + append row noting what was updated.                                                                                                                                                                 |
-| **Citation no longer backs the claim**    | Remove the entry from `sources.ts` (and any data point that depended on it) + append row noting "Citation no longer backs the claim; removed from registry." The historical row stays in `reviewed.tsv` as audit trail; it won't render on `/sources` since the URL is gone, which is correct. |
+| **Citation no longer backs the claim**    | Remove the entry from `sources.ts` (and any data point that depended on it) + append row noting "Citation no longer backs the claim; removed from registry." The historical row stays in `reviewed.tsv` as audit trail; it won't render on `/sources` since no source has that id anymore, which is correct. |
 
 The PR that lands the resolution should `Closes #N` to auto-close the originating issue.
 
@@ -91,8 +91,10 @@ Reviews that look AI-generated will be rejected. The submission form has a check
 Whenever you resolve an audit issue (link or review) — append a row to `reviewed.tsv`:
 
 ```
-url<TAB>YYYY-MM-DD<TAB>your-handle<TAB>brief notes
+id<TAB>YYYY-MM-DD<TAB>your-handle<TAB>brief notes
 ```
+
+`id` is the stable source slug from `src/data/sources.ts` — the outer key in `SOURCES` (e.g. `kff-employer-health-benefits`) or a synthesized `state-${kind}-${code}` for the per-state agency maps (e.g. `state-dor-ca`, `state-snap-tx`). Keying by id rather than URL means review history follows the source through URL changes — when an agency reorganizes a citation's URL, the prior reviews stay attached.
 
 Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. If the citation was retired, say so. The notes are the audit trail.
 

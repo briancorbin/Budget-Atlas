@@ -11,6 +11,7 @@ import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
+import { StatusDot, ReportFlag, getStatusKind } from '@/lib/sourceStatus';
 
 /**
  * Editorial citation pill. Renders a small uppercase "SRC" badge in the
@@ -110,35 +111,50 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
           }}
         >
           {sources.map((s, i) => (
-            <a
+            <div
               key={i}
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
               style={{
-                display: 'block',
-                padding: '6px 14px',
-                color: T.ink,
-                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+                padding: '6px 10px 6px 14px',
                 lineHeight: 1.4,
               }}
-              onMouseDown={(e) => e.stopPropagation()}
             >
-              <span>{s.label}</span> <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
-              <div
+              <span style={{ paddingTop: 4 }}>
+                <StatusDot kind={getStatusKind(s)} size={8} />
+              </span>
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                onMouseDown={(e) => e.stopPropagation()}
                 style={{
-                  fontSize: rem(11),
-                  color: T.inkMuted,
-                  marginTop: 2,
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
+                  flex: 1,
+                  minWidth: 0,
+                  color: T.ink,
+                  textDecoration: 'none',
                 }}
               >
-                {s.tier && <TierPill tier={s.tier} />}
-                {s.date && <span>{s.date}</span>}
-              </div>
-            </a>
+                <span>{s.label}</span>{' '}
+                <span style={{ color: T.accent, fontWeight: 600 }}>↗</span>
+                <div
+                  style={{
+                    fontSize: rem(11),
+                    color: T.inkMuted,
+                    marginTop: 2,
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {s.tier && <TierPill tier={s.tier} />}
+                  {s.date && <span>{s.date}</span>}
+                </div>
+              </a>
+              <ReportFlag source={s} />
+            </div>
           ))}
           <a
             href="/sources"

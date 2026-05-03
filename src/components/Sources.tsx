@@ -416,9 +416,10 @@ function SourceRow({ source }: { source: Source }) {
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
 
-  // Single-column stacked layout. Metadata strip up top, title + URL in the
-  // middle, actions (review log, submit button) below — review expansion
-  // gets the full row width without escaping a grid cell.
+  // Single-column stacked layout. Title leads (it's the content); metadata
+  // strip contextualizes it; URL is the reference / wayfinding; actions
+  // (review log, submit button) live at the bottom. Review expansion gets
+  // the full row width without escaping a grid cell.
   return (
     <li
       style={{
@@ -429,6 +430,23 @@ function SourceRow({ source }: { source: Source }) {
         gap: 10,
       }}
     >
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          color: T.ink,
+          textDecoration: 'none',
+          borderBottom: `1px solid ${T.border}`,
+          fontSize: 16,
+          fontWeight: 500,
+          lineHeight: 1.35,
+          alignSelf: 'flex-start',
+        }}
+      >
+        {source.label}
+      </a>
+
       <MetaStrip
         tier={tier}
         addedBy={source.addedBy ?? null}
@@ -438,33 +456,15 @@ function SourceRow({ source }: { source: Source }) {
         reviewCount={reviews.length}
       />
 
-      <div>
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            color: T.ink,
-            textDecoration: 'none',
-            borderBottom: `1px solid ${T.border}`,
-            fontSize: 16,
-            fontWeight: 500,
-            lineHeight: 1.35,
-          }}
-        >
-          {source.label}
-        </a>
-        <div
-          style={{
-            fontFamily: fonts.mono,
-            fontSize: 11,
-            color: T.inkMuted,
-            marginTop: 6,
-            wordBreak: 'break-all',
-          }}
-        >
-          {source.url}
-        </div>
+      <div
+        style={{
+          fontFamily: fonts.mono,
+          fontSize: 11,
+          color: T.inkMuted,
+          wordBreak: 'break-all',
+        }}
+      >
+        {source.url}
       </div>
 
       <div

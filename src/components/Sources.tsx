@@ -314,7 +314,7 @@ function Header({ onBack }: { onBack: () => void }) {
           onBack();
         }}
         style={{
-          fontSize: 11,
+          fontSize: 12,
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: T.inkSoft,
@@ -404,7 +404,7 @@ function ThresholdsNote() {
     >
       <div
         style={{
-          fontSize: 11,
+          fontSize: 12,
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           color: T.inkMuted,
@@ -539,7 +539,7 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
             </div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 textTransform: 'uppercase',
                 letterSpacing: '0.12em',
                 color: T.inkMuted,
@@ -673,7 +673,7 @@ function SourceRow({ source }: { source: Source }) {
       <div
         style={{
           fontFamily: fonts.mono,
-          fontSize: 11,
+          fontSize: 12,
           color: T.inkMuted,
           wordBreak: 'break-all',
         }}
@@ -723,7 +723,7 @@ function MetaStrip({
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '6px 14px',
-        fontSize: 11,
+        fontSize: 12,
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         color: T.inkMuted,
@@ -878,7 +878,7 @@ function ReportProblemLink({ source }: { source: Source }) {
       target="_blank"
       rel="noreferrer"
       style={{
-        fontSize: 11,
+        fontSize: 12,
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         fontWeight: 600,
@@ -911,7 +911,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
           cursor: 'pointer',
           listStyle: 'none',
           color: T.positive,
-          fontSize: 11,
+          fontSize: 12,
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           fontWeight: 600,
@@ -937,7 +937,7 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
           <li key={`${r.date}-${r.reviewer}-${i}`} style={{ marginBottom: 12 }}>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 color: T.inkMuted,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',

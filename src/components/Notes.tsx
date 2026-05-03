@@ -4,6 +4,7 @@ import { fmt } from '@/lib/format';
 import { FEDERAL_TAX_SOURCE, SS_WAGE_BASE_SOURCE, STD_DEDUCTION_2026 } from '@/data/federalTax';
 import { STATE_TAX_SOURCE, STATE_MIN_WAGE_SOURCE } from '@/data/states';
 import { CITY_COL_SOURCES } from '@/data/cities';
+import { PageSources } from './ui';
 
 function buildFooterSources(stateSource?: Source): readonly Source[] {
   return [
@@ -127,38 +128,7 @@ export function Notes({
         ))}
       </div>
 
-      <div
-        style={{
-          marginTop: 40,
-          paddingTop: 20,
-          borderTop: `2px solid ${T.ink}`,
-          textAlign: 'center',
-          fontSize: 11,
-          color: T.inkMuted,
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          lineHeight: 1.9,
-        }}
-      >
-        Sources ·{' '}
-        {footerSources.map((s, i) => (
-          <span key={i}>
-            <a
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: T.inkMuted,
-                textDecoration: 'underline',
-                textDecorationStyle: 'dotted',
-              }}
-            >
-              {s.label}
-            </a>
-            {i < footerSources.length - 1 && ' · '}
-          </span>
-        ))}
-      </div>
+      <PageSources sources={footerSources} heading="Sources backing this calculation" />
     </>
   );
 }

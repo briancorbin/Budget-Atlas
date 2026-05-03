@@ -50,7 +50,8 @@ When making changes that touch tax math, sanity-check with a quick mental exampl
 - **Keep components small**. The `BudgetExplorer` is the orchestrator; everything else is a section that takes a `BudgetResult` (and maybe input setters) and renders.
 - **Inline styles use theme tokens** from `src/theme.ts`. Don't hard-code colors.
 - **Money is formatted through `fmt` / `fmtSigned`**. Don't `toString()` a dollar amount and add `$`.
-- **Cite all data**. Every numeric value the model displays must trace to a `Source` constant living in the same data file (e.g. `FEDERAL_TAX_SOURCE`, `STATE_TAX_SOURCE`, `CITY_COL_SOURCES`). Use the `<Cite>` component for inline indicators. The README's Sources section is the canonical master list. When adding new data — a new tax year, a new city, a new feature with new numbers like 401k limits — fetch the source at the same time. Don't ship "round numbers I made up". If a value is genuinely an approximation, label it as such honestly rather than fake-citing.
+- **Cite all data**. Every numeric value the model displays must trace to a `Source` constant. All sources live in the central registry at `src/data/sources.ts` — don't define `Source` literals elsewhere. Use the `<Cite>` component for inline indicators. When adding new data — a new tax year, a new city, a new feature with new numbers like 401k limits — fetch the source at the same time. Don't ship "round numbers I made up". If a value is genuinely an approximation, label it as such honestly rather than fake-citing.
+- **Every data-driven page renders `<PageSources>`** at the bottom. It's the reusable footer that lists "Sources backing this view" + the dotted-underline citation list + a link to the full bibliography on `/sources`. Pass it the array of `Source` objects relevant to that page. Exception: the `/sources` page itself, which IS the bibliography.
 
 ## Adding a new city
 

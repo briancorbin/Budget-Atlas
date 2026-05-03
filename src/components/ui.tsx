@@ -9,6 +9,8 @@ import type { TooltipContentProps } from 'recharts';
 import type { Source } from '@/types';
 import { theme as T, fonts } from '@/theme';
 import { fmt } from '@/lib/format';
+import { navigate } from '@/lib/nav';
+import { ALL_SOURCES } from '@/data/sources';
 
 /**
  * Editorial citation pill. Renders a small uppercase "SRC" badge in the
@@ -475,6 +477,105 @@ export function SectionTitle({ children, kicker }: { children: ReactNode; kicker
         }}
       >
         {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Page-footer "sources backing this view" block. Pages that display data
+ * derived from cited sources should render this at the bottom — it gives
+ * readers the citation slip for what they just read AND points at the full
+ * bibliography on `/sources` for the broader registry.
+ *
+ * The discipline this enforces:
+ *   - Every data-driven page lists its citations in one consistent place.
+ *   - The full-bibliography link is always there, with the live count.
+ *   - When a citation moves (URL update in `sources.ts`), the page footer
+ *     reflects it automatically — no per-page maintenance.
+ *
+ * Don't render this on `/sources` itself (the whole page IS the bibliography).
+ */
+export function PageSources({
+  sources,
+  heading = 'Sources cited on this page',
+}: {
+  sources: readonly Source[];
+  heading?: string;
+}) {
+  if (sources.length === 0) return null;
+  return (
+    <div
+      style={{
+        marginTop: 40,
+        paddingTop: 20,
+        borderTop: `2px solid ${T.ink}`,
+        textAlign: 'center',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: T.accent,
+          fontWeight: 600,
+          marginBottom: 12,
+        }}
+      >
+        {heading}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: T.inkMuted,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          lineHeight: 1.9,
+        }}
+      >
+        {sources.map((s, i) => (
+          <span key={`${s.url}-${i}`}>
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: T.inkMuted,
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted',
+              }}
+            >
+              {s.label}
+            </a>
+            {i < sources.length - 1 && ' · '}
+          </span>
+        ))}
+      </div>
+      <div
+        style={{
+          marginTop: 18,
+          fontSize: 11,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+        }}
+      >
+        <a
+          href="/sources"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/sources');
+          }}
+          style={{
+            color: T.accent,
+            textDecoration: 'none',
+            fontWeight: 600,
+            borderBottom: `1px solid ${T.border}`,
+            paddingBottom: 2,
+          }}
+        >
+          → Full bibliography · {ALL_SOURCES.length} cited sources
+        </a>
       </div>
     </div>
   );

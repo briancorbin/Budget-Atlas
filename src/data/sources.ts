@@ -251,8 +251,8 @@ export const SOURCES = {
 
 export type SourceId = keyof typeof SOURCES;
 
-/** All non-state-keyed sources as a flat array — useful for iteration. */
-export const ALL_SOURCES: readonly Source[] = Object.values(SOURCES);
+/** Cross-cutting (non-state-keyed) sources as a flat array. */
+export const FLAT_SOURCES: readonly Source[] = Object.values(SOURCES);
 
 // ── Per-state Department of Revenue / Taxation ─────────────────────────
 /**
@@ -1921,3 +1921,16 @@ export const STATE_CHIP_AGENCY: Record<StateCode, Source> = {
     addedAt: '2026-05-02',
   },
 };
+
+/**
+ * Every citation in the registry as a flat array — cross-cutting + per-state.
+ * Used by the audit, the /sources page, and the `<PageSources>` footer (for
+ * the total bibliography count).
+ */
+export const ALL_SOURCES: readonly Source[] = [
+  ...FLAT_SOURCES,
+  ...Object.values(STATE_DOR),
+  ...Object.values(STATE_SNAP_AGENCY),
+  ...Object.values(STATE_MEDICAID_AGENCY),
+  ...Object.values(STATE_CHIP_AGENCY),
+];

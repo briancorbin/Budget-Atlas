@@ -61,10 +61,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          # `cache: 'yarn'` only works after yarn install runs once; the
-          # cache key is yarn.lock-derived. Speeds up subsequent jobs in
-          # this matrix run and across PRs.
-          cache: yarn
+          # No `cache: 'yarn'` here: setup-node calls `yarn cache dir`
+          # before our Corepack-enable step, but the runner's bundled
+          # Yarn 1.x refuses to run because package.json declares
+          # packageManager: yarn@4. Caching can be reintroduced via a
+          # separate actions/cache@v4 step after Corepack is enabled —
+          # not worth the complexity for now.
 
       - name: Enable Corepack (Yarn 4)
         run: corepack enable

@@ -37,11 +37,18 @@ export function Privacy({ onBack }: { onBack: () => void }) {
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
         <Header onBack={onBack} />
         <Intro />
+        <LastUpdated />
         <NoBackend />
         <Analytics />
         <NoCookiesNoStorage />
         <ExternalLinks />
         <HostingNote />
+        <Fonts />
+        <DntGpc />
+        <NoEmbeds />
+        <ChildrensPrivacy />
+        <NoDataToReturn />
+        <SecurityDisclosure />
         <FuturePromise />
         <Contact />
         <Footer onBack={onBack} />
@@ -427,6 +434,150 @@ function Contact() {
       </p>
       <p style={{ ...proseStyle, color: T.inkMuted, fontSize: rem(14) }}>
         This isn't a legal document. It's a plain-English description of how the site works today.
+      </p>
+    </section>
+  );
+}
+
+function LastUpdated() {
+  // Static "last meaningful update" date. Update when this page changes
+  // in a way that affects what we collect or how data flows. Cosmetic
+  // edits don't require bumping this.
+  return (
+    <div
+      style={{
+        fontSize: rem(12),
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: T.inkMuted,
+        marginBottom: 32,
+        fontWeight: 500,
+      }}
+    >
+      Last updated: 2026-05-04
+    </div>
+  );
+}
+
+function Fonts() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="Typography">Fonts are self-hosted</SectionTitle>
+      <p style={proseStyle}>
+        The site uses Fraunces (display) and IBM Plex Sans / IBM Plex Mono (body and code), both
+        bundled directly with the site via{' '}
+        <a href="https://fontsource.org/" target="_blank" rel="noreferrer" style={linkStyle}>
+          Fontsource
+        </a>
+        . The fonts are served from our own bundle on Cloudflare's edge — they are{' '}
+        <strong style={{ color: T.ink }}>not loaded from Google Fonts</strong> or any third-party
+        font CDN. That means Google (or any other font provider) never sees your IP address or
+        user-agent when you load the page.
+      </p>
+    </section>
+  );
+}
+
+function DntGpc() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="Privacy signals">DNT and Global Privacy Control</SectionTitle>
+      <p style={proseStyle}>
+        Cloudflare Web Analytics{' '}
+        <a
+          href="https://developers.cloudflare.com/web-analytics/"
+          target="_blank"
+          rel="noreferrer"
+          style={linkStyle}
+        >
+          honors
+        </a>{' '}
+        the{' '}
+        <a
+          href="https://globalprivacycontrol.org/"
+          target="_blank"
+          rel="noreferrer"
+          style={linkStyle}
+        >
+          Global Privacy Control (GPC)
+        </a>{' '}
+        signal: if your browser sends GPC, the analytics beacon respects it. We don't override that
+        behavior, and we don't have any of our own tracking that would ignore it. The same applies
+        in spirit to the older Do Not Track (DNT) header — we don't collect anything beyond what
+        CFWA does, and CFWA itself is already cookieless and IP-anonymized.
+      </p>
+    </section>
+  );
+}
+
+function NoEmbeds() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="No third-party widgets">No embeds, no widgets, no pixels</SectionTitle>
+      <p style={proseStyle}>
+        The site has no embedded YouTube videos, Twitter/X widgets, Disqus or other comment systems,
+        social-media share buttons, chat widgets, livechat tools, customer-support beacons, A/B
+        testing scripts, marketing pixels, or any other third-party content that would phone home as
+        part of a normal page load. The only third-party request the page makes is the Cloudflare
+        Web Analytics beacon described in the section above.
+      </p>
+    </section>
+  );
+}
+
+function ChildrensPrivacy() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="Children">Children's privacy</SectionTitle>
+      <p style={proseStyle}>
+        The site isn't directed at children under 13, and we don't knowingly collect personal
+        information from anyone of any age — there's nothing to collect, by design. If you have any
+        concerns about a young user's interaction with the site, get in touch using the contact
+        below.
+      </p>
+    </section>
+  );
+}
+
+function NoDataToReturn() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="Your rights">Nothing to return, nothing to delete</SectionTitle>
+      <p style={proseStyle}>
+        Privacy laws in California (CCPA/CPRA), the EU (GDPR), and similar regimes elsewhere give
+        you the right to request a copy of personal data a business holds about you, the right to
+        have it corrected, and the right to have it deleted. We hold{' '}
+        <strong style={{ color: T.ink }}>no personal data about you</strong>: no account, no email,
+        no profile, no behavioral history, no contact list, nothing tied to a person. So a request
+        to access, correct, port, or delete your data is one we can honor immediately and trivially
+        — by confirming there is nothing to act on. If you'd still like that confirmation in
+        writing, ask using the contact below.
+      </p>
+    </section>
+  );
+}
+
+function SecurityDisclosure() {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <SectionTitle kicker="Security">Reporting a vulnerability</SectionTitle>
+      <p style={proseStyle}>
+        If you find a security issue that could affect anyone using the site — cross-site-scripting,
+        a leak in the build pipeline, a third-party script we missed, a misconfigured CDN — please
+        report it privately rather than opening a public GitHub issue. Email{' '}
+        <a href="mailto:security@thebudgetatlas.com" style={linkStyle}>
+          security@thebudgetatlas.com
+        </a>{' '}
+        or open a private security advisory at{' '}
+        <a
+          href={`${GITHUB_URL}/security/advisories/new`}
+          target="_blank"
+          rel="noreferrer"
+          style={linkStyle}
+        >
+          github.com/TheBudgetAtlas/thebudgetatlas/security/advisories
+        </a>
+        . We'll respond and patch as quickly as possible.
       </p>
     </section>
   );

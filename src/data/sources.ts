@@ -213,7 +213,7 @@ const RAW_SOURCES = {
   'hhs-poverty-guidelines': {
     label: 'HHS Poverty Guidelines',
     url: 'https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines',
-    date: '2025',
+    date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
     addedAt: '2026-05-02',

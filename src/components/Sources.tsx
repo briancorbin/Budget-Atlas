@@ -754,7 +754,7 @@ function SourceRow({ source }: { source: Source }) {
         </a>
       </div>
 
-      <MetaStrip tier={tier} latestReview={latest ?? null} reviewCount={reviews.length} />
+      <MetaStrip tier={tier} latestReview={latest ?? null} />
 
       <div
         style={{
@@ -790,7 +790,6 @@ function SourceRow({ source }: { source: Source }) {
 function MetaStrip({
   tier,
   latestReview,
-  reviewCount,
 }: {
   tier?: string;
   // Hard-stop convention: every source has at least one row in
@@ -800,7 +799,6 @@ function MetaStrip({
   // somehow arrive null, MetaStrip just renders the tier pill without
   // metadata, which is loud enough that it'll get noticed in review.
   latestReview: Review | null;
-  reviewCount: number;
 }) {
   return (
     <div
@@ -817,7 +815,7 @@ function MetaStrip({
       }}
     >
       {tier && <TierPill tier={tier} />}
-      {latestReview && <ReviewedFact latestReview={latestReview} reviewCount={reviewCount} />}
+      {latestReview && <ReviewedFact latestReview={latestReview} />}
     </div>
   );
 }
@@ -832,24 +830,14 @@ function MetaStrip({
  * This pairs with the hollow-green status dot rendered upstream when the
  * latest review is AI-only — two reinforcing signals on the same row.
  */
-function ReviewedFact({
-  latestReview,
-  reviewCount,
-}: {
-  latestReview: Review;
-  reviewCount: number;
-}) {
+function ReviewedFact({ latestReview }: { latestReview: Review }) {
   const isAi = latestReview.kind === 'ai';
   const verb = isAi ? 'AI reviewed' : 'Human reviewed';
   const color = isAi ? T.aiAccent : T.positive;
-  const suffix = reviewCount > 1 ? ` ×${reviewCount}` : '';
   const handle = latestReview.reviewer?.replace(/^@/, '') ?? null;
   return (
     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline' }}>
-      <span style={{ color, fontWeight: 700 }}>
-        {verb}
-        {suffix}
-      </span>
+      <span style={{ color, fontWeight: 700 }}>{verb}</span>
       <span style={{ color: T.inkSoft }}>{latestReview.date}</span>
       {handle && (
         <a

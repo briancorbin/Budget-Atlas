@@ -207,6 +207,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'Add an "I own" toggle that swaps rent for full PITI plus HOA and a 1%/yr maintenance reserve. State-specific property tax (TX ~1.6%, NJ ~2.2%, HI ~0.3%). Owning often looks cheaper monthly until you net out maintenance and the down-payment opportunity cost.',
   },
+  {
+    id: 22,
+    title: 'Guided assistance for applying to benefit programs',
+    category: 'Benefits & safety net',
+    status: 'planned',
+    summary:
+      'When the model says a household qualifies for SNAP / Medicaid / CHIP / EITC, the next question is "so how do I actually apply?" Today the page links to the state agency landing and stops there. A guided flow could surface the application form, the documents needed, the benefits portal URL for that specific state, and (where possible) the income/eligibility pre-check the agency runs — turning "you qualify" into "here\'s the next step," without leaving the page.',
+  },
 ];
 
 /**

@@ -391,7 +391,7 @@ function HostingNote() {
         <li style={{ marginBottom: 6 }}>
           No{' '}
           <a
-            href="https://developers.cloudflare.com/rum/"
+            href="https://developers.cloudflare.com/speed/observatory/rum-beacon/"
             target="_blank"
             rel="noreferrer"
             style={linkStyle}

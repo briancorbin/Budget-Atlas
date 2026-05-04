@@ -162,9 +162,11 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 15,
     title: 'Community suggestions & contributions',
     category: 'Sharing',
-    status: 'planned',
+    status: 'in-progress',
+    startedAt: '2026-05-04',
+    progress: 20,
     summary:
-      'A lightweight path for visitors to suggest roadmap items, flag bad data, or contribute fixes without needing a GitHub account. Likely a "Suggest an idea" form that opens a pre-filled issue, plus clear CONTRIBUTING docs.',
+      'A lightweight path for visitors to suggest roadmap items, flag bad data, or contribute fixes without needing a GitHub account. Likely a "Suggest an idea" form that opens a pre-filled issue, plus clear CONTRIBUTING docs. Bad-data flagging shipped via the audit:report issue template; suggestion form + ungated contribution path remain.',
   },
   {
     id: 14,

@@ -396,9 +396,11 @@ function FuturePromise() {
       <SectionTitle kicker="If anything changes">A promise about the future</SectionTitle>
       <p style={proseStyle}>
         If we ever add anything that changes the picture above — <em>any</em> backend feature,{' '}
-        <em>any</em> analytics, <em>any</em> account or login, <em>any</em> data leaving your
-        browser — <strong style={{ color: T.ink }}>this page changes first</strong>, before the
-        feature ships. We'll be loud and explicit about it: a banner on the page, an entry in the{' '}
+        <em>any</em> additional analytics or telemetry beyond the cookieless aggregate Web Analytics
+        already documented above, <em>any</em> account or login, <em>any</em> new category of data
+        leaving your browser — <strong style={{ color: T.ink }}>this page changes first</strong>,
+        before the feature ships. We'll be loud and explicit about it: a banner on the page, an
+        entry in the{' '}
         <a
           href="/roadmap"
           onClick={(e) => {

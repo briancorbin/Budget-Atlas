@@ -989,10 +989,9 @@ function ReviewLog({ reviews }: { reviews: readonly Review[] }) {
 }
 
 function TierPill({ tier }: { tier: string }) {
-  // Reference tier uses a muted warm brown (inkSoft) rather than the
-  // Tier colours: green for primary, slate-blue for reference (one step
-  // removed but still authoritative — not a "warning" colour), gold for
-  // commercial (proprietary methodology, treat with appropriate skepticism).
+  // Tier colours: green for primary, slate-blue for reference (authoritative
+  // but one step removed — not a "warning" colour), gold for commercial
+  // (proprietary or crowd-sourced methodology, treat with appropriate skepticism).
   const palette =
     tier === 'primary'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive }

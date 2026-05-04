@@ -18,9 +18,9 @@
 // body are aspirational visual that resets each run.
 //
 // Tier thresholds:
-//   original    90 days   (direct from agency / data publisher)
-//   reference   180 days  (operational handbooks, agency landing pages, surveys)
-//   estimate    365 days  (approximations flagged honestly)
+//   primary     90 days   (direct from agency / data publisher / state portal)
+//   reference   180 days  (peer-respected research, methodology docs, handbooks)
+//   commercial  90 days   (proprietary methodology — index data updates frequently)
 //
 // Never-reviewed sources are overdue from day one — no `addedAt` grace
 // period. The audit's job is to represent how much human verification has
@@ -50,9 +50,9 @@ const REPO = 'TheBudgetAtlas/thebudgetatlas';
 const LABEL = 'audit:staleness';
 
 const THRESHOLDS_DAYS = {
-  original: 90,
+  primary: 90,
   reference: 180,
-  estimate: 365,
+  commercial: 90,
 };
 const DEFAULT_THRESHOLD_DAYS = 180;
 
@@ -234,8 +234,8 @@ function computeOverdue(sourceMeta, latestReviews) {
   }
 
   // Sort: never-reviewed first (most damning), then stale-reviewed by days
-  // overdue, all grouped by tier (original first).
-  const tierOrder = { original: 0, reference: 1, estimate: 2, unspecified: 3 };
+  // overdue, all grouped by tier (primary first).
+  const tierOrder = { primary: 0, reference: 1, commercial: 2, unspecified: 3 };
   overdue.sort(
     (a, b) =>
       (tierOrder[a.tier] ?? 99) - (tierOrder[b.tier] ?? 99) ||
@@ -246,22 +246,28 @@ function computeOverdue(sourceMeta, latestReviews) {
   return overdue;
 }
 
+// Bucket key for grouping a row's tier — folds anything we don't recognise
+// (legacy 'original' / 'estimate' rows, typos, missing tiers) into
+// 'unspecified' so callers can use the result as a Map key without crashing.
+const KNOWN_TIERS = new Set(['primary', 'reference', 'commercial']);
+const tierBucket = (tier) => (KNOWN_TIERS.has(tier) ? tier : 'unspecified');
+
 // ── 4. Build issue title + body ──────────────────────────────────────────
 function buildTitle(overdue) {
-  const counts = { original: 0, reference: 0, estimate: 0, unspecified: 0 };
-  for (const r of overdue) counts[r.tier]++;
+  const counts = { primary: 0, reference: 0, commercial: 0, unspecified: 0 };
+  for (const r of overdue) counts[tierBucket(r.tier)]++;
   const parts = [];
-  if (counts.original) parts.push(`${counts.original} original`);
+  if (counts.primary) parts.push(`${counts.primary} primary`);
   if (counts.reference) parts.push(`${counts.reference} reference`);
-  if (counts.estimate) parts.push(`${counts.estimate} estimate`);
+  if (counts.commercial) parts.push(`${counts.commercial} commercial`);
   if (counts.unspecified) parts.push(`${counts.unspecified} untiered`);
   const breakdown = parts.length ? ` (${parts.join(', ')})` : '';
   return `Source review queue: ${overdue.length} overdue${breakdown}`;
 }
 
 function buildBody(overdue, checkedUrls) {
-  const byTier = { original: [], reference: [], estimate: [], unspecified: [] };
-  for (const r of overdue) byTier[r.tier].push(r);
+  const byTier = { primary: [], reference: [], commercial: [], unspecified: [] };
+  for (const r of overdue) byTier[tierBucket(r.tier)].push(r);
 
   const lines = [
     `## Overdue source reviews — ${overdue.length} total`,
@@ -276,9 +282,9 @@ function buildBody(overdue, checkedUrls) {
     ``,
     `| Tier | Threshold | Rationale |`,
     `| --- | ---: | --- |`,
-    `| Primary | 90 days | Direct from agency / data publisher; high-stakes if drifted |`,
-    `| Secondary | 180 days | Operational handbooks, agency landing pages, surveys |`,
-    `| Editorial | 365 days | Approximations flagged honestly; lower drift sensitivity |`,
+    `| Primary | 90 days | Direct from agency / data publisher / state portal — high-stakes if drifted |`,
+    `| Reference | 180 days | Peer-respected research, methodology docs, operational handbooks |`,
+    `| Commercial | 90 days | Proprietary methodology — index data updates frequently, deserves the same cadence as primary |`,
     ``,
   ];
 
@@ -310,9 +316,9 @@ function buildBody(overdue, checkedUrls) {
     return out;
   };
 
-  lines.push(...renderTier('original', byTier.original));
+  lines.push(...renderTier('primary', byTier.primary));
   lines.push(...renderTier('reference', byTier.reference));
-  lines.push(...renderTier('estimate', byTier.estimate));
+  lines.push(...renderTier('commercial', byTier.commercial));
   if (byTier.unspecified.length) lines.push(...renderTier('untiered', byTier.unspecified));
 
   lines.push(

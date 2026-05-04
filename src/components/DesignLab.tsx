@@ -225,13 +225,13 @@ interface SyntheticRow {
 
 const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
   {
-    source: makeSrc('lab-original-human', 'IRS Rev. Proc. 2025-32', 'original'),
+    source: makeSrc('lab-primary-human', 'IRS Rev. Proc. 2025-32', 'primary'),
     kind: 'human',
     reviewedAt: '2026-05-03',
     reviewer: 'briancorbin',
   },
   {
-    source: makeSrc('lab-original-ai-1', 'BLS Consumer Expenditure Survey', 'original'),
+    source: makeSrc('lab-primary-ai-1', 'BLS Consumer Expenditure Survey', 'primary'),
     kind: 'ai',
     reviewedAt: '2026-05-03',
     reviewer: 'briancorbin',
@@ -243,7 +243,7 @@ const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
     reviewer: 'briancorbin',
   },
   {
-    source: makeSrc('lab-estimate-human', 'BLS CEX Regional Tables', 'estimate'),
+    source: makeSrc('lab-commercial-human', 'Zillow Observed Rent Index', 'commercial'),
     kind: 'human',
     reviewedAt: '2026-05-03',
     reviewer: 'briancorbin',
@@ -268,7 +268,7 @@ const SYNTHETIC_ROWS: readonly SyntheticRow[] = [
   },
 ];
 
-function makeSrc(id: string, label: string, tier: 'original' | 'reference' | 'estimate'): Source {
+function makeSrc(id: string, label: string, tier: 'primary' | 'reference' | 'commercial'): Source {
   return {
     id,
     label,
@@ -1683,14 +1683,14 @@ function Pill({ bg, fg, label }: { bg: string; fg: string; label: string }) {
 }
 
 function tierBg(tier?: string) {
-  if (tier === 'original') return 'rgba(45, 80, 22, 0.12)';
-  if (tier === 'estimate') return 'rgba(184, 116, 43, 0.18)';
-  return 'rgba(166, 38, 28, 0.10)';
+  if (tier === 'primary') return 'rgba(45, 80, 22, 0.12)';
+  if (tier === 'commercial') return 'rgba(122, 102, 40, 0.15)';
+  return 'rgba(62, 90, 122, 0.16)';
 }
 function tierFg(tier?: string) {
-  if (tier === 'original') return T.positive;
-  if (tier === 'estimate') return T.warning;
-  return T.accent;
+  if (tier === 'primary') return T.positive;
+  if (tier === 'commercial') return T.commercialAccent;
+  return T.aiAccent;
 }
 function kindBg(kind: ReviewKind | 'never') {
   if (kind === 'human') return 'rgba(45, 80, 22, 0.12)';

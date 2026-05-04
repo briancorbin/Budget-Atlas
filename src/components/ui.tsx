@@ -256,19 +256,23 @@ export function CiteGroup({ sources }: { sources: readonly Source[] }) {
 }
 
 /**
- * Compact pill rendering a source's tier — original / reference / estimate.
+ * Compact pill rendering a source's tier — primary / reference / commercial.
  * Matches the styling used on /sources for visual continuity. Inline in
- * citation popovers so readers see the epistemic status of every source
- * (original published value vs. calibrated baseline vs. approximation)
- * without leaving the page.
+ * citation popovers so readers see the trust tier of every source
+ * (publisher-direct vs. peer-respected interpretation vs. commercial /
+ * crowd-sourced product) without leaving the page.
  */
 function TierPill({ tier }: { tier: string }) {
+  // Tier colours: green for primary, slate-blue for reference (one step
+  // removed but still authoritative), gold for commercial (proprietary
+  // methodology, treat with appropriate skepticism). Mirrors the production
+  // TierPill in Sources.tsx — kept inline here to avoid a circular import.
   const palette =
-    tier === 'original'
+    tier === 'primary'
       ? { bg: 'rgba(45, 80, 22, 0.12)', fg: T.positive }
-      : tier === 'estimate'
-        ? { bg: 'rgba(184, 116, 43, 0.18)', fg: T.warning }
-        : { bg: 'rgba(166, 38, 28, 0.10)', fg: T.accent };
+      : tier === 'commercial'
+        ? { bg: 'rgba(122, 102, 40, 0.15)', fg: T.commercialAccent }
+        : { bg: 'rgba(62, 90, 122, 0.16)', fg: T.aiAccent };
   return (
     <span
       style={{

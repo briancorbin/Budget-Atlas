@@ -14,6 +14,7 @@ export const theme = {
   positive: '#2D5016', // forest green
   warning: '#B8742B', // burnt orange
   aiAccent: '#3E5A7A', // muted slate-blue, used for AI-provenance signals
+  commercialAccent: '#7A6628', // deep gold, used for the commercial source tier
   surface: '#FBF8EF',
 } as const;
 

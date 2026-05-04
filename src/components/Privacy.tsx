@@ -378,19 +378,6 @@ function HostingNote() {
         <li style={{ marginBottom: 6 }}>
           No{' '}
           <a
-            href="https://developers.cloudflare.com/analytics/browser-insights/"
-            target="_blank"
-            rel="noreferrer"
-            style={linkStyle}
-          >
-            Browser Insights
-          </a>{' '}
-          (Cloudflare's older auto-injected page-timing beacon, now mostly folded into Web
-          Analytics).
-        </li>
-        <li style={{ marginBottom: 6 }}>
-          No{' '}
-          <a
             href="https://developers.cloudflare.com/speed/observatory/rum-beacon/"
             target="_blank"
             rel="noreferrer"

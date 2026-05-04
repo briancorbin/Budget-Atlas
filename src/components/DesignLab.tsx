@@ -44,9 +44,12 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
   {
     id: 'share',
     nav: 'Share-link affordance',
-    count: 4,
+    count: 5,
     Component: SectionShareAffordance,
-    status: 'open',
+    status: 'decided',
+    decidedAs: 'V5 — accent text link below the budget output',
+    decidedNote:
+      'Plain underline (avoids citation-popover collision), no ↗ (avoids "opens externally" misread), placed after DiscretionaryPlan where the share impulse naturally arises.',
   },
   {
     id: 'rows',
@@ -2366,6 +2369,13 @@ function SectionShareAffordance() {
       >
         <ShareMockChip />
       </Variation>
+      <Variation
+        title="V5 — V1', placed after the data"
+        description="Same editorial text-link spirit as V1, but: accent-colored (findable without shouting), plain underline (avoids the dotted-underline-means-citation collision), no ↗ (the arrow reads as 'opens externally' but this copies), placed below the budget output where 'I should share this' is the natural impulse."
+        decided
+      >
+        <ShareMockPostData />
+      </Variation>
     </Section>
   );
 }
@@ -2570,5 +2580,88 @@ function FakeShareLink({ tone }: { tone: 'soft' | 'accent' }) {
     >
       Share this view ↗
     </span>
+  );
+}
+
+/**
+ * V5 mock: places the share link below the budget output rather than in
+ * the inputs panel. Mocks a fake "discretionary" stat block and puts the
+ * share affordance immediately under it, where "I should send this to
+ * someone" is the natural impulse.
+ */
+function ShareMockPostData() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div
+        style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            fontSize: rem(11),
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: T.accent,
+            fontWeight: 600,
+          }}
+        >
+          Discretionary
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.display,
+            fontSize: rem(28),
+            fontWeight: 500,
+            color: T.ink,
+            lineHeight: 1.1,
+          }}
+        >
+          $4,182<span style={{ fontSize: rem(14), color: T.inkSoft }}> / mo</span>
+        </div>
+        <div style={{ fontSize: rem(12), color: T.inkSoft }}>
+          After taxes, FICA, rent, groceries, childcare, and benefits.
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            fontSize: rem(12),
+            color: T.inkSoft,
+            letterSpacing: '0.02em',
+          }}
+        >
+          Send this to someone:
+        </span>
+        <span
+          style={{
+            fontFamily: fonts.body,
+            fontSize: rem(13),
+            color: T.accent,
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+            letterSpacing: '0.02em',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+        >
+          Copy share link
+        </span>
+      </div>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from '@/lib/configShare';
 import { Masthead } from './Masthead';
 import { CustomizePanel, type InputsState } from './Inputs';
+import { ShareLink } from './ShareLink';
 import { StatRow, StatusBanner } from './Summary';
 import { IncomeFlow } from './IncomeFlow';
 import { BracketWalkthrough } from './BracketWalkthrough';
@@ -183,7 +184,6 @@ export function BudgetExplorer() {
     setKids,
     lifestyle,
     setLifestyle,
-    shareUrl,
   };
 
   return (
@@ -214,6 +214,7 @@ export function BudgetExplorer() {
         />
         <ExpenseBreakdown result={result} />
         <DiscretionaryPlan result={result} />
+        <ShareLink shareUrl={shareUrl} />
         <CityComparison
           result={result}
           compareCity={compareCity}

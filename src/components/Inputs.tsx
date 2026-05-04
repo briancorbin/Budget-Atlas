@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import type { FilingStatus, Lifestyle, StateCode } from '@/types';
 import { theme as T, fonts, rem } from '@/theme';
 import { fmt, fmtPct } from '@/lib/format';
@@ -22,8 +21,6 @@ export interface InputsState {
   setKids: (n: number) => void;
   lifestyle: Lifestyle;
   setLifestyle: (l: Lifestyle) => void;
-  /** Full URL with the current config encoded as a hash. Updated on every state change. */
-  shareUrl: string;
 }
 
 export function CustomizePanel(s: InputsState) {
@@ -131,26 +128,15 @@ export function CustomizePanel(s: InputsState) {
     >
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
+          fontSize: rem(11),
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: T.accent,
+          fontWeight: 600,
           marginBottom: 18,
-          gap: 12,
-          flexWrap: 'wrap',
         }}
       >
-        <div
-          style={{
-            fontSize: rem(11),
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: T.accent,
-            fontWeight: 600,
-          }}
-        >
-          Customize
-        </div>
-        <ShareLink shareUrl={s.shareUrl} />
+        Customize
       </div>
 
       {/* Quick-load: pick a real-feeling household to prefill every input below.
@@ -426,54 +412,3 @@ export function CustomizePanel(s: InputsState) {
   );
 }
 
-/**
- * Share-link affordance. Deliberately styled as a quiet text link with an
- * arrow, NOT as a button: it's a meta action (copy a URL) that doesn't
- * change the household model, so it shouldn't compete visually with the
- * input controls. Lives in the panel header, right-aligned.
- */
-export function ShareLink({ shareUrl }: { shareUrl: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current != null) window.clearTimeout(timer.current);
-    };
-  }, []);
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      if (timer.current != null) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard blocked (insecure context, denied permission). The URL is
-      // already in the address bar — user can copy from there.
-    }
-  };
-
-  return (
-    <button
-      onClick={onCopy}
-      aria-label="Copy a shareable link to this view"
-      style={{
-        background: 'transparent',
-        border: 'none',
-        padding: 0,
-        cursor: 'pointer',
-        fontFamily: fonts.body,
-        fontSize: rem(12),
-        color: copied ? T.accent : T.inkSoft,
-        textDecoration: 'underline',
-        textDecorationStyle: 'dotted',
-        textUnderlineOffset: 3,
-        letterSpacing: '0.02em',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {copied ? 'Link copied ✓' : 'Share this view ↗'}
-    </button>
-  );
-}

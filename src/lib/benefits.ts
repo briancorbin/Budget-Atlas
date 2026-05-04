@@ -14,6 +14,9 @@ import {
 /** All benefit programs we model. Add new IDs here as we ship them. */
 export type BenefitId = 'snap' | 'medicaid' | 'chip';
 
+/** Runtime list of every BenefitId, for validation / iteration. Keep in sync with the type. */
+export const BENEFIT_IDS: readonly BenefitId[] = ['snap', 'medicaid', 'chip'];
+
 /**
  * Dispatch eligibility for any program by id. New programs add a case here
  * once their checker exists; callers can stay generic.

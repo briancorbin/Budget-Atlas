@@ -95,7 +95,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 8,
     title: 'Shareable configuration links',
     category: 'Sharing',
-    status: 'planned',
+    status: 'shipped',
     summary:
       'Encode the household state into a URL hash so a specific scenario can be shared. Plus a copy-able short code for paste-into-chat. No backend required.',
   },

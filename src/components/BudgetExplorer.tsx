@@ -1,8 +1,16 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FilingStatus, Lifestyle } from '@/types';
 import { theme as T } from '@/theme';
 import { computeBudget } from '@/lib/budget';
 import { checkBenefit, type BenefitId } from '@/lib/benefits';
+import {
+  decodeConfig,
+  encodeConfig,
+  loadFromStorage,
+  looksLikeConfigHash,
+  saveToStorage,
+  type SharedConfig,
+} from '@/lib/configShare';
 import { Masthead } from './Masthead';
 import { CustomizePanel, type InputsState } from './Inputs';
 import { StatRow, StatusBanner } from './Summary';
@@ -14,20 +22,53 @@ import { CityComparison } from './CityComparison';
 import { Benefits } from './Benefits';
 import { Notes } from './Notes';
 
+// Live initial values for a fresh page load (no shared link, no localStorage).
+// A single parent at $40K HoH with two kids in Columbus — picked so the
+// safety-net machinery (EITC, refundable CTC, possible SNAP / Medicaid /
+// CHIP eligibility) lights up immediately and shows what makes Atlas
+// distinct from a tax calculator. Independent of DEFAULTS_V1 in
+// configShare.ts: editing here changes only what a brand-new visitor sees;
+// editing DEFAULTS_V1 would silently rewrite every previously-shared link.
+const INITIAL: SharedConfig = {
+  incomeA: 40000,
+  incomeB: 0,
+  twoIncome: false,
+  filing: 'head',
+  city: 'cmh',
+  kids: 2,
+  lifestyle: 'moderate',
+  compareCity: 'sf',
+  claimedBenefits: new Set(),
+};
+
+function readBootConfig(): SharedConfig {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash;
+    if (hash && looksLikeConfigHash(hash)) {
+      return decodeConfig(hash);
+    }
+    const stored = loadFromStorage();
+    if (stored) return stored;
+  }
+  return { ...INITIAL, claimedBenefits: new Set(INITIAL.claimedBenefits) };
+}
+
 export function BudgetExplorer() {
-  // Default boot state mirrors the legacy 'teacher_oh' scenario (two teachers,
-  // Columbus OH, ~$110K combined, 2 kids, married, moderate). Inlined as
-  // useState seeds rather than a scenario lookup so the page lands on a
-  // sensible household without any picker state to track.
-  const [incomeA, setIncomeA] = useState(56000);
-  const [incomeB, setIncomeB] = useState(54000);
-  const [twoIncome, setTwoIncome] = useState(true);
-  const [filing, setFiling] = useState<FilingStatus>('married');
-  const [city, setCity] = useState('cmh');
-  const [kids, setKids] = useState(2);
-  const [lifestyle, setLifestyle] = useState<Lifestyle>('moderate');
-  const [compareCity, setCompareCity] = useState('sf');
-  const [claimedBenefits, setClaimedBenefits] = useState<ReadonlySet<string>>(() => new Set());
+  // Read once on mount: hash > localStorage > INITIAL. Subsequent state changes
+  // are written back to both via the sync effect below.
+  const [boot] = useState(readBootConfig);
+
+  const [incomeA, setIncomeA] = useState(boot.incomeA);
+  const [incomeB, setIncomeB] = useState(boot.incomeB);
+  const [twoIncome, setTwoIncome] = useState(boot.twoIncome);
+  const [filing, setFiling] = useState<FilingStatus>(boot.filing);
+  const [city, setCity] = useState(boot.city);
+  const [kids, setKids] = useState(boot.kids);
+  const [lifestyle, setLifestyle] = useState<Lifestyle>(boot.lifestyle);
+  const [compareCity, setCompareCity] = useState(boot.compareCity);
+  const [claimedBenefits, setClaimedBenefits] = useState<ReadonlySet<string>>(
+    () => new Set(boot.claimedBenefits),
+  );
 
   const effectiveIncomeB = twoIncome ? incomeB : 0;
 
@@ -96,6 +137,37 @@ export function BudgetExplorer() {
     }
   }
 
+  const currentConfig: SharedConfig = useMemo(
+    () => ({
+      incomeA,
+      incomeB,
+      twoIncome,
+      filing,
+      city,
+      kids,
+      lifestyle,
+      compareCity,
+      claimedBenefits,
+    }),
+    [incomeA, incomeB, twoIncome, filing, city, kids, lifestyle, compareCity, claimedBenefits],
+  );
+
+  // Sync hash + localStorage whenever any config field changes. replaceState
+  // (not pushState) keeps the back button uncluttered. Persisting on every
+  // change — instead of only on a Share click — means the URL bar always
+  // reflects the current view, so Copy is always one button away.
+  const encoded = useMemo(() => encodeConfig(currentConfig), [currentConfig]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.history.replaceState(null, '', `#${encoded}`);
+    saveToStorage(currentConfig);
+  }, [encoded, currentConfig]);
+
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}#${encoded}`
+      : `#${encoded}`;
+
   const inputState: InputsState = {
     incomeA,
     setIncomeA,
@@ -111,6 +183,7 @@ export function BudgetExplorer() {
     setKids,
     lifestyle,
     setLifestyle,
+    shareUrl,
   };
 
   return (

@@ -252,7 +252,7 @@ function Card({
         {meta.blurb}
       </div>
 
-      {eligible ? (
+      {eligible && eligibility.monthlyBenefit > 0 ? (
         <>
           <div
             style={{
@@ -274,6 +274,21 @@ function Card({
             {meta.appliesTo}
           </div>
         </>
+      ) : eligible ? (
+        // Categorically eligible (passes the program's income test) but the
+        // calculated benefit phases to $0 — most often SNAP under a state's
+        // BBCE rule, where the household qualifies on gross income but
+        // 30% of net income exceeds the maximum benefit. Render this as
+        // an explanation, not "~$0/mo", which reads as a bug.
+        <div
+          style={{
+            fontSize: rem(12),
+            color: claimed ? T.bgAlt : T.inkMuted,
+            lineHeight: 1.5,
+          }}
+        >
+          Eligible, but the calculated benefit phases to $0 at this income.
+        </div>
       ) : (
         <div style={{ fontSize: rem(12), color: T.inkMuted, lineHeight: 1.5 }}>
           {eligibility.reason}

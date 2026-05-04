@@ -1460,7 +1460,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SC: {
     label: 'Healthy Connections (SC DHHS)',
-    url: 'https://msp.scdhhs.gov/',
+    url: 'https://www.scdhhs.gov/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1882,7 +1882,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SC: {
     label: 'Healthy Connections (SC, kids)',
-    url: 'https://msp.scdhhs.gov/',
+    url: 'https://www.scdhhs.gov/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',

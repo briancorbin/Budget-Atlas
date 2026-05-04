@@ -346,3 +346,14 @@ state-medicaid-la	2026-05-03	briancorbin	ai	URL fix: www.medicaid.la.gov/ (404) 
 state-chip-al	2026-05-03	briancorbin	ai	URL fix: www.allkids.org/ (000ERR) → www.alabamapublichealth.gov/allkids/index.html. The allkids.org brand domain is unresponsive; ALL Kids program info canonically hosted by Alabama Department of Public Health. Confirmed via WebFetch: official ALL Kids page describing CHIP coverage up to age 19, BCBSAL provider network, etc.
 state-chip-pa	2026-05-03	briancorbin	ai	URL fix: www.chipcoverspakids.com/ (000 / DNS failure / unreachable) → www.pa.gov/agencies/dhs/resources/chip.html. The chipcoverspakids.com brand domain was retired; PA CHIP info consolidated under the PA Department of Human Services landing on pa.gov. Confirmed via WebFetch.
 state-chip-tn	2026-05-03	briancorbin	ai	URL fix: tn.gov/tenncare/members-applicants/coverkids.html (404) → tn.gov/tenncare/members-applicants/learn-more-apply/redirect-coverkids.html. CoverKids landing reorganized under /learn-more-apply/. Confirmed via WebFetch.
+
+# 2026-05-03: AL/MS/TN/SC/KS — human-verified outcomes from manual browser checks.
+# Five sources verified live in a real browser (audit's curl was bot-blocked
+# or hit transient SSL issues); SC Medicaid + CHIP get a real URL update;
+# KS keeps its broken URL flagged honestly.
+state-medicaid-al	2026-05-03	briancorbin	human	Verified live in browser. medicaid.alabama.gov returns 200 with normal user agents; the audit's 000ERR was an SSL/cert handshake hiccup or bot-block, not a real broken page. URL unchanged.
+state-dor-ms	2026-05-03	briancorbin	human	Verified live in browser. www.dor.ms.gov returns 200 with normal user agents; the audit's 000ERR was bot-blocking or transient. URL unchanged.
+state-dor-tn	2026-05-03	briancorbin	human	Verified live in browser. www.tn.gov/revenue returns 200 with normal user agents; the audit's 000ERR was bot-blocking or transient. URL unchanged.
+state-medicaid-sc	2026-05-03	briancorbin	human	URL fix: msp.scdhhs.gov/ (000ERR — actually broken, not just bot-blocked) → www.scdhhs.gov/. The Medicaid Services Portal subdomain was retired in favour of the unified SCDHHS landing.
+state-chip-sc	2026-05-03	briancorbin	human	URL fix: msp.scdhhs.gov/ (000ERR) → www.scdhhs.gov/. SC bundles CHIP under the unified Healthy Connections Medicaid program — there is no separate CHIP brand or landing page. Same target URL as state-medicaid-sc, mirroring the SC agency structure.
+state-snap-ks	2026-05-03	briancorbin	human	dcf.ks.gov is genuinely unreachable from any client (curl 000, connection refused; not just bot-blocked). The agency may have a server outage, DNS misconfiguration, or be sunsetting the domain. URL kept as-is — leaving the audit to keep flagging it is the honest signal until KS DCF publishes a working replacement. This row records that the issue has been investigated, not resolved.

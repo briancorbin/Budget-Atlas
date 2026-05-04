@@ -27,6 +27,7 @@ This file is the ground truth. The eventual [funding transparency dashboard](htt
 | ---------- | ---------- | -------------------------------------------------------- | -------------- | -----------: | :----------: | ------------------------------------------------------------------------------------------------ |
 | 2026-05-02 | GitHub     | `TheBudgetAtlas` org — Team plan, month 1                | Tooling        |        $4.00 |      Y       | [Drive](https://drive.google.com/drive/folders/1o2v9qGYvITBPA-V7RfSQ7OmeZyylfqTC?usp=drive_link) |
 | 2026-05-02 | Cloudflare | `thebudgetatlas.com` domain registration (1 yr, at-cost) | Infrastructure |       $10.46 |      Y       | [Drive](https://drive.google.com/drive/folders/1o2v9qGYvITBPA-V7RfSQ7OmeZyylfqTC?usp=drive_link) |
+| 2026-05-03 | Figma      | Pro seat — design system documentation + iteration       | Tooling        |       $20.00 |      Y       | [Drive](https://drive.google.com/drive/folders/1o2v9qGYvITBPA-V7RfSQ7OmeZyylfqTC?usp=drive_link) |
 
 _Recurring monthly costs (GitHub org, etc.) get a new row each billing cycle so the ledger reads as a true cash-flow record, not a forecast._
 
@@ -50,7 +51,7 @@ _Will be auto-computed by the funding dashboard. Manually reconciled here at mon
 
 - **Inflows to date:** $0.00
 - **Outflows to date (paid from project funds):** $0.00
-- **Outflows to date (paid personally, reimbursable):** $14.46
+- **Outflows to date (paid personally, reimbursable):** $34.46
 - **Outflows to date (paid personally, non-reimbursable):** $0.00
 
-Last reconciled: _2026-05-02 (initial)_
+Last reconciled: _2026-05-03_

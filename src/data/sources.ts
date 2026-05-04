@@ -774,7 +774,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   CT: {
     label: 'CT DSS SNAP',
-    url: 'https://portal.ct.gov/DSS/SNAP/SNAP',
+    url: 'https://portal.ct.gov/dss/find-benefits-and-support/food-assistance',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -790,7 +790,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   FL: {
     label: 'FL DCF Food Assistance',
-    url: 'https://www.myflfamilies.com/services/public-assistance/food-assistance',
+    url: 'https://www.myflfamilies.com/services/public-assistance/supplemental-nutrition-assistance-program-snap',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -798,7 +798,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   GA: {
     label: 'GA DHS Food Stamps',
-    url: 'https://dhs.georgia.gov/services/food-stamps',
+    url: 'https://dfcs.georgia.gov/food-stamps',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -806,7 +806,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   HI: {
     label: 'HI DHS SNAP',
-    url: 'https://humanservices.hawaii.gov/bessd/snap-2/',
+    url: 'https://humanservices.hawaii.gov/bessd/snap/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -814,7 +814,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   ID: {
     label: 'ID DHW Food Stamps',
-    url: 'https://healthandwelfare.idaho.gov/services-programs/food-assistance/food-stamps-snap',
+    url: 'https://healthandwelfare.idaho.gov/services-programs/food-assistance/about-snap',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -830,7 +830,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   IN: {
     label: 'IN FSSA SNAP',
-    url: 'https://www.in.gov/fssa/dfr/snap/',
+    url: 'https://www.in.gov/fssa/dfr/snap-food-assistance',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -838,7 +838,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   IA: {
     label: 'IA HHS Food Assistance',
-    url: 'https://hhs.iowa.gov/programs/welcome-iowa-snap',
+    url: 'https://hhs.iowa.gov/assistance-programs/food-assistance',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -854,7 +854,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   KY: {
     label: 'KY DCBS SNAP',
-    url: 'https://www.chfs.ky.gov/agencies/dcbs/dfs/Pages/snap.aspx',
+    url: 'https://www.chfs.ky.gov/agencies/dcbs/dfs/nab/Pages/snap.aspx',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -902,7 +902,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   MN: {
     label: 'MN DHS SNAP',
-    url: 'https://mn.gov/dhs/people-we-serve/adults/economic-assistance/food-nutrition/programs-and-services/supplemental-nutrition-program.jsp',
+    url: 'https://mn.gov/dhs/people-we-serve/adults/economic-assistance/food-nutrition/programs-and-services/supplemental-nutrition-assistance-program.jsp',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -918,7 +918,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   MO: {
     label: 'MO DSS Food Stamp Program',
-    url: 'https://dss.mo.gov/fsd/food-stamps/',
+    url: 'https://mydss.mo.gov/food-assistance',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -934,7 +934,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NE: {
     label: 'NE DHHS SNAP',
-    url: 'https://dhhs.ne.gov/Pages/Economic-Assistance-SNAP.aspx',
+    url: 'https://dhhs.ne.gov/Pages/SNAP.aspx',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -942,7 +942,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NV: {
     label: 'NV DWSS SNAP',
-    url: 'https://dwss.nv.gov/SNAP/SNAP_Home/',
+    url: 'https://dss.nv.gov/programs/snap/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -974,7 +974,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NY: {
     label: 'NY OTDA SNAP',
-    url: 'https://otda.ny.gov/programs/snap/',
+    url: 'https://www.ny.gov/services/apply-snap',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1006,7 +1006,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   OK: {
     label: 'OK DHS SNAP',
-    url: 'https://oklahoma.gov/okdhs/services/sfn.html',
+    url: 'https://oklahoma.gov/okdhs/services/snap.html',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1038,7 +1038,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SC: {
     label: 'SC DSS SNAP',
-    url: 'https://dss.sc.gov/snap/',
+    url: 'https://dss.sc.gov/assistance-programs/snap/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1046,7 +1046,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SD: {
     label: 'SD DSS Food Stamps',
-    url: 'https://dss.sd.gov/foodstamps/',
+    url: 'https://dss.sd.gov/economicassistance/snap.aspx',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1102,7 +1102,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   WV: {
     label: 'WV DHHR SNAP',
-    url: 'https://dhhr.wv.gov/bcf/Services/Pages/SNAP.aspx',
+    url: 'https://bfa.wv.gov/photo-call-out/supplemental-nutrition-assistance-program-snap',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1118,7 +1118,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   WY: {
     label: 'WY DFS Food Stamps',
-    url: 'https://dfs.wyo.gov/assistance-programs/food-and-nutrition/',
+    url: 'https://dfs.wyo.gov/assistance-programs/food-assistance/supplemental-nutrition-assistance-program-snap/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1126,7 +1126,7 @@ const RAW_STATE_SNAP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   DC: {
     label: 'DC DHS SNAP',
-    url: 'https://dhs.dc.gov/service/snap-food-stamps',
+    url: 'https://dhs.dc.gov/service/supplemental-nutrition-assistance-program-snap',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1196,7 +1196,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   CT: {
     label: 'HUSKY Health (CT DSS)',
-    url: 'https://portal.ct.gov/dss/health-and-home-care/husky-health-program',
+    url: 'https://portal.ct.gov/dss/find-benefits-and-support/healthcare-coverage',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1284,7 +1284,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   LA: {
     label: 'LA Medicaid',
-    url: 'https://www.medicaid.la.gov/',
+    url: 'https://ldh.la.gov/medicaid',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1292,7 +1292,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   ME: {
     label: 'MaineCare',
-    url: 'https://www.maine.gov/dhhs/ofi/programs-services/mainecare',
+    url: 'https://www.maine.gov/dhhs/oms/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1356,7 +1356,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NE: {
     label: 'NE DHHS Medicaid',
-    url: 'https://dhhs.ne.gov/Pages/Medicaid.aspx',
+    url: 'https://dhhs.ne.gov/Pages/medicaid-and-long-term-care.aspx',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1452,7 +1452,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   RI: {
     label: 'RI Medicaid (EOHHS)',
-    url: 'https://eohhs.ri.gov/consumer/medicaid-information',
+    url: 'https://eohhs.ri.gov',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1460,7 +1460,7 @@ const RAW_STATE_MEDICAID_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SC: {
     label: 'Healthy Connections (SC DHHS)',
-    url: 'https://msp.scdhhs.gov/',
+    url: 'https://www.scdhhs.gov/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1570,7 +1570,7 @@ export const STATE_MEDICAID_AGENCY: Record<StateCode, Source> = withStateIds(
 const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   AL: {
     label: 'ALL Kids (AL CHIP)',
-    url: 'https://www.allkids.org/',
+    url: 'https://www.alabamapublichealth.gov/allkids/index.html',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1618,7 +1618,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   CT: {
     label: 'HUSKY B (CT CHIP)',
-    url: 'https://portal.ct.gov/dss/health-and-home-care/husky-health-program',
+    url: 'https://portal.ct.gov/dss/find-benefits-and-support/healthcare-coverage',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1642,7 +1642,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   GA: {
     label: 'PeachCare for Kids',
-    url: 'https://medicaid.georgia.gov/programs/peachcare-kids',
+    url: 'https://dch.georgia.gov/peachcare-kids',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1666,7 +1666,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   IL: {
     label: 'All Kids (IL)',
-    url: 'https://hfs.illinois.gov/medicalclients/allkids.html',
+    url: 'https://hfs.illinois.gov/medicalprograms/allkids.html',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1674,7 +1674,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   IN: {
     label: 'Hoosier Healthwise',
-    url: 'https://www.in.gov/medicaid/members/health-coverage-programs/programs-by-name/hoosier-healthwise/',
+    url: 'https://www.in.gov/medicaid/members/member-programs/hoosier-healthwise/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1682,7 +1682,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   IA: {
     label: 'Hawki (IA CHIP)',
-    url: 'https://hhs.iowa.gov/programs/welcome-iowa-hawki',
+    url: 'https://hhs.iowa.gov/medicaid/plans-programs/hawki',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1714,7 +1714,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   ME: {
     label: 'CubCare (MaineCare)',
-    url: 'https://www.maine.gov/dhhs/ofi/programs-services/mainecare',
+    url: 'https://www.maine.gov/dhhs/oms/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1762,7 +1762,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   MO: {
     label: 'MO HealthNet for Kids',
-    url: 'https://dss.mo.gov/mhd/participants/pages/mhdkids.htm',
+    url: 'https://mydss.mo.gov/healthcare',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1770,7 +1770,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   MT: {
     label: 'Healthy Montana Kids',
-    url: 'https://dphhs.mt.gov/HealthyMontanaKids',
+    url: 'https://dphhs.mt.gov/HMK/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1778,7 +1778,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NE: {
     label: 'Kids Connection (NE)',
-    url: 'https://dhhs.ne.gov/Pages/Kids-Connection.aspx',
+    url: 'https://dhhs.ne.gov/Pages/Medicaid-Eligibility.aspx',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1786,7 +1786,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NV: {
     label: 'Nevada Check Up',
-    url: 'https://dwss.nv.gov/Health_Care/Nevada_Check_Up/',
+    url: 'https://www.nevadamedicaid.nv.gov/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1826,7 +1826,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   NC: {
     label: 'NC Health Choice for Children',
-    url: 'https://medicaid.ncdhhs.gov/beneficiaries/health-choice-children',
+    url: 'https://medicaid.ncdhhs.gov/beneficiaries',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1834,7 +1834,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   ND: {
     label: 'Healthy Steps (ND CHIP)',
-    url: 'https://www.hhs.nd.gov/medicaid/healthy-steps',
+    url: 'https://www.hhs.nd.gov/healthcare/CHIP',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1866,7 +1866,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   PA: {
     label: 'PA CHIP',
-    url: 'https://www.chipcoverspakids.com/',
+    url: 'https://www.pa.gov/agencies/dhs/resources/chip.html',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1874,7 +1874,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   RI: {
     label: 'RIte Care (RI Medicaid for kids)',
-    url: 'https://eohhs.ri.gov/consumer/medicaid-information',
+    url: 'https://eohhs.ri.gov',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1882,7 +1882,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   SC: {
     label: 'Healthy Connections (SC, kids)',
-    url: 'https://msp.scdhhs.gov/',
+    url: 'https://www.scdhhs.gov/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1898,7 +1898,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   TN: {
     label: 'CoverKids',
-    url: 'https://www.tn.gov/tenncare/members-applicants/coverkids.html',
+    url: 'https://www.tn.gov/tenncare/members-applicants/learn-more-apply/redirect-coverkids.html',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1906,7 +1906,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   TX: {
     label: 'Texas CHIP',
-    url: 'https://www.hhs.texas.gov/services/health/medicaid-chip/programs/childrens-health-insurance-program-chip',
+    url: 'https://www.hhs.texas.gov/services/health/medicaid-chip/medicaid-chip-members/chip',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1930,7 +1930,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   VA: {
     label: 'FAMIS (VA CHIP)',
-    url: 'https://coverva.dmas.virginia.gov/learn/programs/famis',
+    url: 'https://coverva.dmas.virginia.gov/learn/coverage-for-children/medicaid-for-children-and-famis/',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1938,7 +1938,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   WA: {
     label: 'Apple Health for Kids',
-    url: 'https://www.hca.wa.gov/health-care-services-supports/apple-health-medicaid-coverage/free-or-low-cost-health-care',
+    url: 'https://www.hca.wa.gov/free-or-low-cost-health-care/i-need-medical-dental-or-vision-care/children',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',
@@ -1970,7 +1970,7 @@ const RAW_STATE_CHIP_AGENCY: Record<StateCode, SourceLiteral> = {
   },
   DC: {
     label: 'DC Healthy Families',
-    url: 'https://dhcf.dc.gov/page/dc-healthy-families',
+    url: 'https://dhcf.dc.gov/service/dc-healthy-families',
     date: '2026',
     tier: 'primary',
     addedBy: 'briancorbin',

@@ -99,18 +99,26 @@ for (const row of baseRows) {
 }
 
 if (missing.length === 0) {
-  const liveRows = dataRows(headText).length;
+  const headRowSet = new Set(dataRows(headText));
+  const liveRows = headRowSet.size;
   const added = liveRows - baseRows.length;
+  // Count base rows that no longer appear in the live file but are
+  // reachable in archive — i.e. rows that were rotated out of the live
+  // file by a schema migration. This is the honest counter to
+  // "appended" — rows can leave the live file as long as they land in
+  // the archive, and we want to surface that in the success message.
+  let rotated = 0;
+  for (const row of baseRows) if (!headRowSet.has(row)) rotated++;
   const archiveNote = archiveFiles.length
     ? ` (audit trail spans live + ${archiveFiles.length} archive file${archiveFiles.length === 1 ? '' : 's'})`
     : '';
-  if (added > 0) {
-    console.log(
-      `✓ All ${baseRows.length} base rows preserved; ${added} row(s) appended.${archiveNote}`,
-    );
-  } else {
-    console.log(`✓ reviewed.tsv unchanged (${baseRows.length} rows).${archiveNote}`);
-  }
+  const parts = [];
+  if (added > 0) parts.push(`${added} row(s) appended`);
+  if (rotated > 0) parts.push(`${rotated} row(s) rotated to archive`);
+  const summary = parts.length ? `; ${parts.join(', ')}` : '';
+  console.log(
+    `✓ All ${baseRows.length} base rows preserved${summary}.${archiveNote}`,
+  );
   process.exit(0);
 }
 

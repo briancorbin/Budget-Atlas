@@ -10,6 +10,14 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Fraunces SOFT axis: pin to 30 so display type matches the rendering
+   * the site has shipped with since day one. (The original Google Fonts
+   * URL specified `SOFT@30..100`, excluding the font's intrinsic default
+   * of 0, so the browser clamped to 30. Self-hosting now ships the full
+   * 0..100 range, where the default falls back to 0 — sharper, slightly
+   * different. This pins it back.) Other fonts ignore unknown axes, so
+   * setting this globally is safe. */
+  font-variation-settings: 'SOFT' 30;
 }
 
 body {
@@ -31,3 +39,4 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+

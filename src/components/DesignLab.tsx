@@ -2737,50 +2737,41 @@ function ShareMockPostData() {
 // with three close cliffs but break down with one or two.
 
 function SectionCliffAnnotations() {
-  const [showPits, setShowPits] = useState(true);
   return (
     <Section
       columns={1}
       heading="Cliff threshold annotations"
       subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve."
     >
-      <SectionToolbar>
-        <ToolbarToggle
-          label="Pit-zone shading"
-          checked={showPits}
-          onChange={setShowPits}
-          hint="The warning-tinted ranges where the household is worse off than at some lower income. Useful to keep on while comparing label strategies; turn off to see the labels alone."
-        />
-      </SectionToolbar>
       <Variation
         title="V1 — Top labels with smart stagger (current production)"
         description="Labels above each ReferenceLine; collisions auto-bump to a higher row. Reads top-down; eye has to travel from label to line."
       >
-        <CliffStack Renderer={CliffChartTopLabelsStaggered} showPits={showPits} />
+        <CliffStack Renderer={CliffChartTopLabelsStaggered} />
       </Variation>
       <Variation
         title="V2 — Bottom-axis tags below the X axis"
         description="Each cutoff gets a small color-coded tag below the axis at the right dollar amount. Chart stays clean above the curve; eye tracks dashed line down to its tag."
       >
-        <CliffStack Renderer={CliffChartBottomAxisTags} showPits={showPits} />
+        <CliffStack Renderer={CliffChartBottomAxisTags} />
       </Variation>
       <Variation
         title="V3 — Inline labels riding the curve at the drop"
         description="Each label sits next to the actual cliff drop on the curve, anchored to the data instead of floating overhead. Self-evidently which line maps to which program."
       >
-        <CliffStack Renderer={CliffChartInlineAtDrop} showPits={showPits} />
+        <CliffStack Renderer={CliffChartInlineAtDrop} />
       </Variation>
       <Variation
         title="V4 — Numbered markers + legend"
         description="Tiny ① ② ③ markers on the curve at each cliff; the legend below decodes them. Maximum chart cleanliness, minimum visual weight."
       >
-        <CliffStack Renderer={CliffChartNumberedMarkers} showPits={showPits} />
+        <CliffStack Renderer={CliffChartNumberedMarkers} />
       </Variation>
       <Variation
         title="V5 — Color-banded eligibility regions"
         description="Soft horizontal background bands shade the income ranges where each program is active. The transitions between bands ARE the cliffs — no separate markers needed. Reads as a stacked-area / state-of-the-world view."
       >
-        <CliffStack Renderer={CliffChartColorBands} showPits={showPits} />
+        <CliffStack Renderer={CliffChartColorBands} />
       </Variation>
     </Section>
   );
@@ -2791,16 +2782,13 @@ function SectionCliffAnnotations() {
  *  any annotation strategy. */
 function CliffStack({
   Renderer,
-  showPits,
 }: {
   Renderer: React.ComponentType<CliffScenarioProps>;
-  showPits?: boolean;
 }) {
   return (
     <Renderer
       scenarioLabel="Columbus, OH · HoH · 2 kids · $40K"
       scenario={CLIFF_SCENARIO_CMH}
-      showPits={showPits}
     />
   );
 }
@@ -2818,10 +2806,6 @@ interface CliffScenario {
 interface CliffScenarioProps {
   scenarioLabel: string;
   scenario: CliffScenario;
-  /** When true, render the warning-tinted "worse off than at some lower
-   *  income" zones behind the curve. Lifted out of each variation so the
-   *  whole section shares one toggle. */
-  showPits?: boolean;
 }
 
 const CLIFF_SCENARIO_CMH: CliffScenario = {
@@ -2973,16 +2957,17 @@ function ScenarioFrame({
 const fmtK = (v: number) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`);
 
 /** Common pit-zone shading used in cliff-annotation variations so they
- *  reflect what production looks like. Each zone tinted by causing program. */
+ *  reflect production. Uniform warning color per the decided pit-zone
+ *  presentation (V1 uniform). */
 function renderPitZones(zones: readonly PitZone[]) {
   return zones.map((z, i) => (
     <ReferenceArea
       key={`pit-${i}`}
       x1={z.x1}
       x2={z.x2}
-      fill={z.color ?? T.warning}
+      fill={T.warning}
       fillOpacity={0.12}
-      stroke={z.color ?? T.warning}
+      stroke={T.warning}
       strokeOpacity={0.3}
       strokeDasharray="2 3"
     />
@@ -2990,7 +2975,7 @@ function renderPitZones(zones: readonly PitZone[]) {
 }
 
 // V1 — Top labels with smart stagger (mirrors current production)
-function CliffChartTopLabelsStaggered({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenarioProps) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // Stagger: each label takes the lowest row where it doesn't overlap any
@@ -3049,7 +3034,7 @@ function CliffChartTopLabelsStaggered({ scenarioLabel, scenario, showPits }: Cli
               )}
             />
           ))}
-          {showPits ? renderPitZones(pitZones) : null}
+          {renderPitZones(pitZones)}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3077,7 +3062,7 @@ function CliffChartTopLabelsStaggered({ scenarioLabel, scenario, showPits }: Cli
 }
 
 // V2 — Bottom-axis tags below the X axis
-function CliffChartBottomAxisTags({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProps) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   return (
@@ -3134,7 +3119,7 @@ function CliffChartBottomAxisTags({ scenarioLabel, scenario, showPits }: CliffSc
               }}
             />
           ))}
-          {showPits ? renderPitZones(pitZones) : null}
+          {renderPitZones(pitZones)}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3162,7 +3147,7 @@ function CliffChartBottomAxisTags({ scenarioLabel, scenario, showPits }: CliffSc
 }
 
 // V3 — Inline labels at the drop
-function CliffChartInlineAtDrop({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // For each cliff, find the discretionary value just before the drop —
@@ -3217,7 +3202,7 @@ function CliffChartInlineAtDrop({ scenarioLabel, scenario, showPits }: CliffScen
               )}
             />
           ))}
-          {showPits ? renderPitZones(pitZones) : null}
+          {renderPitZones(pitZones)}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3245,7 +3230,7 @@ function CliffChartInlineAtDrop({ scenarioLabel, scenario, showPits }: CliffScen
 }
 
 // V4 — Numbered markers + legend
-function CliffChartNumberedMarkers({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioProps) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   const annotated = cliffs.map((c, i) => {
@@ -3286,7 +3271,7 @@ function CliffChartNumberedMarkers({ scenarioLabel, scenario, showPits }: CliffS
               strokeOpacity={0.6}
             />
           ))}
-          {showPits ? renderPitZones(pitZones) : null}
+          {renderPitZones(pitZones)}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3370,7 +3355,7 @@ function CliffChartNumberedMarkers({ scenarioLabel, scenario, showPits }: CliffS
 }
 
 // V5 — Color-banded eligibility regions
-function CliffChartColorBands({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // Build sorted ascending cutoff list; each "region" is the interval
@@ -3436,7 +3421,7 @@ function CliffChartColorBands({ scenarioLabel, scenario, showPits }: CliffScenar
             width={48}
           />
           <ReferenceLine y={0} stroke={T.inkMuted} />
-          {showPits ? renderPitZones(pitZones) : null}
+          {renderPitZones(pitZones)}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3485,63 +3470,6 @@ function CliffChartColorBands({ scenarioLabel, scenario, showPits }: CliffScenar
         ))}
       </div>
     </ScenarioFrame>
-  );
-}
-
-// ── Section toolbar primitives ───────────────────────────────────────────
-
-function SectionToolbar({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        gridColumn: '1 / -1',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 16,
-        padding: '10px 14px',
-        marginBottom: 4,
-        background: T.bgAlt,
-        border: `1px dashed ${T.border}`,
-        borderRadius: 4,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ToolbarToggle({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <label
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        cursor: 'pointer',
-        fontSize: rem(12),
-        color: T.inkSoft,
-      }}
-      title={hint}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ accentColor: T.accent }}
-      />
-      <span style={{ fontWeight: 600, color: T.ink }}>{label}</span>
-      {hint && <span style={{ color: T.inkMuted, fontStyle: 'italic' }}>· {hint.split('.')[0]}</span>}
-    </label>
   );
 }
 

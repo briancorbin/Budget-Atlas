@@ -107,8 +107,16 @@ export function BudgetExplorer() {
   const toggleBenefit = useCallback((id: string) => {
     setClaimedBenefits((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Claiming Medicaid auto-drops CHIP — Medicaid covers the entire
+        // household including kids, so a simultaneous CHIP claim adds
+        // nothing and just creates a misleading "Claimed" badge on a card
+        // that contributes zero. Mirrors the budget code's priority logic.
+        if (id === 'medicaid') next.delete('chip');
+      }
       return next;
     });
   }, []);

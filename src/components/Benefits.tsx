@@ -142,6 +142,12 @@ export function Benefits({
           // Surface that here so clicking CHIP doesn't look like a no-op.
           const overshadowedByMedicaid =
             meta.id === 'chip' && claimed.has('medicaid') && evaluate('medicaid').eligible;
+          // When both Medicaid and CHIP are eligible, Medicaid is the
+          // strictly better option (covers everyone, $0 cost, broader
+          // benefits). Flag the Medicaid card so the user doesn't pick
+          // CHIP-only by mistake.
+          const recommendedOverChip =
+            meta.id === 'medicaid' && elig.eligible && evaluate('chip').eligible;
           return (
             <Card
               key={meta.id}
@@ -150,6 +156,7 @@ export function Benefits({
               eligibility={elig}
               claimed={isClaimed}
               overshadowedByMedicaid={overshadowedByMedicaid}
+              recommendedOverChip={recommendedOverChip}
               onToggle={() => toggle(meta.id)}
             />
           );
@@ -199,6 +206,7 @@ function Card({
   eligibility,
   claimed,
   overshadowedByMedicaid = false,
+  recommendedOverChip = false,
   onToggle,
 }: {
   meta: BenefitMeta;
@@ -209,6 +217,11 @@ function Card({
    *  CHIP would add $0 (Medicaid covers kids too). The card surfaces the
    *  redundancy and disables the claim affordance. */
   overshadowedByMedicaid?: boolean;
+  /** Medicaid-only: true when both Medicaid and CHIP are eligible, in
+   *  which case Medicaid is the strictly better choice (covers everyone,
+   *  zero out-of-pocket, broader benefits). Surfaces a small recommended
+   *  badge so the user doesn't accidentally pick CHIP-only. */
+  recommendedOverChip?: boolean;
   onToggle: () => void;
 }) {
   const eligible = eligibility.eligible;
@@ -290,6 +303,27 @@ function Card({
         </div>
         <EligibilityBadge eligible={eligible} claimed={claimed} phantomEligible={phantomEligible} />
       </div>
+
+      {recommendedOverChip && !claimed && (
+        <div
+          style={{
+            display: 'inline-block',
+            fontSize: rem(10),
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: T.positive,
+            background: 'rgba(45, 80, 22, 0.1)',
+            border: `1px solid ${T.positive}`,
+            padding: '3px 8px',
+            borderRadius: 2,
+            fontWeight: 600,
+            marginBottom: 8,
+          }}
+          title="When both Medicaid and CHIP are available, Medicaid is the better choice — it covers the whole household (kids included) at $0 cost with broader benefits than CHIP. Claiming Medicaid will automatically uncheck CHIP."
+        >
+          ★ Better option than CHIP
+        </div>
+      )}
 
       <div
         style={{

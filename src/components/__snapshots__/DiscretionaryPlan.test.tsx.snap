@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DiscretionaryPlan > renders nothing when underwater (min_nyc) 1`] = `<div />`;
+
+exports[`DiscretionaryPlan > renders savings/vacation/splurge/emergency cards when sustainable (teacher_oh) 1`] = `<div />`;

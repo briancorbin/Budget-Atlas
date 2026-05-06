@@ -9,10 +9,11 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   base: './', // works for static hosts and GitHub Pages out of the box
-  // Vitest reads this same config; tests are colocated as `*.test.ts` next
-  // to the source they cover. Pure-function libs only — no jsdom needed.
+  // Vitest reads this same config; tests are colocated as `*.test.{ts,tsx}`
+  // next to the source they cover. Component tests (.tsx) opt into jsdom via
+  // a `// @vitest-environment jsdom` docblock; lib tests run in plain Node.
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
   server: {
     host: true,

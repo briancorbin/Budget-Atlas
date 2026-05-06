@@ -1,0 +1,428 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Notes > renders for a single filer with no state DOR (min_rural) 1`] = `
+<div>
+  <div
+    style="margin-top: 60px; padding-top: 24px; border-top: 1px solid rgb(214, 203, 177); font-size: 0.8125rem; color: rgb(90, 79, 66); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px;"
+  >
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        How taxes work here
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        The U.S. federal system is progressive — only the dollars within each bracket are taxed at that rate. The 2026 standard deduction (
+        $16,100
+         for
+         
+        single
+        ) is subtracted before brackets apply. State tax uses the same machinery: each state's actual graduated brackets and standard deduction, applied to gross income. No-tax states (TX, FL, WA, etc.) use a single 0% bracket; flat-tax states (CO, IL, PA) use a single positive bracket.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        The childcare cliff
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Try setting kids to 2 in San Francisco vs. rural Iowa at the same income. Childcare alone can run $25–35K/yr per child in major metros — often more than rent and frequently the single largest budget line for working parents until kids reach school age.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        The no-income-tax illusion
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Texas, Tennessee, Florida, Washington and Wyoming impose 0% income tax — but they recover revenue through property tax (Texas effective rates near 1.6%) and sales tax. For a moderate income, the savings are real; for renters at low incomes, sales tax is regressive and bites harder than it appears.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        Two earners, one return — or two
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Married couples filing jointly combine income on one return; cohabitating partners file separately as singles, each with their own standard deduction. For asymmetric incomes (e.g. $200K + $80K), MFJ usually wins — a "marriage bonus." For two near-equal high earners, MFJ can produce a small "marriage penalty" above ~$770K combined. FICA is always calculated per person, so two earners at $150K each pay more Social Security tax than one earner at $300K.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        Caveats
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Models always simplify. This one assumes employer-sponsored health insurance, no student loans, no debt servicing, no employer 401(k) pre-tax contributions, no homeownership (rents only), and average local prices. EITC and Child Tax Credit are approximated. Real households have wide variance even within the same city and income.
+      </p>
+    </div>
+  </div>
+  <div
+    style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgb(27, 24, 21); text-align: center;"
+  >
+    <div
+      style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 12px;"
+    >
+      Sources backing this calculation
+    </div>
+    <div
+      style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1.9;"
+    >
+      <span>
+        <a
+          href="https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          IRS Rev. Proc. 2025-32
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.ssa.gov/oact/cola/cbb.html"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          SSA Contribution and Benefit Base
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://taxfoundation.org/data/all/state/state-income-tax-rates/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Tax Foundation: 2026 State Income Tax Rates and Brackets
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.ncsl.org/labor-and-employment/state-minimum-wages"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          NCSL State Minimum Wage Chart
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.rentcafe.com/average-rent-market-trends/us/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          RentCafe National Apartment List
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.zillow.com/research/data/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Zillow Observed Rent Index
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.bls.gov/cex/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          BLS Consumer Expenditure Survey
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.care.com/c/cost-of-care-report/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Care.com Cost of Care Report
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.kff.org/series/employer-health-benefits-survey/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          KFF Employer Health Benefits Survey
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.numbeo.com/cost-of-living/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Numbeo cost-of-living indices (cross-check)
+        </a>
+      </span>
+    </div>
+    <div
+      style="margin-top: 18px; font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase;"
+    >
+      <a
+        href="/sources"
+        style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 2px;"
+      >
+        → Full bibliography · 
+        229
+         cited sources
+      </a>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Notes > renders with the state DOR threaded in (exec_nyc) 1`] = `
+<div>
+  <div
+    style="margin-top: 60px; padding-top: 24px; border-top: 1px solid rgb(214, 203, 177); font-size: 0.8125rem; color: rgb(90, 79, 66); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px;"
+  >
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        How taxes work here
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        The U.S. federal system is progressive — only the dollars within each bracket are taxed at that rate. The 2026 standard deduction (
+        $32,200
+         for
+         
+        married filing jointly
+        ) is subtracted before brackets apply. State tax uses the same machinery: each state's actual graduated brackets and standard deduction, applied to gross income. No-tax states (TX, FL, WA, etc.) use a single 0% bracket; flat-tax states (CO, IL, PA) use a single positive bracket.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        The childcare cliff
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Try setting kids to 2 in San Francisco vs. rural Iowa at the same income. Childcare alone can run $25–35K/yr per child in major metros — often more than rent and frequently the single largest budget line for working parents until kids reach school age.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        The no-income-tax illusion
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Texas, Tennessee, Florida, Washington and Wyoming impose 0% income tax — but they recover revenue through property tax (Texas effective rates near 1.6%) and sales tax. For a moderate income, the savings are real; for renters at low incomes, sales tax is regressive and bites harder than it appears.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        Two earners, one return — or two
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Married couples filing jointly combine income on one return; cohabitating partners file separately as singles, each with their own standard deduction. For asymmetric incomes (e.g. $200K + $80K), MFJ usually wins — a "marriage bonus." For two near-equal high earners, MFJ can produce a small "marriage penalty" above ~$770K combined. FICA is always calculated per person, so two earners at $150K each pay more Social Security tax than one earner at $300K.
+      </p>
+    </div>
+    <div>
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 8px;"
+      >
+        Caveats
+      </div>
+      <p
+        style="margin-top: 0px;"
+      >
+        Models always simplify. This one assumes employer-sponsored health insurance, no student loans, no debt servicing, no employer 401(k) pre-tax contributions, no homeownership (rents only), and average local prices. EITC and Child Tax Credit are approximated. Real households have wide variance even within the same city and income.
+      </p>
+    </div>
+  </div>
+  <div
+    style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgb(27, 24, 21); text-align: center;"
+  >
+    <div
+      style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 12px;"
+    >
+      Sources backing this calculation
+    </div>
+    <div
+      style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1.9;"
+    >
+      <span>
+        <a
+          href="https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          IRS Rev. Proc. 2025-32
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.ssa.gov/oact/cola/cbb.html"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          SSA Contribution and Benefit Base
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://taxfoundation.org/data/all/state/state-income-tax-rates/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Tax Foundation: 2026 State Income Tax Rates and Brackets
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.tax.ny.gov"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          New York State Department of Taxation and Finance
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.ncsl.org/labor-and-employment/state-minimum-wages"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          NCSL State Minimum Wage Chart
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.rentcafe.com/average-rent-market-trends/us/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          RentCafe National Apartment List
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.zillow.com/research/data/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Zillow Observed Rent Index
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.bls.gov/cex/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          BLS Consumer Expenditure Survey
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.care.com/c/cost-of-care-report/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Care.com Cost of Care Report
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.kff.org/series/employer-health-benefits-survey/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          KFF Employer Health Benefits Survey
+        </a>
+         · 
+      </span>
+      <span>
+        <a
+          href="https://www.numbeo.com/cost-of-living/"
+          rel="noreferrer"
+          style="color: rgb(133, 120, 106); text-decoration: underline; text-decoration-style: dotted;"
+          target="_blank"
+        >
+          Numbeo cost-of-living indices (cross-check)
+        </a>
+      </span>
+    </div>
+    <div
+      style="margin-top: 18px; font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase;"
+    >
+      <a
+        href="/sources"
+        style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 2px;"
+      >
+        → Full bibliography · 
+        229
+         cited sources
+      </a>
+    </div>
+  </div>
+</div>
+`;

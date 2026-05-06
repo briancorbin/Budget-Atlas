@@ -1,0 +1,269 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CityComparison > renders side-by-side (teacher_oh: Columbus vs SF) 1`] = `
+<div>
+  <div
+    style="margin-bottom: 40px;"
+  >
+    <div
+      style="margin-bottom: 16px; margin-top: 8px;"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-weight: 600; margin-bottom: 6px;"
+      >
+        The same income, somewhere else
+      </div>
+      <div
+        style="font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-weight: 500; color: rgb(27, 24, 21); letter-spacing: -0.01em;"
+      >
+        A geographic comparison
+      </div>
+    </div>
+    <div
+      style="background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177); padding: 24px;"
+    >
+      <div
+        style="margin-bottom: 18px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: rgb(90, 79, 66);"
+      >
+        Same household, same income — different city.
+      </div>
+      <div
+        style="margin-bottom: 24px;"
+      >
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          COMPARE WITH
+        </label>
+        <div
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; max-width: 520px;"
+        >
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="Comparison state"
+              autocomplete="off"
+              placeholder="State"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="California"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="Comparison locality"
+              autocomplete="off"
+              placeholder="City or statewide"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="San Francisco"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+        </div>
+      </div>
+      <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: rgb(214, 203, 177);"
+      >
+        <div
+          style="background: rgb(244, 239, 227); padding: 24px; position: relative;"
+        >
+          <div
+            style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.12em;"
+          >
+            CURRENT
+          </div>
+          <div
+            style="font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1.375rem; margin-top: 4px; margin-bottom: 16px;"
+          >
+            Columbus
+            , 
+            OH
+          </div>
+          <div
+            style="display: grid; grid-template-columns: auto 1fr; column-gap: 24px; row-gap: 8px; font-size: 0.8125rem;"
+          >
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              State tax
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $5,134
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Take-home
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right; color: rgb(45, 80, 22);"
+            >
+              $91,611
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Housing
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $2,000
+              /mo
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Childcare
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $1,785/mo
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Total expenses
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $8,807
+              /mo
+            </span>
+          </div>
+          <div
+            style="border-top: 1px solid rgb(214, 203, 177); margin-top: 18px; padding-top: 14px;"
+          >
+            <div
+              style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.12em;"
+            >
+              DISCRETIONARY / MO
+            </div>
+            <div
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.625rem; color: rgb(166, 38, 28);"
+            >
+              −$1,173
+            </div>
+          </div>
+        </div>
+        <div
+          style="background: rgb(244, 239, 227); padding: 24px; position: relative;"
+        >
+          <div
+            style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.12em;"
+          >
+            COMPARISON
+          </div>
+          <div
+            style="font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1.375rem; margin-top: 4px; margin-bottom: 16px;"
+          >
+            San Francisco
+            , 
+            CA
+          </div>
+          <div
+            style="display: grid; grid-template-columns: auto 1fr; column-gap: 24px; row-gap: 8px; font-size: 0.8125rem;"
+          >
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              State tax
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $3,068
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Take-home
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right; color: rgb(45, 80, 22);"
+            >
+              $93,677
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Housing
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $5,400
+              /mo
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Childcare
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $4,080/mo
+            </span>
+            <span
+              style="color: rgb(90, 79, 66);"
+            >
+              Total expenses
+            </span>
+            <span
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; text-align: right;"
+            >
+              $15,696
+              /mo
+            </span>
+          </div>
+          <div
+            style="border-top: 1px solid rgb(214, 203, 177); margin-top: 18px; padding-top: 14px;"
+          >
+            <div
+              style="font-size: 0.6875rem; color: rgb(133, 120, 106); letter-spacing: 0.12em;"
+            >
+              DISCRETIONARY / MO
+            </div>
+            <div
+              style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.625rem; color: rgb(166, 38, 28);"
+            >
+              −$7,890
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        style="margin-top: 16px; font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1rem; color: rgb(90, 79, 66); font-style: italic; line-height: 1.5;"
+      >
+        Difference: $6,717/mo more breathing room in Columbus.
+         
+        Geography is destiny — but only after you net out housing, taxes, and childcare.
+      </div>
+    </div>
+  </div>
+</div>
+`;

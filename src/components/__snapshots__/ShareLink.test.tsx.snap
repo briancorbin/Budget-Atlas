@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ShareLink > renders the share URL input (teacher_oh) 1`] = `
+<div>
+  <div
+    style="margin-top: 24px; margin-bottom: 24px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap;"
+  >
+    <span
+      style="font-size: 0.75rem; color: rgb(90, 79, 66); letter-spacing: 0.02em; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+    >
+      Send this view to someone:
+    </span>
+    <button
+      aria-label="Copy a shareable link to this view"
+      style="background: transparent; border: medium; padding: 0px; cursor: pointer; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; color: rgb(166, 38, 28); text-decoration: underline; text-underline-offset: 3px; letter-spacing: 0.02em; font-weight: 500; white-space: nowrap;"
+      type="button"
+    >
+      Copy share link
+    </button>
+  </div>
+</div>
+`;

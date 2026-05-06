@@ -1,0 +1,145 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Summary — rendered output > StatRow — sustainable (teacher_oh) 1`] = `
+<div>
+  <div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; margin-bottom: 32px; background: rgb(214, 203, 177);"
+  >
+    <div
+      style="padding: 14px 16px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(133, 120, 106); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; margin-bottom: 6px;"
+      >
+        Gross / yr
+      </div>
+      <div
+        style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.375rem; font-weight: 500; color: rgb(27, 24, 21); line-height: 1;"
+      >
+        $110,000
+      </div>
+      <div
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); margin-top: 6px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+      >
+        $9,167/mo
+      </div>
+    </div>
+    <div
+      style="padding: 14px 16px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(133, 120, 106); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; margin-bottom: 6px;"
+      >
+        Total taxes
+      </div>
+      <div
+        style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.375rem; font-weight: 500; color: rgb(27, 24, 21); line-height: 1;"
+      >
+        $18,389
+      </div>
+      <div
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); margin-top: 6px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+      >
+        16.7% effective
+      </div>
+    </div>
+    <div
+      style="padding: 14px 16px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(133, 120, 106); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; margin-bottom: 6px;"
+      >
+        Take-home
+      </div>
+      <div
+        style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.375rem; font-weight: 500; color: rgb(45, 80, 22); line-height: 1;"
+      >
+        $91,611
+      </div>
+      <div
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); margin-top: 6px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+      >
+        $7,634/mo
+      </div>
+    </div>
+    <div
+      style="padding: 14px 16px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(133, 120, 106); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; margin-bottom: 6px;"
+      >
+        Monthly expenses
+      </div>
+      <div
+        style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.375rem; font-weight: 500; color: rgb(27, 24, 21); line-height: 1;"
+      >
+        $8,807
+      </div>
+      <div
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); margin-top: 6px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+      >
+        Household of 4
+      </div>
+    </div>
+    <div
+      style="padding: 14px 16px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+    >
+      <div
+        style="font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(133, 120, 106); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; margin-bottom: 6px;"
+      >
+        Discretionary
+      </div>
+      <div
+        style="font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.375rem; font-weight: 500; color: rgb(166, 38, 28); line-height: 1;"
+      >
+        −$1,173
+      </div>
+      <div
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); margin-top: 6px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+      >
+        Shortfall — unsustainable
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Summary — rendered output > StatusBanner — sustainable (teacher_oh) 1`] = `
+<div>
+  <div
+    style="margin-bottom: 36px; padding: 18px 24px; background: rgb(241, 219, 216); border-left: 4px solid rgb(166, 38, 28); font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1.0625rem; line-height: 1.5;"
+  >
+    <strong
+      style="color: rgb(166, 38, 28);"
+    >
+      Underwater by 
+      $1,173
+      /mo.
+    </strong>
+     
+    Income doesn't cover the assumed cost of essentials in 
+    Columbus
+    . In reality this looks like: roommates, doubling up with family, food assistance (SNAP), Medicaid, subsidized childcare, debt — or relocating.
+  </div>
+</div>
+`;
+
+exports[`Summary — rendered output > StatusBanner — underwater (min_nyc) 1`] = `
+<div>
+  <div
+    style="margin-bottom: 36px; padding: 18px 24px; background: rgb(241, 219, 216); border-left: 4px solid rgb(166, 38, 28); font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1.0625rem; line-height: 1.5;"
+  >
+    <strong
+      style="color: rgb(166, 38, 28);"
+    >
+      Underwater by 
+      $3,073
+      /mo.
+    </strong>
+     
+    Income doesn't cover the assumed cost of essentials in 
+    New York City
+    . In reality this looks like: roommates, doubling up with family, food assistance (SNAP), Medicaid, subsidized childcare, debt — or relocating.
+  </div>
+</div>
+`;

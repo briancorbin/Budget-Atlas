@@ -1,0 +1,79 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Masthead > renders the editorial header 1`] = `
+<div>
+  <div
+    style="border-top: 2px solid rgb(27, 24, 21); border-bottom: 1px solid rgb(214, 203, 177); padding-top: 18px; padding-bottom: 24px; margin-bottom: 32px;"
+  >
+    <div
+      style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px;"
+    >
+      <div
+        style="display: flex; flex-direction: column; gap: 4px;"
+      >
+        <div
+          style="font-size: 0.6875rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600;"
+        >
+          The Budget Atlas · Vol. 2026
+        </div>
+        <span
+          style="font-size: 0.6875rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgb(133, 120, 106); font-weight: 500;"
+        >
+          An interactive examination
+        </span>
+      </div>
+      <nav
+        aria-label="Primary"
+        style="display: flex; align-items: baseline; gap: 18px; font-size: 0.6875rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgb(133, 120, 106); flex-wrap: wrap; justify-content: flex-end;"
+      >
+        <a
+          href="/about"
+          style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 1px;"
+        >
+          About →
+        </a>
+        <a
+          href="/sources"
+          style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 1px;"
+        >
+          Sources →
+        </a>
+        <a
+          href="/roadmap"
+          style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 1px;"
+        >
+          Roadmap →
+        </a>
+        <a
+          href="/privacy"
+          style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 1px;"
+        >
+          Privacy →
+        </a>
+      </nav>
+    </div>
+    <h1
+      style="font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1.05; margin: 14px 0px; font-style: italic; max-width: 20ch;"
+    >
+      How Americans actually live on what they earn.
+    </h1>
+    <div
+      style="font-family: "Fraunces Variable", Fraunces, ui-serif, Georgia, serif; font-size: 1.125rem; color: rgb(90, 79, 66); max-width: 720px; line-height: 1.5;"
+    >
+      Plug in an income, a place, a family. See where the money goes — what's left for the future, the trip, the splurge — and the help a household at that income may already qualify for. Built on 2026 IRS brackets, state tax data, BLS price indices, and real rents.
+    </div>
+    <div
+      style="margin-top: 16px; font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(133, 120, 106); font-weight: 500;"
+    >
+      Static site · No accounts · No personal data · Cookieless aggregate analytics ·
+       
+      <a
+        href="/privacy"
+        style="color: rgb(166, 38, 28); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgb(214, 203, 177); padding-bottom: 1px;"
+      >
+        Details
+      </a>
+    </div>
+  </div>
+</div>
+`;

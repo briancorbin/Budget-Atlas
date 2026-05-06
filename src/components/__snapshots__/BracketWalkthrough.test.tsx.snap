@@ -1,0 +1,46 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BracketWalkthrough > collapsed: just the toggle button (teacher_oh) 1`] = `
+<div>
+  <div
+    style="margin-top: 16px; margin-bottom: 32px;"
+  >
+    <button
+      style="font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; padding: 10px 14px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); font-weight: 600;"
+    >
+      + View
+       bracket walkthrough
+    </button>
+  </div>
+</div>
+`;
+
+exports[`BracketWalkthrough > expanded: dual-earner married (teacher_oh) 1`] = `
+<div>
+  <div
+    style="margin-top: 16px; margin-bottom: 32px;"
+  >
+    <button
+      style="font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; padding: 10px 14px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); font-weight: 600;"
+    >
+      + View
+       bracket walkthrough
+    </button>
+  </div>
+</div>
+`;
+
+exports[`BracketWalkthrough > expanded: high-income married (tech_sf_family) 1`] = `
+<div>
+  <div
+    style="margin-top: 16px; margin-bottom: 32px;"
+  >
+    <button
+      style="font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; padding: 10px 14px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); font-weight: 600;"
+    >
+      + View
+       bracket walkthrough
+    </button>
+  </div>
+</div>
+`;

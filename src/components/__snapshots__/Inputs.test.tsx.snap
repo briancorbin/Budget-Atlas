@@ -1,0 +1,557 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CustomizePanel > renders dual-earner married inputs (teacher_oh) 1`] = `
+<div>
+  <div
+    style="margin-bottom: 40px; padding: 24px 28px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+  >
+    <div
+      style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 18px;"
+    >
+      Customize
+    </div>
+    <div
+      style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed rgb(214, 203, 177);"
+    >
+      <label
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+      >
+        OR LOAD AN EXAMPLE
+      </label>
+      <div
+        style="position: relative;"
+      >
+        <input
+          aria-expanded="false"
+          aria-label="Load an example household"
+          autocomplete="off"
+          placeholder="Pick a real-feeling household to prefill these inputs…"
+          role="combobox"
+          spellcheck="false"
+          style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+          type="text"
+          value=""
+        />
+        <span
+          style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+        >
+          ▾
+        </span>
+      </div>
+    </div>
+    <div
+      style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed rgb(214, 203, 177);"
+    >
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;"
+      >
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); letter-spacing: 0.05em;"
+        >
+          INCOME
+        </label>
+        <button
+          style="font-size: 0.6875rem; letter-spacing: 0.08em; padding: 6px 12px; cursor: pointer; background: rgb(235, 227, 208); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+        >
+          − SINGLE INCOME
+        </button>
+      </div>
+      <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;"
+      >
+        <div>
+          <label
+            style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+          >
+            PRIMARY · ANNUAL
+          </label>
+          <input
+            style="width: 100%; padding: 10px 12px; font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.125rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+            type="number"
+            value="56000"
+          />
+          <input
+            max="750000"
+            min="0"
+            step="1000"
+            style="width: 100%; margin-top: 8px; accent-color: rgb(166, 38, 28);"
+            type="range"
+            value="56000"
+          />
+        </div>
+        <div>
+          <label
+            style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+          >
+            PARTNER · ANNUAL
+          </label>
+          <input
+            style="width: 100%; padding: 10px 12px; font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.125rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+            type="number"
+            value="54000"
+          />
+          <input
+            max="500000"
+            min="0"
+            step="1000"
+            style="width: 100%; margin-top: 8px; accent-color: rgb(166, 38, 28);"
+            type="range"
+            value="54000"
+          />
+        </div>
+      </div>
+      <div
+        style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; flex-wrap: wrap; gap: 8px;"
+      >
+        <div
+          style="font-size: 0.6875rem; color: rgb(133, 120, 106);"
+        >
+          State min wage at 40 hrs/wk = 
+          $22,256
+        </div>
+        <div
+          style="font-size: 0.8125rem; font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; color: rgb(27, 24, 21);"
+        >
+          HOUSEHOLD TOTAL
+           
+          <span
+            style="color: rgb(166, 38, 28); margin-left: 6px;"
+          >
+            $110,000
+          </span>
+        </div>
+      </div>
+    </div>
+    <div
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;"
+    >
+      <div
+        style="grid-column: 1 / -1;"
+      >
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          LOCATION
+        </label>
+        <div
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;"
+        >
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="State"
+              autocomplete="off"
+              placeholder="State"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="Ohio"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="City or statewide locality"
+              autocomplete="off"
+              placeholder="City or statewide"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="Columbus"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+        </div>
+        <div
+          style="font-size: 0.6875rem; color: rgb(133, 120, 106); margin-top: 6px;"
+        >
+          State income tax: 2.8%–3.5%
+           · 
+          3BR rent (family): 
+          $2,000
+          /mo
+          <span
+            style="position: relative; display: inline-block; vertical-align: middle;"
+          >
+            <button
+              aria-expanded="false"
+              aria-label="3 sources, worst status: ai-verified"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 0.62em; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(166, 38, 28); padding: 3px 6px 2px; margin: 0px 4px; border: 1px solid rgb(166, 38, 28); border-radius: 2px; background: transparent; text-decoration: none; vertical-align: middle; line-height: 1; cursor: pointer; white-space: nowrap; position: relative; top: -0.1em;"
+              type="button"
+            >
+              <span
+                style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px #2D5016; flex-shrink: 0;"
+              />
+              sources · 3 ↗
+            </button>
+          </span>
+        </div>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          FILING STATUS
+        </label>
+        <select
+          style="width: 100%; padding: 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none;"
+        >
+          <option
+            value="single"
+          >
+            Single
+          </option>
+          <option
+            value="married"
+          >
+            Married, filing jointly
+          </option>
+          <option
+            value="head"
+          >
+            Head of household
+          </option>
+        </select>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          CHILDREN
+        </label>
+        <div
+          style="display: flex; gap: 4px;"
+        >
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            0
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            1
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(27, 24, 21); color: rgb(244, 239, 227); border: 1px solid rgb(27, 24, 21); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            2
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            3
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            4
+            +
+          </button>
+        </div>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          LIFESTYLE LEVEL
+        </label>
+        <div
+          style="display: flex; gap: 4px;"
+        >
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Modest
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(27, 24, 21); color: rgb(244, 239, 227); border: 1px solid rgb(27, 24, 21); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Moderate
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Comfortable
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CustomizePanel > renders single-earner inputs (min_rural) 1`] = `
+<div>
+  <div
+    style="margin-bottom: 40px; padding: 24px 28px; background: rgb(251, 248, 239); border: 1px solid rgb(214, 203, 177);"
+  >
+    <div
+      style="font-size: 0.6875rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(166, 38, 28); font-weight: 600; margin-bottom: 18px;"
+    >
+      Customize
+    </div>
+    <div
+      style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed rgb(214, 203, 177);"
+    >
+      <label
+        style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+      >
+        OR LOAD AN EXAMPLE
+      </label>
+      <div
+        style="position: relative;"
+      >
+        <input
+          aria-expanded="false"
+          aria-label="Load an example household"
+          autocomplete="off"
+          placeholder="Pick a real-feeling household to prefill these inputs…"
+          role="combobox"
+          spellcheck="false"
+          style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+          type="text"
+          value=""
+        />
+        <span
+          style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+        >
+          ▾
+        </span>
+      </div>
+    </div>
+    <div
+      style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed rgb(214, 203, 177);"
+    >
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;"
+      >
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); letter-spacing: 0.05em;"
+        >
+          ANNUAL HOUSEHOLD INCOME
+        </label>
+        <button
+          style="font-size: 0.6875rem; letter-spacing: 0.08em; padding: 6px 12px; cursor: pointer; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;"
+        >
+          + ADD PARTNER / SPOUSE INCOME
+        </button>
+      </div>
+      <div
+        style="display: grid; grid-template-columns: 1fr; gap: 20px;"
+      >
+        <div>
+          <input
+            style="width: 100%; padding: 10px 12px; font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 1.125rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+            type="number"
+            value="15080"
+          />
+          <input
+            max="750000"
+            min="0"
+            step="1000"
+            style="width: 100%; margin-top: 8px; accent-color: rgb(166, 38, 28);"
+            type="range"
+            value="15080"
+          />
+        </div>
+      </div>
+      <div
+        style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; flex-wrap: wrap; gap: 8px;"
+      >
+        <div
+          style="font-size: 0.6875rem; color: rgb(133, 120, 106);"
+        >
+          State min wage at 40 hrs/wk = 
+          $15,080
+        </div>
+      </div>
+    </div>
+    <div
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;"
+    >
+      <div
+        style="grid-column: 1 / -1;"
+      >
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          LOCATION
+        </label>
+        <div
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;"
+        >
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="State"
+              autocomplete="off"
+              placeholder="State"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="Mississippi"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+          <div
+            style="position: relative;"
+          >
+            <input
+              aria-expanded="false"
+              aria-label="City or statewide locality"
+              autocomplete="off"
+              placeholder="City or statewide"
+              role="combobox"
+              spellcheck="false"
+              style="width: 100%; padding: 10px 32px 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none; box-sizing: border-box;"
+              type="text"
+              value="Rural Mississippi"
+            />
+            <span
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: rgb(133, 120, 106); font-size: 0.6875rem; pointer-events: none;"
+            >
+              ▾
+            </span>
+          </div>
+        </div>
+        <div
+          style="font-size: 0.6875rem; color: rgb(133, 120, 106); margin-top: 6px;"
+        >
+          State income tax: 4.4% (flat)
+           · 
+          1BR rent: 
+          $700
+          /mo
+          <span
+            style="position: relative; display: inline-block; vertical-align: middle;"
+          >
+            <button
+              aria-expanded="false"
+              aria-label="3 sources, worst status: ai-verified"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 0.62em; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(166, 38, 28); padding: 3px 6px 2px; margin: 0px 4px; border: 1px solid rgb(166, 38, 28); border-radius: 2px; background: transparent; text-decoration: none; vertical-align: middle; line-height: 1; cursor: pointer; white-space: nowrap; position: relative; top: -0.1em;"
+              type="button"
+            >
+              <span
+                style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px #2D5016; flex-shrink: 0;"
+              />
+              sources · 3 ↗
+            </button>
+          </span>
+        </div>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          FILING STATUS
+        </label>
+        <select
+          style="width: 100%; padding: 10px 12px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; background: rgb(244, 239, 227); border: 1px solid rgb(214, 203, 177); color: rgb(27, 24, 21); outline: none;"
+        >
+          <option
+            value="single"
+          >
+            Single
+          </option>
+          <option
+            value="married"
+          >
+            Married, filing jointly
+          </option>
+          <option
+            value="head"
+          >
+            Head of household
+          </option>
+        </select>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          CHILDREN
+        </label>
+        <div
+          style="display: flex; gap: 4px;"
+        >
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(27, 24, 21); color: rgb(244, 239, 227); border: 1px solid rgb(27, 24, 21); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            0
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            1
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            2
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            3
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-size: 0.875rem; cursor: pointer;"
+          >
+            4
+            +
+          </button>
+        </div>
+      </div>
+      <div>
+        <label
+          style="font-size: 0.75rem; color: rgb(90, 79, 66); display: block; margin-bottom: 6px; letter-spacing: 0.05em;"
+        >
+          LIFESTYLE LEVEL
+        </label>
+        <div
+          style="display: flex; gap: 4px;"
+        >
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(27, 24, 21); color: rgb(244, 239, 227); border: 1px solid rgb(27, 24, 21); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Modest
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Moderate
+          </button>
+          <button
+            style="flex: 1 1 0%; padding: 10px; background: rgb(244, 239, 227); color: rgb(27, 24, 21); border: 1px solid rgb(214, 203, 177); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.8125rem; cursor: pointer; letter-spacing: 0.02em;"
+          >
+            Comfortable
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

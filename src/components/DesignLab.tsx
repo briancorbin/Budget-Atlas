@@ -114,7 +114,10 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     nav: 'Cliff threshold annotations',
     count: 5,
     Component: SectionCliffAnnotations,
-    status: 'open',
+    status: 'decided',
+    decidedAs: 'V1 — top labels with smart stagger',
+    decidedNote:
+      'Lowest-row collision-avoidance keeps labels readable when cliffs cluster. Dashed cliff line now extends up to the label so the eye can follow line→label even on bumped rows.',
   },
   {
     id: 'pits',
@@ -2744,8 +2747,9 @@ function SectionCliffAnnotations() {
       subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve."
     >
       <Variation
+        decided
         title="V1 — Top labels with smart stagger (current production)"
-        description="Labels above each ReferenceLine; collisions auto-bump to a higher row. Reads top-down; eye has to travel from label to line."
+        description="Labels above each ReferenceLine; collisions auto-bump to a higher row. The dashed cliff line extends up to bumped labels so the eye can follow line→label."
       >
         <CliffStack Renderer={CliffChartTopLabelsStaggered} />
       </Variation>
@@ -3021,17 +3025,29 @@ function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenario
               x={c.gross}
               stroke={c.color}
               strokeDasharray="3 3"
-              label={(props: { viewBox?: { x?: number; y?: number } }) => (
-                <text
-                  x={props.viewBox?.x ?? 0}
-                  y={(props.viewBox?.y ?? 0) - 4 - c.row * 13}
-                  fill={c.color}
-                  fontSize={10}
-                  textAnchor="middle"
-                >
-                  {c.shortLabel}
-                </text>
-              )}
+              label={(props: { viewBox?: { x?: number; y?: number } }) => {
+                const x = props.viewBox?.x ?? 0;
+                const y = props.viewBox?.y ?? 0;
+                const labelY = y - 4 - c.row * 13;
+                return (
+                  <g>
+                    {c.row > 0 && (
+                      <line
+                        x1={x}
+                        x2={x}
+                        y1={y}
+                        y2={labelY + 2}
+                        stroke={c.color}
+                        strokeDasharray="3 3"
+                        strokeWidth={1}
+                      />
+                    )}
+                    <text x={x} y={labelY} fill={c.color} fontSize={10} textAnchor="middle">
+                      {c.shortLabel}
+                    </text>
+                  </g>
+                );
+              }}
             />
           ))}
           {renderPitZones(pitZones)}

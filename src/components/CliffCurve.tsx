@@ -359,17 +359,36 @@ export function CliffCurve({
                 label={(props: { viewBox?: { x?: number; y?: number } }) => {
                   const x = props.viewBox?.x ?? 0;
                   const y = props.viewBox?.y ?? 0;
+                  // Label sits in the chart's top margin; for bumped rows
+                  // it's even higher up. The ReferenceLine itself only
+                  // draws inside the plot area, so when row > 0 we add a
+                  // matching dashed connector from the chart top up to
+                  // just below the label so the eye can follow line→label.
+                  const labelY = y - 6 - c.labelRow * 13;
                   return (
-                    <text
-                      x={x}
-                      y={y - 6 - c.labelRow * 13}
-                      fill={c.color}
-                      fontSize={10}
-                      fontFamily={fonts.body}
-                      textAnchor="middle"
-                    >
-                      {c.label}
-                    </text>
+                    <g>
+                      {c.labelRow > 0 && (
+                        <line
+                          x1={x}
+                          x2={x}
+                          y1={y}
+                          y2={labelY + 2}
+                          stroke={c.color}
+                          strokeDasharray="3 3"
+                          strokeWidth={1}
+                        />
+                      )}
+                      <text
+                        x={x}
+                        y={labelY}
+                        fill={c.color}
+                        fontSize={10}
+                        fontFamily={fonts.body}
+                        textAnchor="middle"
+                      >
+                        {c.label}
+                      </text>
+                    </g>
                   );
                 }}
               />

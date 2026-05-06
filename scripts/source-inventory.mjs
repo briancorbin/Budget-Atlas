@@ -45,25 +45,34 @@ const { SOURCES, ALL_SOURCES } = sourcesModule;
 
 // ── Status + reviews ────────────────────────────────────────────────────
 //
-// `BROKEN_STATUS_CODES` matches the UI's definition
-// (src/lib/audit/status.ts), so this report's broken count tracks the
-// /sources page exactly. The audit pipeline (audit/links/seed-issues.mjs)
-// uses a slightly narrower set that excludes `000ERR`; that divergence
-// is long-standing and tracked as a follow-up. When the two definitions
-// converge, this constant becomes a re-export.
-const BROKEN_SET = new Set(['404', '000', '000ERR', 'ERR', '999']);
+// Matches the UI's definition (src/lib/audit/status.ts BROKEN_STATUS_CODES)
+// so this report's broken count tracks the /sources page exactly. 999 is
+// excluded — it's a bot-block signal (LinkedIn, several state .gov sites),
+// not a broken page; it belongs alongside 403 in the bot-blocked bucket.
+// When the audit pipeline's slightly narrower set (seed-issues.mjs, which
+// also flags 999) converges with this, this constant becomes a re-export.
+const BROKEN_SET = new Set(['404', '000', '000ERR', 'ERR']);
 
-const STATUS_BY_URL = await (async () => {
-  const map = new Map();
-  const res = await fetch(`${API_BASE}/api/audit/latest`);
-  if (!res.ok) {
-    console.warn(
-      `[audit-inventory] /api/audit/latest: HTTP ${res.status} — broken column will be empty`,
-    );
-    return map;
+// One fetch of /api/audit/latest serves both the URL → status map and the
+// snapshot date — splitting these into two requests opens a window where
+// they could disagree if a new run lands mid-script.
+const latestRun = await (async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/audit/latest`);
+    if (!res.ok) {
+      console.warn(`[audit-inventory] /api/audit/latest: HTTP ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`[audit-inventory] /api/audit/latest fetch failed: ${err.message}`);
+    return null;
   }
-  const body = await res.json();
-  for (const r of body.results ?? []) {
+})();
+
+const STATUS_BY_URL = (() => {
+  const map = new Map();
+  for (const r of latestRun?.results ?? []) {
     if (typeof r.url === 'string' && typeof r.status === 'string') map.set(r.url, r.status);
   }
   return map;
@@ -208,19 +217,9 @@ if (process.argv.includes('--check')) {
 // ── Render ──────────────────────────────────────────────────────────────
 const today = new Date().toISOString().slice(0, 10);
 // Record the snapshot date of the link-audit data so the report is
-// honest about freshness. Pulled from /api/audit/latest's run_date so
-// the value reflects when the audit actually ran, not when this report
-// was rendered.
-const auditDate = await (async () => {
-  try {
-    const res = await fetch(`${API_BASE}/api/audit/latest`);
-    if (!res.ok) return 'unknown';
-    const body = await res.json();
-    return body.run_date ?? 'unknown';
-  } catch {
-    return 'unknown';
-  }
-})();
+// honest about freshness — reflects when the audit actually ran, not
+// when this report was rendered. Reused from the single fetch above.
+const auditDate = latestRun?.run_date ?? 'unknown';
 const lines = [];
 
 lines.push('# Source inventory audit');

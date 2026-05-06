@@ -251,32 +251,60 @@ if (verifiedBotBlockedCount > 0) {
 // URLs per night (~5–30), so the per-URL round trips are cheap. The
 // alternative of pulling the last N full runs in one bulk call would
 // mean fetching ~600 rows to read ~30 statuses; per-URL is leaner.
+//
+// Failures (network error, non-2xx, malformed JSON) degrade to "no
+// history" rather than aborting the whole issue refresh. Without flap
+// data the URL escalates immediately, which is the same behaviour you
+// got before flap suppression existed — strictly safer than failing
+// to seed the queue at all on a transient API blip.
 const FLAP_SUPPRESSION_RUNS = 3;
+const HISTORY_FETCH_CONCURRENCY = 5;
 
 async function fetchHistory(url) {
-  const res = await fetch(`${API_BASE}/api/audit/history?url=${encodeURIComponent(url)}`);
-  if (!res.ok) {
-    console.warn(`  history fetch for ${url}: HTTP ${res.status}; treating as no history`);
+  try {
+    const res = await fetch(`${API_BASE}/api/audit/history?url=${encodeURIComponent(url)}`);
+    if (!res.ok) {
+      console.warn(`  history fetch for ${url}: HTTP ${res.status}; treating as no history`);
+      return [];
+    }
+    const body = await res.json();
+    return body.history ?? [];
+  } catch (err) {
+    console.warn(`  history fetch for ${url} threw (${err.message}); treating as no history`);
     return [];
   }
-  const body = await res.json();
-  return body.history ?? [];
+}
+
+// Bounded concurrency so a queue with 50+ broken URLs (an outage / WAF
+// rule rollout) doesn't spike the Worker or hit subrequest limits in
+// the GitHub Actions runner. CF Workers comfortably handle far more
+// than 5 concurrent reads, but the limit also protects against
+// upstream rate-limiting on bad days.
+async function mapWithLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 let flapSuppressedCount = 0;
-const flapChecked = await Promise.all(
-  filteredBroken.map(async (r) => {
-    const history = await fetchHistory(r.url);
-    // history is ordered DESC by run_date and capped at 30 rows by the
-    // API — slice to the suppression window. If we have fewer than 2
-    // runs of history there's nothing to compare against; fall back to
-    // escalating (current behaviour).
-    const window = history.slice(0, FLAP_SUPPRESSION_RUNS);
-    if (window.length < 2) return { row: r, suppress: false, runs: window.length };
-    const allActionable = window.every((h) => ACTIONABLE.has(h.status));
-    return { row: r, suppress: !allActionable, runs: window.length };
-  }),
-);
+const flapChecked = await mapWithLimit(filteredBroken, HISTORY_FETCH_CONCURRENCY, async (r) => {
+  const history = await fetchHistory(r.url);
+  // history is ordered DESC by run_date and capped at 30 rows by the
+  // API — slice to the suppression window. If we have fewer than 2
+  // runs of history there's nothing to compare against; fall back to
+  // escalating (current behaviour).
+  const window = history.slice(0, FLAP_SUPPRESSION_RUNS);
+  if (window.length < 2) return { row: r, suppress: false, runs: window.length };
+  const allActionable = window.every((h) => ACTIONABLE.has(h.status));
+  return { row: r, suppress: !allActionable, runs: window.length };
+});
 
 const flapWindow = flapChecked.length ? Math.max(...flapChecked.map((c) => c.runs)) : 0;
 filteredBroken = flapChecked

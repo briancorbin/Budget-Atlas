@@ -32,6 +32,10 @@ interface BenefitMeta {
   source: Source | readonly Source[];
   /** Optional state-specific citation, computed at render time. */
   stateSource?: (inputs: BenefitInputs) => Source;
+  /** Plain-language explanation of how this benefit's monthly dollar value
+   *  is derived. Surfaced as a hover tooltip on the value display so the
+   *  reader can see what's behind the number. */
+  valueDerivation: string;
 }
 
 const BENEFIT_META: readonly BenefitMeta[] = [
@@ -43,6 +47,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: 'Reduces the grocery line.',
     source: SNAP_SOURCE,
     stateSource: (inputs) => snapStateSource(inputs.state),
+    valueDerivation:
+      "USDA formula: max benefit for your household size (FY2026 schedule) minus 30% of estimated net income. Net income = gross − 20% earned-income deduction − the standard deduction. Real SNAP also subtracts shelter and childcare deductions; we don't model those yet.",
   },
   {
     id: 'medicaid',
@@ -52,6 +58,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: 'Zeros out the healthcare line.',
     source: [MEDICAID_SOURCE, MEDICAID_EXPANSION_SOURCE],
     stateSource: (inputs) => medicaidStateSource(inputs.state),
+    valueDerivation:
+      "Treats Medicaid as worth your full modeled monthly healthcare premium — sourced from KFF's Employer Health Benefits Survey (worker share of an employer-sponsored family or single plan). The model uses the same number for both 'value of public coverage' and 'post-cliff out-of-pocket cost,' so the cliff drop on Discretionary equals the cliff drop on Take-home + benefits. A more honest model would split these (Medicaid is genuinely better than typical employer coverage; ACA marketplace replacements typically cost more). On the roadmap.",
   },
   {
     id: 'chip',
@@ -61,6 +69,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: "Reduces the kids' share of healthcare.",
     source: [CHIP_SOURCE, CHIP_STATE_THRESHOLDS_SOURCE],
     stateSource: (inputs) => chipStateSource(inputs.state),
+    valueDerivation:
+      "The kids' marginal share of the family premium: family premium minus an adult-only baseline (single-coverage premium × number of adults). Both premiums sourced from KFF's Employer Health Benefits Survey. Real CHIP often charges small premiums above ~150% FPL; we treat coverage as fully replacing the kids' share for simplicity.",
   },
 ];
 
@@ -126,6 +136,18 @@ export function Benefits({
           const sources: readonly Source[] = meta.stateSource
             ? [...baseSources, meta.stateSource(inputs)]
             : baseSources;
+          // Medicaid covers the entire household when claimed (including
+          // kids), so CHIP claimed alongside it would add zero relief —
+          // the budget code skips applying CHIP in that case (see budget.ts).
+          // Surface that here so clicking CHIP doesn't look like a no-op.
+          const overshadowedByMedicaid =
+            meta.id === 'chip' && claimed.has('medicaid') && evaluate('medicaid').eligible;
+          // When both Medicaid and CHIP are eligible, Medicaid is the
+          // strictly better option (covers everyone, $0 cost, broader
+          // benefits). Flag the Medicaid card so the user doesn't pick
+          // CHIP-only by mistake.
+          const recommendedOverChip =
+            meta.id === 'medicaid' && elig.eligible && evaluate('chip').eligible;
           return (
             <Card
               key={meta.id}
@@ -133,6 +155,8 @@ export function Benefits({
               sources={sources}
               eligibility={elig}
               claimed={isClaimed}
+              overshadowedByMedicaid={overshadowedByMedicaid}
+              recommendedOverChip={recommendedOverChip}
               onToggle={() => toggle(meta.id)}
             />
           );
@@ -181,12 +205,23 @@ function Card({
   sources,
   eligibility,
   claimed,
+  overshadowedByMedicaid = false,
+  recommendedOverChip = false,
   onToggle,
 }: {
   meta: BenefitMeta;
   sources: readonly Source[];
   eligibility: BenefitEligibility;
   claimed: boolean;
+  /** CHIP-only: true when Medicaid is claimed and eligible, in which case
+   *  CHIP would add $0 (Medicaid covers kids too). The card surfaces the
+   *  redundancy and disables the claim affordance. */
+  overshadowedByMedicaid?: boolean;
+  /** Medicaid-only: true when both Medicaid and CHIP are eligible, in
+   *  which case Medicaid is the strictly better choice (covers everyone,
+   *  zero out-of-pocket, broader benefits). Surfaces a small recommended
+   *  badge so the user doesn't accidentally pick CHIP-only. */
+  recommendedOverChip?: boolean;
   onToggle: () => void;
 }) {
   const eligible = eligibility.eligible;
@@ -201,7 +236,11 @@ function Card({
   // into the phantom zone, the auto-drop logic in BudgetExplorer won't
   // fire (eligibility is still true), so we must keep the unclaim path
   // open — otherwise the card gets stuck "claimed at $0" forever.
-  const actionable = (eligible && !phantomEligible) || (phantomEligible && claimed);
+  const actionable =
+    // Allow unclaim if the card was claimed before Medicaid took over,
+    // so the user isn't stuck with a misleading "Claimed" badge.
+    (overshadowedByMedicaid && claimed) ||
+    (!overshadowedByMedicaid && ((eligible && !phantomEligible) || (phantomEligible && claimed)));
   const handleClick = () => {
     if (actionable) onToggle();
   };
@@ -240,6 +279,7 @@ function Card({
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'baseline',
           marginBottom: 4,
@@ -263,6 +303,8 @@ function Card({
         <EligibilityBadge eligible={eligible} claimed={claimed} phantomEligible={phantomEligible} />
       </div>
 
+      {recommendedOverChip && !claimed && <BetterOptionBadge />}
+
       <div
         style={{
           fontSize: rem(13),
@@ -274,19 +316,15 @@ function Card({
         {meta.blurb}
       </div>
 
-      {eligible && eligibility.monthlyBenefit > 0 ? (
+      {overshadowedByMedicaid ? (
+        <OvershadowedByMedicaidNote />
+      ) : eligible && eligibility.monthlyBenefit > 0 ? (
         <>
-          <div
-            style={{
-              fontFamily: fonts.mono,
-              fontSize: rem(16),
-              marginBottom: 4,
-              color: claimed ? T.bg : T.positive,
-              fontWeight: 600,
-            }}
-          >
-            ~{fmt(eligibility.monthlyBenefit)}/mo
-          </div>
+          <ValueWithDerivation
+            value={`~${fmt(eligibility.monthlyBenefit)}/mo`}
+            derivation={meta.valueDerivation}
+            claimed={claimed}
+          />
           <div
             style={{
               fontSize: rem(11),
@@ -420,6 +458,264 @@ function EligibilityBadge({
  * or press Escape to dismiss. e.stopPropagation prevents the click from
  * bubbling to the card-level role=button handler.
  */
+/** Renders the benefit's monthly dollar value with a hover/focus popover
+ *  that explains how the number was derived (formula, source, simplifying
+ *  assumptions). The value itself stays the same prominent mono number;
+ *  the tooltip is opt-in for readers who want to know what's behind it. */
+function ValueWithDerivation({
+  value,
+  derivation,
+  claimed,
+}: {
+  value: string;
+  derivation: string;
+  claimed: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 4 }}>
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-describedby={open ? 'value-derivation' : undefined}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          cursor: 'help',
+          fontFamily: fonts.mono,
+          fontSize: rem(16),
+          fontWeight: 600,
+          color: claimed ? T.bg : T.positive,
+          textDecoration: 'underline',
+          textDecorationStyle: 'dotted',
+          textUnderlineOffset: 4,
+        }}
+      >
+        {value}
+      </button>
+      {open && (
+        <div
+          id="value-derivation"
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 5,
+            width: 300,
+            padding: '10px 12px',
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(27, 24, 21, 0.12)',
+            fontFamily: fonts.body,
+            fontSize: rem(12),
+            lineHeight: 1.5,
+            color: T.ink,
+            fontStyle: 'normal',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontSize: rem(10),
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: T.inkMuted,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            How this is computed
+          </div>
+          {derivation}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Small green badge that appears on the Medicaid card when CHIP is also
+ *  eligible. Hover/focus reveals a popover explaining WHY Medicaid is the
+ *  better choice — covers the whole household at $0 cost with broader
+ *  benefits, plus the practical UX note that claiming Medicaid will
+ *  auto-drop CHIP. */
+function BetterOptionBadge() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }}>
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-describedby={open ? 'better-option-popover' : undefined}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: 'inline-block',
+          fontSize: rem(10),
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: T.positive,
+          background: 'rgba(45, 80, 22, 0.1)',
+          border: `1px solid ${T.positive}`,
+          padding: '3px 8px',
+          borderRadius: 2,
+          fontWeight: 600,
+          cursor: 'help',
+          fontFamily: fonts.body,
+        }}
+      >
+        ★ Better option than CHIP
+      </button>
+      {open && (
+        <div
+          id="better-option-popover"
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 5,
+            width: 320,
+            padding: '10px 12px',
+            background: T.surface,
+            border: `1px solid ${T.positive}`,
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(27, 24, 21, 0.12)',
+            fontFamily: fonts.body,
+            fontSize: rem(12),
+            lineHeight: 1.5,
+            color: T.ink,
+            fontStyle: 'normal',
+            pointerEvents: 'none',
+            textTransform: 'none',
+            letterSpacing: 'normal',
+          }}
+        >
+          <div
+            style={{
+              fontSize: rem(10),
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: T.inkMuted,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            Why Medicaid over CHIP
+          </div>
+          <ul
+            style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}
+          >
+            <li>
+              <strong>Covers the whole household</strong> — adults and kids — instead of just the
+              kids' share.
+            </li>
+            <li>
+              <strong>Genuinely $0 cost.</strong> CHIP often charges small monthly premiums above
+              ~150% FPL (varies by state); Medicaid does not.
+            </li>
+            <li>
+              <strong>Broader benefits.</strong> Medicaid typically has $0 deductible, $0 copay, and
+              includes dental/vision; CHIP varies more by state.
+            </li>
+          </ul>
+          <div style={{ marginTop: 6, color: T.inkMuted, fontSize: rem(11) }}>
+            Claiming Medicaid will automatically uncheck CHIP — the kids are covered either way.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** CHIP-only: shown when Medicaid is claimed and the budget code skips
+ *  applying CHIP (Medicaid covers the household — kids included). The
+ *  visible label is short ("Covered by Medicaid · why?") with a dotted
+ *  underline that opens a richer tooltip on hover/focus explaining the
+ *  policy reality and what to do if the user wants CHIP's standalone
+ *  value back. */
+function OvershadowedByMedicaidNote() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-describedby={open ? 'overshadow-popover' : undefined}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: 'inline-block',
+          fontSize: rem(10),
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: T.warning,
+          background: 'rgba(184, 116, 43, 0.1)',
+          border: `1px solid ${T.warning}`,
+          padding: '3px 8px',
+          borderRadius: 2,
+          fontWeight: 600,
+          cursor: 'help',
+          fontFamily: fonts.body,
+        }}
+      >
+        ◐ Covered by Medicaid
+      </button>
+      {open && (
+        <div
+          id="overshadow-popover"
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 5,
+            width: 320,
+            padding: '10px 12px',
+            background: T.surface,
+            border: `1px solid ${T.warning}`,
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(27, 24, 21, 0.12)',
+            fontFamily: fonts.body,
+            fontSize: rem(12),
+            lineHeight: 1.5,
+            color: T.ink,
+            fontStyle: 'normal',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontSize: rem(10),
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: T.inkMuted,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            Why CHIP isn't claimable here
+          </div>
+          When a household qualifies for Medicaid, the kids are included in that coverage — they're
+          enrolled in Medicaid, not CHIP. CHIP exists for kids in households that earn too much for
+          Medicaid but not enough for affordable private insurance. Since this household is on
+          Medicaid, CHIP would add zero relief. Unclaim Medicaid above if you want to see CHIP's
+          standalone value at this income.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhantomEligibilityNote({
   programName,
   claimed,

@@ -20,8 +20,24 @@ import { BracketWalkthrough } from './BracketWalkthrough';
 import { ExpenseBreakdown } from './ExpenseBreakdown';
 import { DiscretionaryPlan } from './DiscretionaryPlan';
 import { CityComparison } from './CityComparison';
+import { CliffCurve } from './CliffCurve';
 import { Benefits } from './Benefits';
 import { Notes } from './Notes';
+import { PageNav, type PageNavSection } from './PageNav';
+import { PitWarning } from './PitWarning';
+
+const PAGE_NAV_SECTIONS: readonly PageNavSection[] = [
+  { id: 'customize', label: 'Customize' },
+  { id: 'benefits', label: 'Benefits' },
+  { id: 'summary', label: 'Summary' },
+  { id: 'income-flow', label: 'Take-home' },
+  { id: 'tax-brackets', label: 'Tax brackets' },
+  { id: 'expenses', label: 'Expenses' },
+  { id: 'plan', label: 'Discretionary plan' },
+  { id: 'geography', label: 'Geography' },
+  { id: 'cliffs', label: 'Cliffs' },
+  { id: 'notes', label: 'Notes' },
+];
 
 // Live initial values for a fresh page load (no shared link, no localStorage).
 // A single parent at $40K HoH with two kids in Columbus — picked so the
@@ -91,8 +107,16 @@ export function BudgetExplorer() {
   const toggleBenefit = useCallback((id: string) => {
     setClaimedBenefits((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Claiming Medicaid auto-drops CHIP — Medicaid covers the entire
+        // household including kids, so a simultaneous CHIP claim adds
+        // nothing and just creates a misleading "Claimed" badge on a card
+        // that contributes zero. Mirrors the budget code's priority logic.
+        if (id === 'medicaid') next.delete('chip');
+      }
       return next;
     });
   }, []);
@@ -198,35 +222,74 @@ export function BudgetExplorer() {
          radial-gradient(circle at 80% 100%, rgba(45, 80, 22, 0.03), transparent 50%)`,
       }}
     >
+      <PageNav sections={PAGE_NAV_SECTIONS} />
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
-        <CustomizePanel {...inputState} />
-        <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
-        <StatRow result={result} />
-        <StatusBanner result={result} />
-        <IncomeFlow result={result} />
-        <BracketWalkthrough
-          result={result}
-          incomeA={incomeA}
-          incomeB={effectiveIncomeB}
-          hasPartner={twoIncome}
-          filing={filing}
-        />
-        <ExpenseBreakdown result={result} />
-        <DiscretionaryPlan result={result} />
-        <ShareLink shareUrl={shareUrl} />
-        <CityComparison
-          result={result}
-          compareCity={compareCity}
-          setCompareCity={setCompareCity}
-          incomeA={incomeA}
-          incomeB={effectiveIncomeB}
-          hasPartner={twoIncome}
-          filing={filing}
-          kids={kids}
-          lifestyle={lifestyle}
-        />
-        <Notes filing={filing} stateTaxSource={result.stateData.taxSource} />
+        <section id="customize" style={{ scrollMarginTop: 24 }}>
+          <CustomizePanel {...inputState} />
+        </section>
+        <section id="benefits" style={{ scrollMarginTop: 24 }}>
+          <PitWarning
+            city={city}
+            kids={kids}
+            filing={filing}
+            lifestyle={lifestyle}
+            hasPartner={twoIncome}
+            incomeA={incomeA}
+            incomeB={effectiveIncomeB}
+          />
+          <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
+        </section>
+        <section id="summary" style={{ scrollMarginTop: 24 }}>
+          <StatRow result={result} />
+          <StatusBanner result={result} />
+        </section>
+        <section id="income-flow" style={{ scrollMarginTop: 24 }}>
+          <IncomeFlow result={result} />
+        </section>
+        <section id="tax-brackets" style={{ scrollMarginTop: 24 }}>
+          <BracketWalkthrough
+            result={result}
+            incomeA={incomeA}
+            incomeB={effectiveIncomeB}
+            hasPartner={twoIncome}
+            filing={filing}
+          />
+        </section>
+        <section id="expenses" style={{ scrollMarginTop: 24 }}>
+          <ExpenseBreakdown result={result} />
+        </section>
+        <section id="plan" style={{ scrollMarginTop: 24 }}>
+          <DiscretionaryPlan result={result} />
+          <ShareLink shareUrl={shareUrl} />
+        </section>
+        <section id="geography" style={{ scrollMarginTop: 24 }}>
+          <CityComparison
+            result={result}
+            compareCity={compareCity}
+            setCompareCity={setCompareCity}
+            incomeA={incomeA}
+            incomeB={effectiveIncomeB}
+            hasPartner={twoIncome}
+            filing={filing}
+            kids={kids}
+            lifestyle={lifestyle}
+          />
+        </section>
+        <section id="cliffs" style={{ scrollMarginTop: 24 }}>
+          <CliffCurve
+            city={city}
+            kids={kids}
+            filing={filing}
+            lifestyle={lifestyle}
+            hasPartner={twoIncome}
+            incomeA={incomeA}
+            incomeB={effectiveIncomeB}
+          />
+        </section>
+        <section id="notes" style={{ scrollMarginTop: 24 }}>
+          <Notes filing={filing} stateTaxSource={result.stateData.taxSource} />
+        </section>
       </div>
     </div>
   );

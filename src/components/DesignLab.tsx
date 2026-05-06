@@ -14,10 +14,32 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { theme as T, fonts, rem } from '@/theme';
 import { Cite } from './ui';
 import type { Source } from '@/types';
 import type { ReviewKind } from '@/lib/sourceStatus';
+import { computeBudget } from '@/lib/budget';
+import { BENEFIT_IDS } from '@/lib/benefits';
+import { computePitZones, type PitZone } from '@/lib/cliffs';
+import { fpl } from '@/data/poverty';
+import {
+  MEDICAID_EXPANSION_LIMIT_FPL,
+  STATE_CHIP_LIMIT_FPL,
+  STATE_MEDICAID_POLICY,
+  snapIncomeLimitFpl,
+} from '@/data/benefits';
+import { getCityData } from '@/data/cities';
 
 /**
  * Each lab section gets an entry here. The sidebar reads this list to
@@ -86,6 +108,36 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     status: 'decided',
     decidedAs: 'Primary / Reference / Commercial · green / slate-blue / gold',
     decidedNote: 'Shipped via PR #125. Picker preloads to these names; iterate to compare.',
+  },
+  {
+    id: 'cliffs',
+    nav: 'Cliff threshold annotations',
+    count: 5,
+    Component: SectionCliffAnnotations,
+    status: 'decided',
+    decidedAs: 'V1 — top labels with smart stagger',
+    decidedNote:
+      'Lowest-row collision-avoidance keeps labels readable when cliffs cluster. Dashed cliff line now extends up to the label so the eye can follow line→label even on bumped rows.',
+  },
+  {
+    id: 'pits',
+    nav: 'Pit-zone presentation',
+    count: 4,
+    Component: SectionPitZones,
+    status: 'decided',
+    decidedAs: 'V1 — tinted full-height area, uniform warning color',
+    decidedNote:
+      'Per-program tinting was dropped (see compound-pit V5) — every pit zone uses the same warning color now. Hard to miss without overclaiming attribution.',
+  },
+  {
+    id: 'compound',
+    nav: 'Compound pit attribution',
+    count: 7,
+    Component: SectionCompoundPits,
+    status: 'decided',
+    decidedAs: 'V5 — uniform warning color, no per-program attribution',
+    decidedNote:
+      'Attribution-by-color was always going to lie when multiple cliffs contributed to a merged pit. V5 says "something is wrong here" without overclaiming which program. Per-cliff caption below the chart already names the responsible programs in plain language.',
   },
 ];
 
@@ -2000,10 +2052,15 @@ function ColorPickerRow({
 function Section({
   heading,
   subhead,
+  columns = 'auto',
   children,
 }: {
   heading: string;
   subhead?: string;
+  /** 'auto' = responsive multi-column (default for compact variations).
+   *  1 = single column, full width — for visualization variations that need
+   *  the horizontal room to breathe. */
+  columns?: 'auto' | 1;
   children: React.ReactNode;
 }) {
   // Sort decided variations to the front so the chosen design is the first
@@ -2031,7 +2088,7 @@ function Section({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+          gridTemplateColumns: columns === 1 ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))',
           gap: 24,
         }}
       >
@@ -2668,5 +2725,2128 @@ function ShareMockPostData() {
         </span>
       </div>
     </div>
+  );
+}
+
+// ── Section: cliff threshold annotations ─────────────────────────────────
+//
+// All five variations render the same income-sweep curve for one fixed
+// scenario (Columbus, OH · HoH · 2 kids · $40K), where SNAP, Medicaid, and
+// CHIP cutoffs cluster between $33K and $58K. Only the annotation
+// strategy differs. A second scenario (NYC · single · no kids · $30K)
+// renders below each variation to stress-test how each strategy handles
+// fewer cliffs spread further apart — to surface designs that look great
+// with three close cliffs but break down with one or two.
+
+function SectionCliffAnnotations() {
+  return (
+    <Section
+      columns={1}
+      heading="Cliff threshold annotations"
+      subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve."
+    >
+      <Variation
+        decided
+        title="V1 — Top labels with smart stagger (current production)"
+        description="Labels above each ReferenceLine; collisions auto-bump to a higher row. The dashed cliff line extends up to bumped labels so the eye can follow line→label."
+      >
+        <CliffStack Renderer={CliffChartTopLabelsStaggered} />
+      </Variation>
+      <Variation
+        title="V2 — Bottom-axis tags below the X axis"
+        description="Each cutoff gets a small color-coded tag below the axis at the right dollar amount. Chart stays clean above the curve; eye tracks dashed line down to its tag."
+      >
+        <CliffStack Renderer={CliffChartBottomAxisTags} />
+      </Variation>
+      <Variation
+        title="V3 — Inline labels riding the curve at the drop"
+        description="Each label sits next to the actual cliff drop on the curve, anchored to the data instead of floating overhead. Self-evidently which line maps to which program."
+      >
+        <CliffStack Renderer={CliffChartInlineAtDrop} />
+      </Variation>
+      <Variation
+        title="V4 — Numbered markers + legend"
+        description="Tiny ① ② ③ markers on the curve at each cliff; the legend below decodes them. Maximum chart cleanliness, minimum visual weight."
+      >
+        <CliffStack Renderer={CliffChartNumberedMarkers} />
+      </Variation>
+      <Variation
+        title="V5 — Color-banded eligibility regions"
+        description="Soft horizontal background bands shade the income ranges where each program is active. The transitions between bands ARE the cliffs — no separate markers needed. Reads as a stacked-area / state-of-the-world view."
+      >
+        <CliffStack Renderer={CliffChartColorBands} />
+      </Variation>
+    </Section>
+  );
+}
+
+/** Renders the variation against the canonical Columbus scenario, which
+ *  has all three program cutoffs clustered together — the hard case for
+ *  any annotation strategy. */
+function CliffStack({ Renderer }: { Renderer: React.ComponentType<CliffScenarioProps> }) {
+  return (
+    <Renderer scenarioLabel="Columbus, OH · HoH · 2 kids · $40K" scenario={CLIFF_SCENARIO_CMH} />
+  );
+}
+
+interface CliffScenario {
+  city: string;
+  kids: number;
+  filing: import('@/types').FilingStatus;
+  lifestyle: import('@/types').Lifestyle;
+  hasPartner: boolean;
+  incomeA: number;
+  incomeB: number;
+}
+
+interface CliffScenarioProps {
+  scenarioLabel: string;
+  scenario: CliffScenario;
+}
+
+const CLIFF_SCENARIO_CMH: CliffScenario = {
+  city: 'cmh',
+  kids: 2,
+  filing: 'head',
+  lifestyle: 'moderate',
+  hasPartner: false,
+  incomeA: 40000,
+  incomeB: 0,
+};
+
+const CLIFF_COLORS: Record<string, string> = {
+  snap: T.warning,
+  medicaid: T.accent,
+  chip: T.aiAccent,
+};
+
+interface CliffPoint {
+  gross: number;
+  discretionary: number;
+}
+
+interface CliffMark {
+  id: string;
+  label: string;
+  shortLabel: string;
+  gross: number;
+  color: string;
+}
+
+/**
+ * Compute the income-sweep curve and cliff thresholds for a scenario. Mirrors
+ * the production CliffCurve component's math but returns plain data so each
+ * variation can render annotations differently without re-doing the work.
+ */
+function useCliffScenario(scenario: CliffScenario): {
+  points: CliffPoint[];
+  cliffs: CliffMark[];
+  pitZones: PitZone[];
+  maxGross: number;
+  currentGross: number;
+} {
+  return React.useMemo(() => {
+    const cityData = getCityData(scenario.city);
+    const householdSize = (scenario.hasPartner ? 2 : 1) + scenario.kids;
+    const allBenefits = new Set<string>(BENEFIT_IDS);
+    const currentGross = scenario.incomeA + scenario.incomeB;
+    const maxGross = Math.max(120_000, Math.ceil((currentGross * 1.5) / 1000) * 1000);
+    const stepSize = 500;
+
+    const points: CliffPoint[] = [];
+    for (let g = 0; g <= maxGross; g += stepSize) {
+      const sweepIncomeA = Math.max(0, g - scenario.incomeB);
+      const r = computeBudget({
+        incomeA: sweepIncomeA,
+        incomeB: scenario.incomeB,
+        hasPartner: scenario.hasPartner,
+        filing: scenario.filing,
+        city: scenario.city,
+        kids: scenario.kids,
+        lifestyle: scenario.lifestyle,
+        claimedBenefits: allBenefits,
+      });
+      points.push({ gross: g, discretionary: Math.round(r.annualDiscretionary) });
+    }
+
+    const fplBase = fpl(householdSize);
+    const cliffs: CliffMark[] = [];
+
+    cliffs.push({
+      id: 'snap',
+      label: `SNAP (${Math.round(snapIncomeLimitFpl(cityData.state) * 100)}% FPL)`,
+      shortLabel: 'SNAP',
+      gross: Math.round(fplBase * snapIncomeLimitFpl(cityData.state)),
+      color: CLIFF_COLORS.snap,
+    });
+
+    const policy = STATE_MEDICAID_POLICY[cityData.state];
+    if (policy.expanded) {
+      cliffs.push({
+        id: 'medicaid',
+        label: `Medicaid (138% FPL)`,
+        shortLabel: 'Medicaid',
+        gross: Math.round(fplBase * MEDICAID_EXPANSION_LIMIT_FPL),
+        color: CLIFF_COLORS.medicaid,
+      });
+    } else if (scenario.kids > 0 && policy.nonExpansionParentLimit !== undefined) {
+      const pct = Math.round(policy.nonExpansionParentLimit * 100);
+      cliffs.push({
+        id: 'medicaid',
+        label: `Medicaid parents (${pct}% FPL)`,
+        shortLabel: 'Medicaid',
+        gross: Math.round(fplBase * policy.nonExpansionParentLimit),
+        color: CLIFF_COLORS.medicaid,
+      });
+    }
+
+    if (scenario.kids > 0) {
+      const chipLimit = STATE_CHIP_LIMIT_FPL[cityData.state];
+      cliffs.push({
+        id: 'chip',
+        label: `CHIP (${Math.round(chipLimit * 100)}% FPL)`,
+        shortLabel: 'CHIP',
+        gross: Math.round(fplBase * chipLimit),
+        color: CLIFF_COLORS.chip,
+      });
+    }
+
+    const visibleCliffs = cliffs
+      .filter((c) => c.gross > 0 && c.gross <= maxGross)
+      .sort((a, b) => a.gross - b.gross);
+    const pitZones = computePitZones(points, 'discretionary', visibleCliffs);
+    return {
+      points,
+      cliffs: visibleCliffs,
+      pitZones,
+      maxGross,
+      currentGross,
+    };
+  }, [scenario]);
+}
+
+function ScenarioFrame({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      style={{ background: T.surface, border: `1px solid ${T.border}`, padding: '12px 12px 8px' }}
+    >
+      <div
+        style={{
+          fontSize: rem(10),
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: T.inkMuted,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const fmtK = (v: number) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`);
+
+/** Common pit-zone shading used in cliff-annotation variations so they
+ *  reflect production. Uniform warning color per the decided pit-zone
+ *  presentation (V1 uniform). */
+function renderPitZones(zones: readonly PitZone[]) {
+  return zones.map((z, i) => (
+    <ReferenceArea
+      key={`pit-${i}`}
+      x1={z.x1}
+      x2={z.x2}
+      fill={T.warning}
+      fillOpacity={0.12}
+      stroke={T.warning}
+      strokeOpacity={0.3}
+      strokeDasharray="2 3"
+    />
+  ));
+}
+
+// V1 — Top labels with smart stagger (mirrors current production)
+function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // Stagger: each label takes the lowest row where it doesn't overlap any
+  // already-placed label at that row.
+  const minSpacing = maxGross * 0.05;
+  const placed: { gross: number; row: number }[] = [];
+  const annotated = cliffs.map((c) => {
+    let row = 0;
+    while (placed.some((p) => p.row === row && Math.abs(p.gross - c.gross) < minSpacing)) {
+      row += 1;
+    }
+    placed.push({ gross: c.gross, row });
+    return { ...c, row };
+  });
+  const maxRow = annotated.reduce((m, c) => Math.max(m, c.row), 0);
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 16 + maxRow * 13, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              label={(props: { viewBox?: { x?: number; y?: number } }) => {
+                const x = props.viewBox?.x ?? 0;
+                const y = props.viewBox?.y ?? 0;
+                const labelY = y - 4 - c.row * 13;
+                return (
+                  <g>
+                    {c.row > 0 && (
+                      <line
+                        x1={x}
+                        x2={x}
+                        y1={y}
+                        y2={labelY + 2}
+                        stroke={c.color}
+                        strokeDasharray="3 3"
+                        strokeWidth={1}
+                      />
+                    )}
+                    <text x={x} y={labelY} fill={c.color} fontSize={10} textAnchor="middle">
+                      {c.shortLabel}
+                    </text>
+                  </g>
+                );
+              }}
+            />
+          ))}
+          {renderPitZones(pitZones)}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V2 — Bottom-axis tags below the X axis
+function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 36 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              label={(props: { viewBox?: { x?: number; y?: number; height?: number } }) => {
+                const x = props.viewBox?.x ?? 0;
+                const y = (props.viewBox?.y ?? 0) + (props.viewBox?.height ?? 0);
+                return (
+                  <g transform={`translate(${x}, ${y + 6})`}>
+                    <rect x={-32} y={0} width={64} height={16} fill={c.color} rx={2} />
+                    <text
+                      x={0}
+                      y={11}
+                      fill={T.bg}
+                      fontSize={10}
+                      textAnchor="middle"
+                      fontWeight={600}
+                    >
+                      {c.shortLabel}
+                    </text>
+                  </g>
+                );
+              }}
+            />
+          ))}
+          {renderPitZones(pitZones)}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V3 — Inline labels at the drop
+function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // For each cliff, find the discretionary value just before the drop —
+  // that's where we anchor the label.
+  const annotated = cliffs.map((c) => {
+    let before = points[0];
+    for (const p of points) {
+      if (p.gross <= c.gross) before = p;
+      else break;
+    }
+    return { ...c, anchorY: before.discretionary };
+  });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 70, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceDot
+              key={c.id}
+              x={c.gross}
+              y={c.anchorY}
+              r={3}
+              fill={c.color}
+              stroke={T.bg}
+              strokeWidth={1.5}
+              ifOverflow="visible"
+              label={(props: { viewBox?: { cx?: number; cy?: number } }) => (
+                <g
+                  transform={`translate(${(props.viewBox?.cx ?? 0) + 8}, ${(props.viewBox?.cy ?? 0) - 2})`}
+                >
+                  <text fill={c.color} fontSize={10} fontWeight={600}>
+                    {c.shortLabel}
+                  </text>
+                </g>
+              )}
+            />
+          ))}
+          {renderPitZones(pitZones)}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V4 — Numbered markers + legend
+function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
+
+  const annotated = cliffs.map((c, i) => {
+    let before = points[0];
+    for (const p of points) {
+      if (p.gross <= c.gross) before = p;
+      else break;
+    }
+    return { ...c, anchorY: before.discretionary, num: i + 1 };
+  });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="2 4"
+              strokeOpacity={0.6}
+            />
+          ))}
+          {renderPitZones(pitZones)}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          {annotated.map((c) => (
+            <ReferenceDot
+              key={c.id}
+              x={c.gross}
+              y={c.anchorY}
+              r={9}
+              fill={c.color}
+              stroke={T.bg}
+              strokeWidth={2}
+              ifOverflow="visible"
+              label={(props: { viewBox?: { cx?: number; cy?: number } }) => (
+                <text
+                  x={props.viewBox?.cx ?? 0}
+                  y={(props.viewBox?.cy ?? 0) + 3}
+                  fill={T.bg}
+                  fontSize={10}
+                  textAnchor="middle"
+                  fontWeight={700}
+                >
+                  {c.num}
+                </text>
+              )}
+            />
+          ))}
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          fontSize: rem(11),
+          color: T.inkSoft,
+          marginTop: 6,
+        }}
+      >
+        {annotated.map((c) => (
+          <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: c.color,
+                color: T.bg,
+                textAlign: 'center',
+                lineHeight: '16px',
+                fontSize: rem(10),
+                fontWeight: 700,
+              }}
+            >
+              {c.num}
+            </span>
+            {c.label}
+          </span>
+        ))}
+      </div>
+    </ScenarioFrame>
+  );
+}
+
+// V5 — Color-banded eligibility regions
+function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // Build sorted ascending cutoff list; each "region" is the interval
+  // between two consecutive cutoffs (or 0 / maxGross at the bookends).
+  // Each region's tint shows which programs are still active in it.
+  const sortedCliffs = [...cliffs].sort((a, b) => a.gross - b.gross);
+  interface Region {
+    x1: number;
+    x2: number;
+    activeIds: string[];
+  }
+  const regions: Region[] = [];
+  let prev = 0;
+  // At income = 0, every program is active. As we cross each cutoff (in
+  // ascending order), the program at that cutoff drops out.
+  let active = sortedCliffs.map((c) => c.id);
+  for (const c of sortedCliffs) {
+    regions.push({ x1: prev, x2: c.gross, activeIds: [...active] });
+    active = active.filter((id) => id !== c.id);
+    prev = c.gross;
+  }
+  regions.push({ x1: prev, x2: maxGross, activeIds: [] });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          {regions.map((r, i) => {
+            // Tint: blend region color from the most "valuable" remaining
+            // program (medicaid > chip > snap, by editorial weight). Using
+            // a soft 8% opacity so it whispers rather than shouts.
+            const dominant = r.activeIds.includes('medicaid')
+              ? CLIFF_COLORS.medicaid
+              : r.activeIds.includes('chip')
+                ? CLIFF_COLORS.chip
+                : r.activeIds.includes('snap')
+                  ? CLIFF_COLORS.snap
+                  : 'transparent';
+            return (
+              <ReferenceArea
+                key={i}
+                x1={r.x1}
+                x2={r.x2}
+                fill={dominant}
+                fillOpacity={dominant === 'transparent' ? 0 : 0.08}
+                stroke="none"
+              />
+            );
+          })}
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {renderPitZones(pitZones)}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          fontSize: rem(11),
+          color: T.inkSoft,
+          marginTop: 6,
+        }}
+      >
+        {sortedCliffs.map((c) => (
+          <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 12,
+                height: 12,
+                background: c.color,
+                opacity: 0.5,
+              }}
+            />
+            {c.label} ends at {fmtK(c.gross)}
+          </span>
+        ))}
+      </div>
+    </ScenarioFrame>
+  );
+}
+
+// ── Section: pit-zone presentation ───────────────────────────────────────
+//
+// Four ways to depict the income ranges where the household is worse off
+// than at some lower income. All render against the canonical Columbus
+// scenario where two pits exist (Medicaid and CHIP).
+
+function SectionPitZones() {
+  return (
+    <Section
+      columns={1}
+      heading="Pit-zone presentation"
+      subhead="Four ways to depict the income ranges where the household ends up with less than they'd have at some lower income. The data is identical; only the visual encoding changes."
+    >
+      <Variation
+        decided
+        title="V1 — Tinted full-height area (current production)"
+        description="ReferenceArea spans the full chart height for each pit, uniformly tinted in the warning color. Hard to miss; doesn't claim per-program attribution."
+      >
+        <PitChartTintedArea />
+      </Variation>
+      <Variation
+        title="V2 — Recolored line segment in the pit"
+        description="Don't shade the background; instead, recolor the curve itself in pit segments to the program's accent. Chart stays clean; the pit is communicated by the line's color change rather than a tint."
+      >
+        <PitChartColoredSegment />
+      </Variation>
+      <Variation
+        title="V3 — Ghost 'best-so-far' line"
+        description="Render a faded line showing the running max of the metric. The visible gap between the actual curve and the ghost IS the pit. Powerful because it visually quantifies depth — you can see exactly how much money is being left on the table."
+      >
+        <PitChartGhostLine />
+      </Variation>
+      <Variation
+        title="V4 — Bottom-band brackets"
+        description="Pit ranges marked only by a small color-coded bracket along the X axis, not as background fill. Maximum chart cleanliness; pits are signaled but don't dominate the visual."
+      >
+        <PitChartBottomBand />
+      </Variation>
+    </Section>
+  );
+}
+
+function PitChartTintedArea() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {pitZones.map((z, i) => (
+            <ReferenceArea
+              key={i}
+              x1={z.x1}
+              x2={z.x2}
+              fill={T.warning}
+              fillOpacity={0.12}
+              stroke={T.warning}
+              strokeOpacity={0.3}
+              strokeDasharray="2 3"
+            />
+          ))}
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.7}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartColoredSegment() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+
+  // Build per-pit "in-segment" series so each can be drawn as its own
+  // colored line on top of the base line. A point belongs to a pit's
+  // segment when its gross is inside the zone.
+  const segments = pitZones.map((z) => ({
+    color: z.color ?? T.warning,
+    data: points.map((p) => ({
+      gross: p.gross,
+      value: p.gross >= z.x1 && p.gross <= z.x2 ? p.discretionary : null,
+    })),
+  }));
+
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.5}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeOpacity={0.55}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          {segments.map((seg, i) => (
+            <Line
+              key={i}
+              type="monotone"
+              data={seg.data}
+              dataKey="value"
+              stroke={seg.color}
+              strokeWidth={3}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+          ))}
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartGhostLine() {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+
+  // Running-max series: at each income, the max discretionary seen at any
+  // lower income. The gap between this and the actual curve is the pit.
+  const ghostPoints = points.reduce<{ gross: number; ghost: number; actual: number }[]>(
+    (acc, p) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].ghost : -Infinity;
+      const ghost = Math.max(prev, p.discretionary);
+      acc.push({ gross: p.gross, ghost, actual: p.discretionary });
+      return acc;
+    },
+    [],
+  );
+
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.5}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={ghostPoints.find((p) => p.gross >= currentGross)?.actual ?? ghostPoints[0].actual}
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          fontSize: rem(11),
+          color: T.inkMuted,
+          marginTop: 6,
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 0,
+              borderTop: `2px solid ${T.ink}`,
+              marginRight: 6,
+              verticalAlign: 'middle',
+            }}
+          />
+          Actual discretionary
+        </span>
+        <span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 0,
+              borderTop: `1.5px dashed ${T.warning}`,
+              marginRight: 6,
+              verticalAlign: 'middle',
+            }}
+          />
+          Best-so-far (running max)
+        </span>
+      </div>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartBottomBand() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 28 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          {pitZones.map((z, i) => {
+            // Render a small "[==]" bracket at the bottom of the chart
+            // spanning the pit range. Uses ReferenceLine with a custom
+            // SVG label to avoid pulling in extra primitives.
+            const color = z.color ?? T.warning;
+            return (
+              <ReferenceLine
+                key={i}
+                segment={[
+                  { x: z.x1, y: 0 },
+                  { x: z.x2, y: 0 },
+                ]}
+                stroke={color}
+                strokeWidth={4}
+                ifOverflow="visible"
+                label={(props: { viewBox?: { x?: number; y?: number; width?: number } }) => {
+                  const cx = (props.viewBox?.x ?? 0) + (props.viewBox?.width ?? 0) / 2;
+                  const y = (props.viewBox?.y ?? 0) + 16;
+                  return (
+                    <text x={cx} y={y} textAnchor="middle" fill={color} fontSize={10}>
+                      pit
+                    </text>
+                  );
+                }}
+              />
+            );
+          })}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// ── Section: compound pit attribution ────────────────────────────────────
+//
+// When two cliffs fire close enough together that the curve hasn't
+// recovered from the first by the time the second hits, the household's
+// pit "merges" into one continuous zone driven by both programs. The
+// production code attributes that whole zone to the first cliff's color
+// (because it walks left→right and only records the cliff that opened
+// the zone), making the second cliff's contribution invisible.
+//
+// These four variations explore how to expose multi-cliff contribution.
+
+// User-editable program config. Each row defines one synthetic cliff: a
+// label, the gross income at which it fires, the dollar drop in
+// discretionary income, and its color. The compound section synthesizes
+// a curve from this list (linear baseline minus accumulated drops) so
+// the user can dial in scenarios that exhibit single pits, merged pits,
+// triple-overlap pits, etc. — and watch each variation respond.
+interface ProgramConfig {
+  id: string;
+  label: string;
+  gross: number;
+  drop: number;
+  color: string;
+}
+
+const COMPOUND_COLOR_CHOICES = [
+  { id: 'medicaid', value: CLIFF_COLORS.medicaid, label: 'Red' },
+  { id: 'snap', value: CLIFF_COLORS.snap, label: 'Orange' },
+  { id: 'chip', value: CLIFF_COLORS.chip, label: 'Slate' },
+  { id: 'positive', value: T.positive, label: 'Green' },
+  { id: 'commercial', value: T.commercialAccent, label: 'Gold' },
+  { id: 'ai', value: T.aiAccent, label: 'Blue' },
+] as const;
+
+const COMPOUND_DEFAULT_PROGRAMS: ProgramConfig[] = [
+  { id: 'p1', label: 'Medicaid', gross: 30_000, drop: 5_000, color: CLIFF_COLORS.medicaid },
+  { id: 'p2', label: 'SNAP', gross: 40_000, drop: 3_000, color: CLIFF_COLORS.snap },
+  { id: 'p3', label: 'CHIP', gross: 50_000, drop: 5_000, color: CLIFF_COLORS.chip },
+];
+
+interface CompoundConfig {
+  programs: ProgramConfig[];
+  slope: number;
+  maxGross: number;
+}
+
+const COMPOUND_DEFAULT_CONFIG: CompoundConfig = {
+  programs: COMPOUND_DEFAULT_PROGRAMS,
+  slope: 0.3,
+  maxGross: 80_000,
+};
+
+function useCompoundDemoData(config: CompoundConfig): {
+  points: CliffPoint[];
+  cliffs: CliffMark[];
+  pitZones: PitZone[];
+  maxGross: number;
+  currentGross: number;
+} {
+  return React.useMemo(() => {
+    const { programs, slope, maxGross } = config;
+    const currentGross = Math.round(maxGross * 0.45);
+    const stepSize = Math.max(250, Math.round(maxGross / 200 / 250) * 250);
+    const intercept = -1_000;
+
+    const sortedPrograms = [...programs].sort((a, b) => a.gross - b.gross);
+    const points: CliffPoint[] = [];
+    for (let g = 0; g <= maxGross; g += stepSize) {
+      let disc = slope * g + intercept;
+      for (const c of sortedPrograms) if (g >= c.gross) disc -= c.drop;
+      points.push({ gross: g, discretionary: Math.round(disc) });
+    }
+
+    const cliffs: CliffMark[] = sortedPrograms.map((c) => ({
+      id: c.id,
+      label: c.label,
+      shortLabel: c.label,
+      gross: c.gross,
+      color: c.color,
+    }));
+    const pitZones = computePitZones(points, 'discretionary', cliffs);
+
+    return { points, cliffs, pitZones, maxGross, currentGross };
+  }, [config]);
+}
+
+function SectionCompoundPits() {
+  const [config, setConfig] = React.useState<CompoundConfig>(COMPOUND_DEFAULT_CONFIG);
+
+  return (
+    <Section
+      columns={1}
+      heading="Compound pit attribution"
+      subhead="When two cliffs fire close enough that the household hasn't recovered from the first when the second hits, the resulting pit zone is caused by BOTH programs. Production today colors the merged zone by the first cliff only — losing the second cliff's signal. Edit the program list below to dial in any scenario; all four variations re-render against your config."
+    >
+      <CompoundConfigPanel config={config} setConfig={setConfig} />
+      <Variation
+        title="V1 — Single-color attribution (current production)"
+        description="Whole merged zone gets the first cliff's color. Simple but understates the second cliff's role."
+      >
+        <CompoundChartSingleColor config={config} />
+      </Variation>
+      <Variation
+        title="V2 — Split striping at each contributing cliff"
+        description="Walk the merged zone and split at every cliff that fires inside it; each segment gets that cliff's color. The shading reads as 'first Medicaid, then SNAP also dropped you.'"
+      >
+        <CompoundChartSplitStriping config={config} />
+      </Variation>
+      <Variation
+        title="V3 — Ghost 'best-so-far' line, no shading"
+        description="Skip attribution entirely. Render a faded running-max line; the visible gap between actual and ghost IS the pit, and it naturally shows compound depth without choosing colors."
+      >
+        <CompoundChartGhost config={config} />
+      </Variation>
+      <Variation
+        title="V4 — Per-cliff pit timeline (Gantt-style lanes)"
+        description="Chart stays clean (no in-chart fills); pit attribution moves to a small per-program timeline below the chart. Each cliff gets its own labeled lane, colored only over the income range where that program contributes to the household being worse off. Comparing lanes vertically tells you which programs overlap and where."
+      >
+        <CompoundChartLayered config={config} />
+      </Variation>
+      <Variation
+        decided
+        title="V5 — Uniform warning color (no attribution at all)"
+        description="Every pit zone shaded the same warning orange regardless of which program caused it. Cleanest possible read; sacrifices attribution entirely but never lies about which program is responsible since it never claims one."
+      >
+        <CompoundChartUniformColor config={config} />
+      </Variation>
+      <Variation
+        title="V6 — Ghost line + uniform warning shading"
+        description="V3 and V5 combined. Soft warning tint behind every pit (says 'look here, something's wrong'); faded best-so-far line above the actual curve (shows how much money the household is leaving on the table at every income). No attribution decisions, depth is automatic."
+      >
+        <CompoundChartGhostShaded config={config} />
+      </Variation>
+      <Variation
+        title="V7 — Slim impact bar below the chart, crosshatched on overlap"
+        description="Chart stays as V5 (uniform tint); a thin bar pinned below the X axis shows each program's impact zone in its own color. Where two impact zones overlap, the segment uses a diagonal crosshatch combining both colors. Triple overlap = three-color hatch. Attribution lives in the bar; the chart stays calm."
+      >
+        <CompoundChartImpactBar config={config} />
+      </Variation>
+    </Section>
+  );
+}
+
+function CompoundConfigPanel({
+  config,
+  setConfig,
+}: {
+  config: CompoundConfig;
+  setConfig: React.Dispatch<React.SetStateAction<CompoundConfig>>;
+}) {
+  const updateProgram = (id: string, patch: Partial<ProgramConfig>) =>
+    setConfig((c) => ({
+      ...c,
+      programs: c.programs.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }));
+  const removeProgram = (id: string) =>
+    setConfig((c) => ({ ...c, programs: c.programs.filter((p) => p.id !== id) }));
+  const addProgram = () => {
+    const nextId = `p${Date.now()}`;
+    const usedColors = new Set(config.programs.map((p) => p.color));
+    const nextColor =
+      COMPOUND_COLOR_CHOICES.find((c) => !usedColors.has(c.value))?.value ?? T.warning;
+    setConfig((c) => ({
+      ...c,
+      programs: [
+        ...c.programs,
+        {
+          id: nextId,
+          label: 'New program',
+          gross: Math.round(c.maxGross * 0.6),
+          drop: 3_000,
+          color: nextColor,
+        },
+      ],
+    }));
+  };
+  const reset = () => setConfig(COMPOUND_DEFAULT_CONFIG);
+  const [collapsed, setCollapsed] = React.useState(true);
+
+  return (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        // Sticky so the config stays in reach as the user scrolls down
+        // through the variations. Top offset clears the page's outer
+        // padding; z-index keeps the panel above variation cards.
+        position: 'sticky',
+        top: 8,
+        zIndex: 4,
+        background: T.bgAlt,
+        border: `1px dashed ${T.border}`,
+        borderRadius: 4,
+        padding: collapsed ? '8px 16px' : 16,
+        marginBottom: 4,
+        boxShadow: '0 4px 12px rgba(27, 24, 21, 0.08)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: collapsed ? 0 : 12,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: 0,
+            cursor: 'pointer',
+            fontFamily: fonts.body,
+            fontSize: rem(13),
+            fontWeight: 600,
+            color: T.ink,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 0,
+              height: 0,
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: `5px solid ${T.inkMuted}`,
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
+              transition: 'transform 0.15s',
+            }}
+          />
+          Synthetic scenario config
+          {collapsed && (
+            <span
+              style={{
+                fontWeight: 400,
+                color: T.inkMuted,
+                fontSize: rem(11),
+                marginLeft: 6,
+              }}
+            >
+              · {config.programs.length} program{config.programs.length === 1 ? '' : 's'} · slope{' '}
+              {config.slope.toFixed(2)}
+            </span>
+          )}
+        </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: T.inkMuted,
+              fontSize: rem(11),
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Reset to defaults
+          </button>
+        )}
+      </div>
+      {!collapsed && (
+        <>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                'minmax(120px, 2fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr) auto',
+              gap: 8,
+              alignItems: 'center',
+              fontSize: rem(11),
+              marginBottom: 6,
+              color: T.inkMuted,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span>Label</span>
+            <span>Cliff at ($)</span>
+            <span>Drop ($)</span>
+            <span>Color</span>
+            <span />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {config.programs.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'minmax(120px, 2fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr) auto',
+                  gap: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <input
+                  type="text"
+                  value={p.label}
+                  onChange={(e) => updateProgram(p.id, { label: e.target.value })}
+                  style={inputStyle}
+                />
+                <input
+                  type="number"
+                  step={500}
+                  value={p.gross}
+                  onChange={(e) => updateProgram(p.id, { gross: Number(e.target.value) || 0 })}
+                  style={{ ...inputStyle, fontFamily: fonts.mono }}
+                />
+                <input
+                  type="number"
+                  step={500}
+                  value={p.drop}
+                  onChange={(e) => updateProgram(p.id, { drop: Number(e.target.value) || 0 })}
+                  style={{ ...inputStyle, fontFamily: fonts.mono }}
+                />
+                <select
+                  value={p.color}
+                  onChange={(e) => updateProgram(p.id, { color: e.target.value })}
+                  style={{ ...inputStyle, paddingRight: 4 }}
+                >
+                  {COMPOUND_COLOR_CHOICES.map((c) => (
+                    <option key={c.id} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => removeProgram(p.id)}
+                  aria-label={`Remove ${p.label}`}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: T.inkMuted,
+                    cursor: 'pointer',
+                    fontSize: rem(14),
+                    padding: '0 6px',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={addProgram}
+              style={{
+                border: `1px solid ${T.border}`,
+                background: T.bg,
+                color: T.inkSoft,
+                fontFamily: fonts.body,
+                fontSize: rem(12),
+                padding: '4px 10px',
+                cursor: 'pointer',
+              }}
+            >
+              + Add program
+            </button>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: 24,
+              alignItems: 'center',
+              marginTop: 14,
+              paddingTop: 12,
+              borderTop: `1px solid ${T.border}`,
+            }}
+          >
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: rem(11) }}>
+              <span
+                style={{ color: T.inkMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+              >
+                Recovery slope ({config.slope.toFixed(2)} disc per $1 gross)
+              </span>
+              <input
+                type="range"
+                min={0.05}
+                max={1}
+                step={0.05}
+                value={config.slope}
+                onChange={(e) => setConfig((c) => ({ ...c, slope: Number(e.target.value) }))}
+                style={{ width: 220 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: rem(11) }}>
+              <span
+                style={{ color: T.inkMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+              >
+                Max gross ({fmtK(config.maxGross)})
+              </span>
+              <input
+                type="range"
+                min={20_000}
+                max={200_000}
+                step={5_000}
+                value={config.maxGross}
+                onChange={(e) => setConfig((c) => ({ ...c, maxGross: Number(e.target.value) }))}
+                style={{ width: 220 }}
+              />
+            </label>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  fontFamily: fonts.body,
+  fontSize: rem(12),
+  padding: '4px 6px',
+  border: `1px solid ${T.border}`,
+  background: T.bg,
+  color: T.ink,
+};
+
+/** Each cliff's individual pit zone — runs from that cliff's gross to the
+ *  income at which the curve recovers to THAT cliff's pre-cliff value.
+ *  Used by V4 for layered overlapping zones. */
+function computePerCliffZones(
+  points: readonly CliffPoint[],
+  cliffs: readonly CliffMark[],
+): PitZone[] {
+  const zones: PitZone[] = [];
+  for (const c of cliffs) {
+    // Find the last point STRICTLY before the cliff. The synthesized curve
+    // applies the drop at gross === cliff.gross, so the at-cliff point is
+    // already post-drop and would yield a trivially-met recovery. Use the
+    // pre-drop peak instead.
+    let beforeIdx = -1;
+    for (let i = 0; i < points.length; i++) {
+      if (points[i].gross < c.gross) beforeIdx = i;
+      else break;
+    }
+    if (beforeIdx < 0) continue;
+    const beforeValue = points[beforeIdx].discretionary;
+    let recoveryGross: number | null = null;
+    for (let i = beforeIdx + 1; i < points.length; i++) {
+      if (points[i].gross > c.gross && points[i].discretionary >= beforeValue) {
+        recoveryGross = points[i].gross;
+        break;
+      }
+    }
+    if (recoveryGross !== null && recoveryGross > c.gross) {
+      zones.push({ x1: c.gross, x2: recoveryGross, color: c.color, cliffId: c.id });
+    }
+  }
+  return zones;
+}
+
+function CompoundChartSingleColor({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={pitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartUniformColor({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  // Strip per-program color attribution — every zone painted with the
+  // same warning hue. CompoundChartBase falls back to T.warning when a
+  // zone's color is undefined.
+  const uniformZones: PitZone[] = pitZones.map((z) => ({ ...z, color: undefined }));
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={uniformZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartSplitStriping({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  const splitZones: PitZone[] = pitZones.flatMap((z) => {
+    const interior = cliffs
+      .filter((c) => c.gross > z.x1 && c.gross < z.x2)
+      .sort((a, b) => a.gross - b.gross);
+    if (interior.length === 0) return [z];
+    const breakpoints = [z.x1, ...interior.map((c) => c.gross), z.x2];
+    const subs: PitZone[] = [];
+    for (let i = 0; i < breakpoints.length - 1; i++) {
+      const subStart = breakpoints[i];
+      const subEnd = breakpoints[i + 1];
+      const owner = [...cliffs]
+        .filter((c) => c.gross <= subStart)
+        .sort((a, b) => b.gross - a.gross)[0];
+      subs.push({
+        x1: subStart,
+        x2: subEnd,
+        color: owner?.color ?? z.color,
+        cliffId: owner?.id ?? z.cliffId,
+      });
+    }
+    return subs;
+  });
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={splitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+        zoneOpacity={0.18}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartGhost({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, maxGross, currentGross } = useCompoundDemoData(config);
+  const ghostPoints = points.reduce<{ gross: number; ghost: number; actual: number }[]>(
+    (acc, p) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].ghost : -Infinity;
+      const ghost = Math.max(prev, p.discretionary);
+      acc.push({ gross: p.gross, ghost, actual: p.discretionary });
+      return acc;
+    },
+    [],
+  );
+  return (
+    <CompoundFrame>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={ghostPoints.find((p) => p.gross >= currentGross)?.actual ?? ghostPoints[0].actual}
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartGhostShaded({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  const ghostPoints = points.reduce<{ gross: number; ghost: number; actual: number }[]>(
+    (acc, p) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].ghost : -Infinity;
+      const ghost = Math.max(prev, p.discretionary);
+      acc.push({ gross: p.gross, ghost, actual: p.discretionary });
+      return acc;
+    },
+    [],
+  );
+  return (
+    <CompoundFrame>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          {pitZones.map((z, i) => (
+            <ReferenceArea
+              key={i}
+              x1={z.x1}
+              x2={z.x2}
+              fill={T.warning}
+              fillOpacity={0.1}
+              stroke="none"
+            />
+          ))}
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={ghostPoints.find((p) => p.gross >= currentGross)?.actual ?? ghostPoints[0].actual}
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartLayered({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, maxGross, currentGross } = useCompoundDemoData(config);
+  const layeredZones = computePerCliffZones(points, cliffs);
+  return (
+    <CompoundFrame>
+      {/* Chart stays clean — no in-chart fills. Cliffs as faint reference
+          lines only. The pit attribution lives in the timeline below. */}
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={[]}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+      <PitTimeline cliffs={cliffs} zones={layeredZones} maxGross={maxGross} />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartImpactBar({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  // Per-program "impact zone" computed independently: each program's bar
+  // spans from its cliff to the income at which the curve would recover
+  // IF ONLY THIS PROGRAM HAD FIRED. Equals cliff.gross + drop/slope. Using
+  // computePerCliffZones (which uses the actual compound curve) instead
+  // would make every program's zone span almost the entire merged pit,
+  // since the curve doesn't reach a single program's pre-cliff peak until
+  // the other programs have also recovered.
+  const impactZones: PitZone[] = config.programs.map((p) => ({
+    cliffId: p.id,
+    color: p.color,
+    x1: p.gross,
+    x2: Math.min(maxGross, p.gross + p.drop / Math.max(0.01, config.slope)),
+  }));
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={pitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+      <ImpactBar cliffs={cliffs} zones={impactZones} maxGross={maxGross} />
+    </CompoundFrame>
+  );
+}
+
+/** Single thin "impact bar" pinned below the chart. Walks every program's
+ *  impact zone (cliff → recovery), finds breakpoints where the active set
+ *  of programs changes, and renders one segment per breakpoint window. A
+ *  segment with one active program shows that program's color; with two
+ *  or more, a diagonal crosshatch alternates the colors so overlap is
+ *  visually unambiguous. */
+function ImpactBar({
+  cliffs,
+  zones,
+  maxGross,
+}: {
+  cliffs: CliffMark[];
+  zones: PitZone[];
+  maxGross: number;
+}) {
+  // Build a sorted list of unique breakpoints (zone starts and ends).
+  const breakpoints = Array.from(new Set(zones.flatMap((z) => [z.x1, z.x2]))).sort((a, b) => a - b);
+
+  // For each [bp[i], bp[i+1]] window, the active set is every zone
+  // that contains the window (zone.x1 < bpEnd AND zone.x2 > bpStart).
+  const segments = breakpoints.slice(0, -1).map((start, i) => {
+    const end = breakpoints[i + 1];
+    const active = zones.filter((z) => z.x1 < end && z.x2 > start);
+    return { start, end, active };
+  });
+
+  // Match the chart's plot-area inset so the bar lines up with chart X.
+  const leftPad = 48 + 4;
+  const rightPad = 16 + 4;
+
+  const cliffById = new Map(cliffs.map((c) => [c.id, c]));
+
+  return (
+    <div style={{ marginTop: 8, paddingLeft: leftPad, paddingRight: rightPad }}>
+      <div
+        style={{
+          fontSize: rem(10),
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: T.inkMuted,
+          marginBottom: 4,
+        }}
+      >
+        Programs in pit
+      </div>
+      <div
+        style={{
+          position: 'relative',
+          height: 12,
+          background: T.bgAlt,
+          border: `1px solid ${T.border}`,
+        }}
+      >
+        {segments.map((seg, i) => {
+          if (seg.active.length === 0) return null;
+          const colors = seg.active
+            .map((z) => (z.cliffId ? cliffById.get(z.cliffId)?.color : null))
+            .filter((c): c is string => Boolean(c));
+          const left = `${(seg.start / maxGross) * 100}%`;
+          const width = `${((seg.end - seg.start) / maxGross) * 100}%`;
+          const labels = seg.active
+            .map((z) => (z.cliffId ? cliffById.get(z.cliffId)?.label : null))
+            .filter(Boolean)
+            .join(' + ');
+          return (
+            <div
+              key={i}
+              title={`${labels} · ${fmtK(seg.start)}–${fmtK(seg.end)}`}
+              style={{
+                position: 'absolute',
+                left,
+                width,
+                top: 0,
+                bottom: 0,
+                background: hatchedFill(colors),
+                opacity: 0.75,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Build a CSS background that diagonally crosshatches the given colors.
+ *  Single color → solid fill. Two or more → repeating-linear-gradient
+ *  with each color taking an even slice. */
+function hatchedFill(colors: string[]): string {
+  if (colors.length === 0) return 'transparent';
+  if (colors.length === 1) return colors[0];
+  const stripeWidth = 6; // px per stripe
+  const total = stripeWidth * colors.length;
+  const stops = colors
+    .map((c, i) => {
+      const start = i * stripeWidth;
+      const end = (i + 1) * stripeWidth;
+      return `${c} ${start}px, ${c} ${end}px`;
+    })
+    .join(', ');
+  return `repeating-linear-gradient(45deg, ${stops}, ${colors[0]} ${total}px)`;
+}
+
+/** Per-program pit timeline. One labeled lane per cliff, with a colored
+ *  bar marking the income range over which that program contributes to
+ *  the household being worse off than at some lower income. Reads as a
+ *  Gantt-style timeline aligned to the chart's X axis above. */
+function PitTimeline({
+  cliffs,
+  zones,
+  maxGross,
+}: {
+  cliffs: CliffMark[];
+  zones: PitZone[];
+  maxGross: number;
+}) {
+  // Match the chart's plot-area inset so lane bars line up with chart X.
+  // CompoundChartBase uses YAxis width=48 plus left margin 0 and right
+  // margin 16 plus chart-internal padding ~4px each side.
+  const leftPad = 48 + 4;
+  const rightPad = 16 + 4;
+  return (
+    <div style={{ marginTop: 8, paddingLeft: leftPad, paddingRight: rightPad }}>
+      <div
+        style={{
+          fontSize: rem(10),
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: T.inkMuted,
+          marginBottom: 4,
+        }}
+      >
+        In-pit timeline
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {cliffs.map((c) => {
+          const zone = zones.find((z) => z.cliffId === c.id);
+          return (
+            <div
+              key={c.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '80px 1fr',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: rem(11),
+              }}
+            >
+              <span style={{ color: T.inkSoft, textAlign: 'right' }}>{c.label}</span>
+              <div
+                style={{
+                  position: 'relative',
+                  height: 10,
+                  background: T.bgAlt,
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                {zone && (
+                  <div
+                    title={`${c.label} pit: ${fmtK(zone.x1)} → ${fmtK(zone.x2)}`}
+                    style={{
+                      position: 'absolute',
+                      left: `${(zone.x1 / maxGross) * 100}%`,
+                      width: `${((zone.x2 - zone.x1) / maxGross) * 100}%`,
+                      top: 0,
+                      bottom: 0,
+                      background: c.color,
+                      opacity: 0.55,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CompoundFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <ScenarioFrame label="Synthetic Columbus-style scenario · cliffs at $30K / $40K / $50K (engineered to overlap)">
+      {children}
+    </ScenarioFrame>
+  );
+}
+
+function CompoundChartBase({
+  points,
+  cliffs,
+  zones,
+  maxGross,
+  currentGross,
+  zoneOpacity = 0.15,
+}: {
+  points: CliffPoint[];
+  cliffs: CliffMark[];
+  zones: PitZone[];
+  maxGross: number;
+  currentGross: number;
+  zoneOpacity?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+        <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+        <XAxis
+          dataKey="gross"
+          type="number"
+          domain={[0, maxGross]}
+          tickFormatter={fmtK}
+          stroke={T.inkMuted}
+          tick={{ fontSize: 10, fill: T.inkSoft }}
+        />
+        <YAxis
+          tickFormatter={fmtK}
+          stroke={T.inkMuted}
+          tick={{ fontSize: 10, fill: T.inkSoft }}
+          width={48}
+        />
+        <ReferenceLine y={0} stroke={T.inkMuted} />
+        {zones.map((z, i) => (
+          <ReferenceArea
+            key={i}
+            x1={z.x1}
+            x2={z.x2}
+            fill={z.color ?? T.warning}
+            fillOpacity={zoneOpacity}
+            stroke={z.color ?? T.warning}
+            strokeOpacity={0.3}
+            strokeDasharray="2 3"
+          />
+        ))}
+        {cliffs.map((c) => (
+          <ReferenceLine
+            key={c.id}
+            x={c.gross}
+            stroke={c.color}
+            strokeDasharray="3 3"
+            strokeOpacity={0.7}
+          />
+        ))}
+        <Line
+          type="monotone"
+          dataKey="discretionary"
+          stroke={T.ink}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+        <ReferenceDot
+          x={currentGross}
+          y={points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary}
+          r={4}
+          fill={T.positive}
+          stroke={T.bg}
+          strokeWidth={2}
+          ifOverflow="visible"
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }

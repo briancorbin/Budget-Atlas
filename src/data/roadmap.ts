@@ -105,7 +105,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Benefits & safety net',
     status: 'planned',
     summary:
-      'Add shelter and childcare deductions to the SNAP net-income formula — real SNAP subtracts both before applying the 30% multiplier, meaningful in high-rent metros. Plus a calculation breakdown UI and a cliff visualization.',
+      'Add shelter and childcare deductions to the SNAP net-income formula — real SNAP subtracts both before applying the 30% multiplier, meaningful in high-rent metros. Plus a calculation breakdown UI. (The income-sweep cliff visualization shipped separately.)',
   },
   {
     id: 10,
@@ -113,7 +113,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Benefits & safety net',
     status: 'planned',
     summary:
-      'Surface alternate Medicaid tracks the model omits — SSI-linked, aged (65+), and pregnancy (often 200%+ FPL even in non-expansion states). Plus state waiver programs and a visualization of the Medicaid cliff at 138% FPL.',
+      "Surface alternate Medicaid tracks the model omits — SSI-linked, aged (65+), and pregnancy (often 200%+ FPL even in non-expansion states). Plus state waiver programs. Also: state-charged CHIP premiums for families above ~150% FPL (varies by state — TX ~$35–50/mo, PA tiered up to ~$56/mo/child, FL ~$15–20/mo, etc.). Today CHIP value = full kids' share of the family premium with no offset for the small monthly premium real higher-income families actually pay; small but real overstatement near the upper eligibility bands. (The 138% FPL Medicaid cliff is now visualized in the income-sweep curve.)",
   },
   {
     id: 11,
@@ -224,6 +224,22 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'The Atlas computes eligibility for SNAP, Medicaid, and CHIP, but plenty of programs sit adjacent to the same life situations and never surface. A laid-off worker should hear about unemployment insurance the moment they tell us their income dropped. A new parent should hear about WIC. A renter behind on utilities should hear about LIHEAP. A household near tax-filing time should hear about VITA / Free File. A disabled adult should hear about SSDI / SSI. Two layers: (1) a contextual "you may also want to look into…" callout that triggers off household state changes — state-specific links to the right portal; and (2) the same guided-application treatment #126 plans for SNAP / Medicaid / CHIP, applied here too — application form, documents needed, portal URL for the user\'s state, and any agency-run pre-check we can surface — so "you might qualify" becomes "here\'s the next step," not just a hyperlink and a shrug.',
     status: 'planned',
+  },
+  {
+    id: 128,
+    title: 'Implicit marginal tax rate view',
+    category: 'Benefits & safety net',
+    status: 'planned',
+    summary:
+      'Plot the *slope* of the discretionary curve as its own line — the implicit marginal tax rate the household actually faces, including benefit phase-outs and refundable-credit reductions, not just income-tax brackets. Each cliff would show as a brief spike to ≥100% (every $1 earned costs more than $1) followed by an elevated plateau through the recovery zone. Makes legible why a $4K Medicaid loss takes an $11K raise to climb out of: the marginal keep-rate is much worse than the headline tax bracket suggests once EITC/SNAP phase-downs and untaxed-benefit replacement costs stack up. Companion to the existing cliff curve.',
+  },
+  {
+    id: 129,
+    title: 'Asymmetric Medicaid value vs. post-cliff cost',
+    category: 'Benefits & safety net',
+    status: 'planned',
+    summary:
+      "Today the model conflates two different things into a single number (cityData.healthFamily, sourced from KFF's Employer Health Benefits Survey): (a) the dollar VALUE of Medicaid/CHIP coverage when a household qualifies, and (b) the household's healthcare EXPENSE when they don't. Setting these equal makes the cliff drop on the Discretionary line equal the cliff drop on the Take-home + benefits line — they're the same magnitude, just measured from different angles. In reality the two diverge: Medicaid is meaningfully better than typical employer coverage ($0 deductible, $0 copays, broader pediatric benefits) so its real actuarial value is HIGHER than a worker would pay for an equivalent plan; AND a household losing Medicaid often lands on an ACA marketplace plan that costs MORE than the modeled employer premium. Splitting these into separate values (medicaidValue, chipValue, postCliffCost) would make the Discretionary cliff legitimately differ in size from the Take-home + benefits cliff — capturing a real economic asymmetry. Likely sources: ACA marketplace median premium data (Healthcare.gov/state exchanges), MEPS for actuarial value of Medicaid, KFF for employer comparisons.",
   },
 ];
 

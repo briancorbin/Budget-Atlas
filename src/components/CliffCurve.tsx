@@ -253,12 +253,12 @@ export function CliffCurve({
     });
   }, [cliffs, points, metricMeta]);
 
+  // Uniform warning tint per /design-lab#compound V5: every pit zone
+  // shaded the same color regardless of which program caused it. Avoids
+  // overclaiming attribution when multiple cliffs contribute to a merged
+  // pit (the compound case has no single "right" attribution).
   const pitZones = useMemo(
-    () =>
-      computePitZones(points, metricMeta.key, cliffs).map((z) => ({
-        ...z,
-        color: z.color ?? T.warning,
-      })),
+    () => computePitZones(points, metricMeta.key, cliffs),
     [points, metricMeta, cliffs],
   );
 
@@ -342,9 +342,9 @@ export function CliffCurve({
                 key={`pit-${i}`}
                 x1={z.x1}
                 x2={z.x2}
-                fill={z.color}
+                fill={T.warning}
                 fillOpacity={0.12}
-                stroke={z.color}
+                stroke={T.warning}
                 strokeOpacity={0.3}
                 strokeDasharray="2 3"
               />
@@ -423,22 +423,17 @@ export function CliffCurve({
           </span>
           {pitZones.length > 0 && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ display: 'inline-flex', gap: 2 }}>
-                {pitZones.map((z, i) => (
-                  <span
-                    key={`pit-swatch-${i}`}
-                    style={{
-                      display: 'inline-block',
-                      width: 12,
-                      height: 10,
-                      background: z.color,
-                      opacity: 0.3,
-                      border: `1px dashed ${z.color}`,
-                    }}
-                  />
-                ))}
-              </span>
-              Worse off than at some lower income (shaded by program lost)
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 14,
+                  height: 10,
+                  background: T.warning,
+                  opacity: 0.3,
+                  border: `1px dashed ${T.warning}`,
+                }}
+              />
+              Worse off than at some lower income
             </span>
           )}
           {cliffs.map((c) => (

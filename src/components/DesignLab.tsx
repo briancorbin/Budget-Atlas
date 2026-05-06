@@ -128,7 +128,10 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     nav: 'Compound pit attribution',
     count: 6,
     Component: SectionCompoundPits,
-    status: 'open',
+    status: 'decided',
+    decidedAs: 'V5 — uniform warning color, no per-program attribution',
+    decidedNote:
+      'Attribution-by-color was always going to lie when multiple cliffs contributed to a merged pit. V5 says "something is wrong here" without overclaiming which program. Per-cliff caption below the chart already names the responsible programs in plain language.',
   },
 ];
 
@@ -4052,6 +4055,7 @@ function SectionCompoundPits() {
         <CompoundChartLayered config={config} />
       </Variation>
       <Variation
+        decided
         title="V5 — Uniform warning color (no attribution at all)"
         description="Every pit zone shaded the same warning orange regardless of which program caused it. Cleanest possible read; sacrifices attribution entirely but never lies about which program is responsible since it never claims one."
       >

@@ -40,6 +40,18 @@
 //   destination still cites the claim) and does NOT reset the
 //   staleness clock — see audit/staleness/seed-issue.mjs.
 //
+// Flap suppression across runs:
+//   A URL must be in an actionable status in EVERY one of the last
+//   FLAP_SUPPRESSION_RUNS dated runs to escalate into the queue. A
+//   single non-actionable status in that window (a 200/3xx that snuck
+//   through) is treated as evidence of flap and the URL is held back
+//   for another night. The intent is to absorb anti-bot rule rollouts
+//   and short state-network outages without spamming the queue, while
+//   still flagging genuinely-broken pages within ~3 days. URLs that
+//   only appear in some of the last N runs (newly-cited URLs) escalate
+//   based on the runs they appear in — a config typo gets surfaced on
+//   day one, not held back for 3 days.
+//
 // Usage:
 //   node audit/links/seed-issues.mjs               # update the rolling issue
 //   node audit/links/seed-issues.mjs --dry-run     # print what would happen
@@ -221,11 +233,68 @@ function isVerifiedBotBlocked(url, reviews, today) {
 
 const reviews = parseReviewedTsv();
 const today = new Date();
-const suppressedCount = broken.filter((r) => isVerifiedBotBlocked(r.url, reviews, today)).length;
-const filteredBroken = broken.filter((r) => !isVerifiedBotBlocked(r.url, reviews, today));
-if (suppressedCount > 0) {
+const verifiedBotBlockedCount = broken.filter((r) =>
+  isVerifiedBotBlocked(r.url, reviews, today),
+).length;
+let filteredBroken = broken.filter((r) => !isVerifiedBotBlocked(r.url, reviews, today));
+if (verifiedBotBlockedCount > 0) {
   console.log(
-    `→ Suppressing ${suppressedCount} verified-bot-blocked URL(s) per reviewed.tsv (TTL ${VERIFIED_BOT_BLOCKED_TTL_DAYS}d).`,
+    `→ Suppressing ${verifiedBotBlockedCount} verified-bot-blocked URL(s) per reviewed.tsv (TTL ${VERIFIED_BOT_BLOCKED_TTL_DAYS}d).`,
+  );
+}
+
+// ── 3.6. Flap suppression across recent runs ─────────────────────────────
+//
+// Require a URL to be in an actionable status in EVERY one of the last N
+// dated runs (current included) before escalating it to the queue. One
+// non-actionable status in that window is treated as flap and the URL is
+// held back for another night. URLs that appear in fewer than N runs
+// (newly-cited URLs) escalate based on the runs they DO appear in.
+const FLAP_SUPPRESSION_RUNS = 3;
+
+function loadRecentRuns(currentDate, n) {
+  // Dated TSVs only — latest.tsv is a duplicate of the most recent dated
+  // file (see check.sh) and would skew counts.
+  const dated = readdirSync(RESULTS_DIR)
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.tsv$/.test(f))
+    .sort();
+  // Defensive: include only runs at-or-before the current run, in case
+  // older artifacts somehow show a future date.
+  const eligible = dated.filter((f) => f.replace('.tsv', '') <= currentDate);
+  const recent = eligible.slice(-n);
+  return recent.map((f) => {
+    const text = readFileSync(resolve(RESULTS_DIR, f), 'utf8');
+    const map = new Map();
+    for (const line of text.split('\n').slice(1)) {
+      if (!line) continue;
+      const [status, url] = line.split('\t');
+      if (url) map.set(url, status);
+    }
+    return { date: f.replace('.tsv', ''), statuses: map };
+  });
+}
+
+const recentRuns = loadRecentRuns(latestDate, FLAP_SUPPRESSION_RUNS);
+let flapSuppressedCount = 0;
+
+if (recentRuns.length >= 2) {
+  // With <2 runs of history there's nothing to compare against; fall
+  // back to current behavior (escalate immediately).
+  filteredBroken = filteredBroken.filter((r) => {
+    const appearsIn = recentRuns.filter((run) => run.statuses.has(r.url));
+    if (appearsIn.length === 0) return true; // shouldn't happen — current run includes it
+    const allActionable = appearsIn.every((run) => ACTIONABLE.has(run.statuses.get(r.url)));
+    if (!allActionable) {
+      flapSuppressedCount++;
+      return false;
+    }
+    return true;
+  });
+}
+
+if (flapSuppressedCount > 0) {
+  console.log(
+    `→ Suppressing ${flapSuppressedCount} flapping URL(s) (not actionable in all of last ${recentRuns.length} run(s)).`,
   );
 }
 

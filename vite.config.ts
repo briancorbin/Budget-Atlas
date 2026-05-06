@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
@@ -5,6 +6,11 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   base: './', // works for static hosts and GitHub Pages out of the box
+  // Vitest reads this same config; tests are colocated as `*.test.ts` next
+  // to the source they cover. Pure-function libs only — no jsdom needed.
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
   server: {
     host: true,
     port: 5173,

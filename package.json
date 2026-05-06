@@ -10,12 +10,14 @@
     "tunnel": "./scripts/tunnel.sh",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "yarn typecheck && yarn lint && yarn format:check",
+    "verify": "yarn typecheck && yarn lint && yarn format:check && yarn test",
     "render-branding": "./scripts/render-branding.sh",
     "check-links": "./audit/links/check.sh",
     "audit:seed-issues": "node audit/links/seed-issues.mjs",
@@ -45,6 +47,7 @@
     "prettier": "^3.8.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.1",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
   }
 }

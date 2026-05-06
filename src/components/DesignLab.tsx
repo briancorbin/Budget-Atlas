@@ -123,6 +123,13 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     Component: SectionPitZones,
     status: 'open',
   },
+  {
+    id: 'compound',
+    nav: 'Compound pit attribution',
+    count: 4,
+    Component: SectionCompoundPits,
+    status: 'open',
+  },
 ];
 
 export function DesignLab({ onBack }: { onBack: () => void }) {
@@ -3923,3 +3930,311 @@ function PitChartBottomBand() {
   );
 }
 
+
+// ── Section: compound pit attribution ────────────────────────────────────
+//
+// When two cliffs fire close enough together that the curve hasn't
+// recovered from the first by the time the second hits, the household's
+// pit "merges" into one continuous zone driven by both programs. The
+// production code attributes that whole zone to the first cliff's color
+// (because it walks left→right and only records the cliff that opened
+// the zone), making the second cliff's contribution invisible.
+//
+// These four variations explore how to expose multi-cliff contribution.
+
+const COMPOUND_SCENARIO: CliffScenario = {
+  city: 'nyc',
+  kids: 0,
+  filing: 'single',
+  lifestyle: 'moderate',
+  hasPartner: false,
+  incomeA: 30000,
+  incomeB: 0,
+};
+
+function SectionCompoundPits() {
+  return (
+    <Section
+      columns={1}
+      heading="Compound pit attribution"
+      subhead="When two cliffs fire close enough that the household hasn't recovered from the first when the second hits, the resulting pit zone is caused by BOTH programs. Production today colors the merged zone by the first cliff only — losing the second cliff's signal. These four variations expose multi-cliff contribution differently."
+    >
+      <Variation
+        title="V1 — Single-color attribution (current production)"
+        description="Whole merged zone gets the first cliff's color. Simple but understates the second cliff's role."
+      >
+        <CompoundChartSingleColor />
+      </Variation>
+      <Variation
+        title="V2 — Split striping at each contributing cliff"
+        description="Walk the merged zone and split at every cliff that fires inside it; each segment gets that cliff's color. The shading reads as 'first Medicaid, then SNAP also dropped you.'"
+      >
+        <CompoundChartSplitStriping />
+      </Variation>
+      <Variation
+        title="V3 — Ghost 'best-so-far' line, no shading"
+        description="Skip attribution entirely. Render a faded running-max line; the visible gap between actual and ghost IS the pit, and it naturally shows compound depth without choosing colors."
+      >
+        <CompoundChartGhost />
+      </Variation>
+      <Variation
+        title="V4 — Per-cliff layered zones (translucent stacking)"
+        description="Each cliff opens its own translucent pit zone that closes when the curve recovers to that cliff's pre-cliff value. Overlapping zones stack visually — 'inside both' regions look darker. Shows attribution AND depth."
+      >
+        <CompoundChartLayered />
+      </Variation>
+    </Section>
+  );
+}
+
+/** Each cliff's individual pit zone — runs from that cliff's gross to the
+ *  income at which the curve recovers to THAT cliff's pre-cliff value.
+ *  Used by V4 for layered overlapping zones. */
+function computePerCliffZones(
+  points: readonly CliffPoint[],
+  cliffs: readonly CliffMark[],
+): PitZone[] {
+  const zones: PitZone[] = [];
+  for (const c of cliffs) {
+    let beforeIdx = 0;
+    for (let i = 0; i < points.length; i++) {
+      if (points[i].gross <= c.gross) beforeIdx = i;
+      else break;
+    }
+    const beforeValue = points[beforeIdx].discretionary;
+    let recoveryGross: number | null = null;
+    for (let i = beforeIdx + 1; i < points.length; i++) {
+      if (points[i].discretionary >= beforeValue) {
+        recoveryGross = points[i].gross;
+        break;
+      }
+    }
+    if (recoveryGross !== null && recoveryGross > c.gross) {
+      zones.push({ x1: c.gross, x2: recoveryGross, color: c.color, cliffId: c.id });
+    }
+  }
+  return zones;
+}
+
+function CompoundChartSingleColor() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(COMPOUND_SCENARIO);
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={pitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartSplitStriping() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(COMPOUND_SCENARIO);
+  const splitZones: PitZone[] = pitZones.flatMap((z) => {
+    const interior = cliffs
+      .filter((c) => c.gross > z.x1 && c.gross < z.x2)
+      .sort((a, b) => a.gross - b.gross);
+    if (interior.length === 0) return [z];
+    const breakpoints = [z.x1, ...interior.map((c) => c.gross), z.x2];
+    const subs: PitZone[] = [];
+    for (let i = 0; i < breakpoints.length - 1; i++) {
+      const subStart = breakpoints[i];
+      const subEnd = breakpoints[i + 1];
+      const owner = [...cliffs]
+        .filter((c) => c.gross <= subStart)
+        .sort((a, b) => b.gross - a.gross)[0];
+      subs.push({
+        x1: subStart,
+        x2: subEnd,
+        color: owner?.color ?? z.color,
+        cliffId: owner?.id ?? z.cliffId,
+      });
+    }
+    return subs;
+  });
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={splitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+        zoneOpacity={0.18}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartGhost() {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(COMPOUND_SCENARIO);
+  const ghostPoints = (() => {
+    let runningMax = -Infinity;
+    return points.map((p) => {
+      runningMax = Math.max(runningMax, p.discretionary);
+      return { gross: p.gross, ghost: runningMax, actual: p.discretionary };
+    });
+  })();
+  return (
+    <CompoundFrame>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={ghostPoints.find((p) => p.gross >= currentGross)?.actual ?? ghostPoints[0].actual}
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartLayered() {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(COMPOUND_SCENARIO);
+  const layeredZones = computePerCliffZones(points, cliffs);
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={layeredZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+        zoneOpacity={0.14}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundFrame({ children }: { children: React.ReactNode }) {
+  return <ScenarioFrame label="NYC · single · no kids · $30K">{children}</ScenarioFrame>;
+}
+
+function CompoundChartBase({
+  points,
+  cliffs,
+  zones,
+  maxGross,
+  currentGross,
+  zoneOpacity = 0.15,
+}: {
+  points: CliffPoint[];
+  cliffs: CliffMark[];
+  zones: PitZone[];
+  maxGross: number;
+  currentGross: number;
+  zoneOpacity?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+        <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+        <XAxis
+          dataKey="gross"
+          type="number"
+          domain={[0, maxGross]}
+          tickFormatter={fmtK}
+          stroke={T.inkMuted}
+          tick={{ fontSize: 10, fill: T.inkSoft }}
+        />
+        <YAxis
+          tickFormatter={fmtK}
+          stroke={T.inkMuted}
+          tick={{ fontSize: 10, fill: T.inkSoft }}
+          width={48}
+        />
+        <ReferenceLine y={0} stroke={T.inkMuted} />
+        {zones.map((z, i) => (
+          <ReferenceArea
+            key={i}
+            x1={z.x1}
+            x2={z.x2}
+            fill={z.color ?? T.warning}
+            fillOpacity={zoneOpacity}
+            stroke={z.color ?? T.warning}
+            strokeOpacity={0.3}
+            strokeDasharray="2 3"
+          />
+        ))}
+        {cliffs.map((c) => (
+          <ReferenceLine
+            key={c.id}
+            x={c.gross}
+            stroke={c.color}
+            strokeDasharray="3 3"
+            strokeOpacity={0.7}
+          />
+        ))}
+        <Line
+          type="monotone"
+          dataKey="discretionary"
+          stroke={T.ink}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+        <ReferenceDot
+          x={currentGross}
+          y={
+            points.find((p) => p.gross >= currentGross)?.discretionary ?? points[0].discretionary
+          }
+          r={4}
+          fill={T.positive}
+          stroke={T.bg}
+          strokeWidth={2}
+          ifOverflow="visible"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}

@@ -4089,6 +4089,7 @@ function CompoundConfigPanel({
     }));
   };
   const reset = () => setConfig(COMPOUND_DEFAULT_CONFIG);
+  const [collapsed, setCollapsed] = React.useState(false);
 
   return (
     <div
@@ -4103,7 +4104,7 @@ function CompoundConfigPanel({
         background: T.bgAlt,
         border: `1px dashed ${T.border}`,
         borderRadius: 4,
-        padding: 16,
+        padding: collapsed ? '8px 16px' : 16,
         marginBottom: 4,
         boxShadow: '0 4px 12px rgba(27, 24, 21, 0.08)',
       }}
@@ -4113,28 +4114,76 @@ function CompoundConfigPanel({
           display: 'flex',
           alignItems: 'baseline',
           justifyContent: 'space-between',
-          marginBottom: 12,
+          gap: 12,
+          marginBottom: collapsed ? 0 : 12,
         }}
       >
-        <div style={{ fontSize: rem(13), fontWeight: 600, color: T.ink }}>
-          Synthetic scenario config
-        </div>
         <button
           type="button"
-          onClick={reset}
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
           style={{
             border: 'none',
             background: 'transparent',
-            color: T.inkMuted,
-            fontSize: rem(11),
-            textDecoration: 'underline',
-            cursor: 'pointer',
             padding: 0,
+            cursor: 'pointer',
+            fontFamily: fonts.body,
+            fontSize: rem(13),
+            fontWeight: 600,
+            color: T.ink,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
           }}
         >
-          Reset to defaults
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 0,
+              height: 0,
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: `5px solid ${T.inkMuted}`,
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)',
+              transition: 'transform 0.15s',
+            }}
+          />
+          Synthetic scenario config
+          {collapsed && (
+            <span
+              style={{
+                fontWeight: 400,
+                color: T.inkMuted,
+                fontSize: rem(11),
+                marginLeft: 6,
+              }}
+            >
+              · {config.programs.length} program{config.programs.length === 1 ? '' : 's'} · slope{' '}
+              {config.slope.toFixed(2)}
+            </span>
+          )}
         </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: T.inkMuted,
+              fontSize: rem(11),
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Reset to defaults
+          </button>
+        )}
       </div>
+      {!collapsed && (
+        <>
       <div
         style={{
           display: 'grid',
@@ -4270,6 +4319,8 @@ function CompoundConfigPanel({
           />
         </label>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -126,7 +126,7 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
   {
     id: 'compound',
     nav: 'Compound pit attribution',
-    count: 6,
+    count: 7,
     Component: SectionCompoundPits,
     status: 'decided',
     decidedAs: 'V5 — uniform warning color, no per-program attribution',
@@ -4067,6 +4067,12 @@ function SectionCompoundPits() {
       >
         <CompoundChartGhostShaded config={config} />
       </Variation>
+      <Variation
+        title="V7 — Slim impact bar below the chart, crosshatched on overlap"
+        description="Chart stays as V5 (uniform tint); a thin bar pinned below the X axis shows each program's impact zone in its own color. Where two impact zones overlap, the segment uses a diagonal crosshatch combining both colors. Triple overlap = three-color hatch. Attribution lives in the bar; the chart stays calm."
+      >
+        <CompoundChartImpactBar config={config} />
+      </Variation>
     </Section>
   );
 }
@@ -4623,6 +4629,128 @@ function CompoundChartLayered({ config }: { config: CompoundConfig }) {
       <PitTimeline cliffs={cliffs} zones={layeredZones} maxGross={maxGross} />
     </CompoundFrame>
   );
+}
+
+function CompoundChartImpactBar({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  const impactZones = computePerCliffZones(points, cliffs);
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={pitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+      <ImpactBar cliffs={cliffs} zones={impactZones} maxGross={maxGross} />
+    </CompoundFrame>
+  );
+}
+
+/** Single thin "impact bar" pinned below the chart. Walks every program's
+ *  impact zone (cliff → recovery), finds breakpoints where the active set
+ *  of programs changes, and renders one segment per breakpoint window. A
+ *  segment with one active program shows that program's color; with two
+ *  or more, a diagonal crosshatch alternates the colors so overlap is
+ *  visually unambiguous. */
+function ImpactBar({
+  cliffs,
+  zones,
+  maxGross,
+}: {
+  cliffs: CliffMark[];
+  zones: PitZone[];
+  maxGross: number;
+}) {
+  // Build a sorted list of unique breakpoints (zone starts and ends).
+  const breakpoints = Array.from(
+    new Set(zones.flatMap((z) => [z.x1, z.x2])),
+  ).sort((a, b) => a - b);
+
+  // For each [bp[i], bp[i+1]] window, the active set is every zone
+  // that contains the window (zone.x1 < bpEnd AND zone.x2 > bpStart).
+  const segments = breakpoints.slice(0, -1).map((start, i) => {
+    const end = breakpoints[i + 1];
+    const active = zones.filter((z) => z.x1 < end && z.x2 > start);
+    return { start, end, active };
+  });
+
+  // Match the chart's plot-area inset so the bar lines up with chart X.
+  const leftPad = 48 + 4;
+  const rightPad = 16 + 4;
+
+  const cliffById = new Map(cliffs.map((c) => [c.id, c]));
+
+  return (
+    <div style={{ marginTop: 8, paddingLeft: leftPad, paddingRight: rightPad }}>
+      <div
+        style={{
+          fontSize: rem(10),
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: T.inkMuted,
+          marginBottom: 4,
+        }}
+      >
+        Programs in pit
+      </div>
+      <div
+        style={{
+          position: 'relative',
+          height: 12,
+          background: T.bgAlt,
+          border: `1px solid ${T.border}`,
+        }}
+      >
+        {segments.map((seg, i) => {
+          if (seg.active.length === 0) return null;
+          const colors = seg.active
+            .map((z) => (z.cliffId ? cliffById.get(z.cliffId)?.color : null))
+            .filter((c): c is string => Boolean(c));
+          const left = `${(seg.start / maxGross) * 100}%`;
+          const width = `${((seg.end - seg.start) / maxGross) * 100}%`;
+          const labels = seg.active
+            .map((z) => (z.cliffId ? cliffById.get(z.cliffId)?.label : null))
+            .filter(Boolean)
+            .join(' + ');
+          return (
+            <div
+              key={i}
+              title={`${labels} · ${fmtK(seg.start)}–${fmtK(seg.end)}`}
+              style={{
+                position: 'absolute',
+                left,
+                width,
+                top: 0,
+                bottom: 0,
+                background: hatchedFill(colors),
+                opacity: 0.75,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Build a CSS background that diagonally crosshatches the given colors.
+ *  Single color → solid fill. Two or more → repeating-linear-gradient
+ *  with each color taking an even slice. */
+function hatchedFill(colors: string[]): string {
+  if (colors.length === 0) return 'transparent';
+  if (colors.length === 1) return colors[0];
+  const stripeWidth = 6; // px per stripe
+  const total = stripeWidth * colors.length;
+  const stops = colors
+    .map((c, i) => {
+      const start = i * stripeWidth;
+      const end = (i + 1) * stripeWidth;
+      return `${c} ${start}px, ${c} ${end}px`;
+    })
+    .join(', ');
+  return `repeating-linear-gradient(45deg, ${stops}, ${colors[0]} ${total}px)`;
 }
 
 /** Per-program pit timeline. One labeled lane per cliff, with a colored

@@ -255,10 +255,17 @@ export function CliffCurve({
   // Pit zones: contiguous income ranges where the household ends up with
   // less of the active metric than they would at some lower income. Walks
   // the curve left→right tracking the running max; any point below that
-  // running max is "in a pit." Coalesces consecutive in-pit points into
-  // single shaded ranges so we render one ReferenceArea per zone.
+  // running max is "in a pit." Each zone is attributed to the cliff that
+  // caused it — the highest-gross cliff at or below the zone start —
+  // so the shading color can match that program's accent.
   const pitZones = useMemo(() => {
-    const zones: { x1: number; x2: number }[] = [];
+    const sortedCliffs = [...cliffs].sort((a, b) => b.gross - a.gross); // desc
+    const findCauseColor = (zoneStart: number): string => {
+      const cause = sortedCliffs.find((c) => c.gross < zoneStart);
+      return cause?.color ?? T.warning;
+    };
+
+    const zones: { x1: number; x2: number; color: string }[] = [];
     let runningMax = -Infinity;
     let currentZoneStart: number | null = null;
     for (let i = 0; i < points.length; i++) {
@@ -267,17 +274,25 @@ export function CliffCurve({
         if (currentZoneStart === null) currentZoneStart = points[i].gross;
       } else {
         if (currentZoneStart !== null) {
-          zones.push({ x1: currentZoneStart, x2: points[i].gross });
+          zones.push({
+            x1: currentZoneStart,
+            x2: points[i].gross,
+            color: findCauseColor(currentZoneStart),
+          });
           currentZoneStart = null;
         }
         runningMax = v;
       }
     }
     if (currentZoneStart !== null) {
-      zones.push({ x1: currentZoneStart, x2: points[points.length - 1].gross });
+      zones.push({
+        x1: currentZoneStart,
+        x2: points[points.length - 1].gross,
+        color: findCauseColor(currentZoneStart),
+      });
     }
     return zones;
-  }, [points, metricMeta]);
+  }, [points, metricMeta, cliffs]);
 
   return (
     <div style={{ marginBottom: 48 }}>
@@ -359,10 +374,10 @@ export function CliffCurve({
                 key={`pit-${i}`}
                 x1={z.x1}
                 x2={z.x2}
-                fill={T.warning}
-                fillOpacity={0.1}
-                stroke={T.warning}
-                strokeOpacity={0.25}
+                fill={z.color}
+                fillOpacity={0.12}
+                stroke={z.color}
+                strokeOpacity={0.3}
                 strokeDasharray="2 3"
               />
             ))}
@@ -439,20 +454,23 @@ export function CliffCurve({
             Your current income ({fmt(currentGross)})
           </span>
           {pitZones.length > 0 && (
-            <span>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: 14,
-                  height: 10,
-                  background: T.warning,
-                  opacity: 0.25,
-                  border: `1px dashed ${T.warning}`,
-                  marginRight: 6,
-                  verticalAlign: 'middle',
-                }}
-              />
-              Worse off than at some lower income
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-flex', gap: 2 }}>
+                {pitZones.map((z, i) => (
+                  <span
+                    key={`pit-swatch-${i}`}
+                    style={{
+                      display: 'inline-block',
+                      width: 12,
+                      height: 10,
+                      background: z.color,
+                      opacity: 0.3,
+                      border: `1px dashed ${z.color}`,
+                    }}
+                  />
+                ))}
+              </span>
+              Worse off than at some lower income (shaded by program lost)
             </span>
           )}
           {cliffs.map((c) => (

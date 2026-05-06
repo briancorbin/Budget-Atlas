@@ -36,24 +36,33 @@ interface SweepPoint {
   benefits: number;
 }
 
-const METRICS: Record<MetricId, { label: string; longLabel: string; key: keyof SweepPoint; unitNoun: string }> = {
+const METRICS: Record<
+  MetricId,
+  { label: string; longLabel: string; key: keyof SweepPoint; unitNoun: string; description: string }
+> = {
   discretionary: {
     label: 'Discretionary',
     longLabel: 'Annual discretionary income',
     key: 'discretionary',
     unitNoun: 'discretionary',
+    description:
+      "What's actually left over each year after taxes and modeled household expenses (rent, groceries, healthcare, childcare, etc.). The most editorial measure, but cliffs read smaller here because losing Medicaid also raises healthcare expense — the two partially cancel.",
   },
   takeHome: {
     label: 'Take-home',
     longLabel: 'Annual take-home pay (net of taxes)',
     key: 'takeHome',
     unitNoun: 'take-home',
+    description:
+      'Gross income minus federal, state, local, and FICA taxes. Ignores expenses entirely. Cliffs are invisible here because benefit value never enters the take-home line — only the tax-bracket and EITC/CTC phaseouts bend the curve.',
   },
   takeHomePlusBenefits: {
     label: 'Take-home + benefits',
     longLabel: 'Annual take-home pay + benefit value',
     key: 'takeHomePlusBenefits',
     unitNoun: 'total resources',
+    description:
+      'Take-home pay plus the dollar value of every safety-net benefit the household qualifies for (Medicaid, CHIP, SNAP). This is the cleanest cliff view: each vertical drop is the pure cash value of the lost program, with no expense smoothing.',
   },
 };
 
@@ -428,34 +437,63 @@ function MetricToggle({
   metric: MetricId;
   onChange: (m: MetricId) => void;
 }) {
+  // Track which button is currently hovered/focused so the description
+  // line below previews that one — falls back to the active metric.
+  const [previewing, setPreviewing] = useState<MetricId | null>(null);
+  const shown = previewing ?? metric;
+
   return (
-    <div role="group" aria-label="Metric to plot" style={{ display: 'inline-flex', gap: 0 }}>
-      {(Object.keys(METRICS) as MetricId[]).map((id, i) => {
-        const isActive = metric === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onChange(id)}
-            aria-pressed={isActive}
-            style={{
-              fontFamily: fonts.body,
-              fontSize: rem(11),
-              letterSpacing: '0.04em',
-              padding: '6px 10px',
-              border: `1px solid ${isActive ? T.ink : T.border}`,
-              borderLeftWidth: i === 0 ? 1 : 0,
-              background: isActive ? T.ink : T.bg,
-              color: isActive ? T.bg : T.inkSoft,
-              cursor: 'pointer',
-              fontWeight: isActive ? 600 : 400,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {METRICS[id].label}
-          </button>
-        );
-      })}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      <div role="group" aria-label="Metric to plot" style={{ display: 'inline-flex', gap: 0 }}>
+        {(Object.keys(METRICS) as MetricId[]).map((id, i) => {
+          const isActive = metric === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onChange(id)}
+              onMouseEnter={() => setPreviewing(id)}
+              onMouseLeave={() => setPreviewing(null)}
+              onFocus={() => setPreviewing(id)}
+              onBlur={() => setPreviewing(null)}
+              aria-pressed={isActive}
+              aria-describedby={`metric-${id}-desc`}
+              title={METRICS[id].description}
+              style={{
+                fontFamily: fonts.body,
+                fontSize: rem(11),
+                letterSpacing: '0.04em',
+                padding: '6px 10px',
+                border: `1px solid ${isActive ? T.ink : T.border}`,
+                borderLeftWidth: i === 0 ? 1 : 0,
+                background: isActive ? T.ink : T.bg,
+                color: isActive ? T.bg : T.inkSoft,
+                cursor: 'pointer',
+                fontWeight: isActive ? 600 : 400,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {METRICS[id].label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        id={`metric-${shown}-desc`}
+        role="status"
+        aria-live="polite"
+        style={{
+          fontFamily: fonts.body,
+          fontSize: rem(11),
+          color: T.inkMuted,
+          maxWidth: 360,
+          textAlign: 'right',
+          lineHeight: 1.5,
+          fontStyle: 'italic',
+        }}
+      >
+        {METRICS[shown].description}
+      </div>
     </div>
   );
 }

@@ -224,9 +224,11 @@ export function CliffCurve({
     return best;
   }, [points, currentGross, maxGross]);
 
-  // Quantify each cliff's drop magnitude — useful for the editorial caption.
-  // Uses whichever metric the user has selected so the caption matches the
-  // chart line.
+  // Quantify each cliff's drop magnitude AND its recovery income — the
+  // lowest income above the cliff where the curve climbs back up to the
+  // pre-cliff value. If the curve never recovers within the swept range,
+  // recoveryGross is null. Uses whichever metric the user has selected so
+  // the caption matches the chart line.
   const cliffDrops = useMemo(() => {
     return cliffs.map((c) => {
       let before = points[0];
@@ -235,15 +237,20 @@ export function CliffCurve({
         else break;
       }
       const after = points.find((p) => p.gross > c.gross) ?? points[points.length - 1];
-      const drop = (before[metricMeta.key] as number) - (after[metricMeta.key] as number);
-      return { ...c, drop };
+      const beforeValue = before[metricMeta.key] as number;
+      const drop = beforeValue - (after[metricMeta.key] as number);
+      let recoveryGross: number | null = null;
+      if (drop > 0) {
+        for (const p of points) {
+          if (p.gross > c.gross && (p[metricMeta.key] as number) >= beforeValue) {
+            recoveryGross = p.gross;
+            break;
+          }
+        }
+      }
+      return { ...c, drop, recoveryGross };
     });
   }, [cliffs, points, metricMeta]);
-
-  const biggestCliff = cliffDrops.reduce<(typeof cliffDrops)[number] | null>(
-    (max, c) => (c.drop > (max?.drop ?? 0) ? c : max),
-    null,
-  );
 
   // Pit zones: contiguous income ranges where the household ends up with
   // less of the active metric than they would at some lower income. Walks
@@ -465,22 +472,56 @@ export function CliffCurve({
           ))}
         </div>
 
-        {biggestCliff && biggestCliff.drop > 0 && (
-          <div
+        {cliffDrops.some((c) => c.drop > 0) && (
+          <ul
             style={{
               marginTop: 16,
-              fontFamily: fonts.display,
-              fontSize: rem(16),
-              color: T.inkSoft,
-              fontStyle: 'italic',
-              lineHeight: 1.5,
+              padding: 0,
+              listStyle: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
             }}
           >
-            At {fmt(biggestCliff.gross)} of gross income, earning one more dollar costs this
-            household roughly {fmt(biggestCliff.drop)} a year in {metricMeta.unitNoun} — the value
-            of the {biggestCliff.label} coverage they no longer qualify for. A raise of less than
-            that leaves them poorer than before.
-          </div>
+            {cliffDrops
+              .filter((c) => c.drop > 0)
+              .map((c) => (
+                <li
+                  key={c.id + c.gross}
+                  style={{
+                    fontFamily: fonts.display,
+                    fontSize: rem(15),
+                    color: T.inkSoft,
+                    fontStyle: 'italic',
+                    lineHeight: 1.5,
+                    paddingLeft: 12,
+                    borderLeft: `3px solid ${c.color}`,
+                  }}
+                >
+                  At <strong style={{ color: T.ink, fontStyle: 'normal' }}>{fmt(c.gross)}</strong>,
+                  losing <strong style={{ color: T.ink, fontStyle: 'normal' }}>{c.label}</strong>{' '}
+                  costs roughly{' '}
+                  <strong style={{ color: T.ink, fontStyle: 'normal' }}>
+                    {fmt(c.drop)}/yr
+                  </strong>{' '}
+                  in {metricMeta.unitNoun}.{' '}
+                  {c.recoveryGross !== null ? (
+                    <>
+                      The household isn't back to even until they earn{' '}
+                      <strong style={{ color: T.ink, fontStyle: 'normal' }}>
+                        {fmt(c.recoveryGross)}
+                      </strong>{' '}
+                      — a {fmt(c.recoveryGross - c.gross)} raise that nets them nothing.
+                    </>
+                  ) : (
+                    <>
+                      The curve doesn't recover within the swept range — the household stays
+                      poorer than they were at {fmt(c.gross)} all the way to {fmt(maxGross)}.
+                    </>
+                  )}
+                </li>
+              ))}
+          </ul>
         )}
       </div>
     </div>

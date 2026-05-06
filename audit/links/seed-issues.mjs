@@ -60,7 +60,11 @@ const SOURCES_TS = resolve(ROOT, 'src/data/sources.ts');
 const REPO = 'TheBudgetAtlas/thebudgetatlas';
 const LABEL = 'audit:link';
 
-const ACTIONABLE = new Set(['404', '000', 'ERR', '999']);
+// '000ERR' is the actual single merged code that check.sh writes for
+// DNS/TLS/timeout failures (despite the code list above splitting them
+// for documentation). Keep both spellings to be safe; UI side uses the
+// merged spelling too — see src/lib/sourceStatus.tsx BROKEN_STATUS_CODES.
+const ACTIONABLE = new Set(['404', '000', '000ERR', 'ERR', '999']);
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
@@ -230,7 +234,7 @@ function buildTitle(broken) {
   const counts = { 404: 0, errors: 0, anti: 0 };
   for (const r of broken) {
     if (r.status === '404') counts['404']++;
-    else if (r.status === '000' || r.status === 'ERR') counts.errors++;
+    else if (r.status === '000' || r.status === '000ERR' || r.status === 'ERR') counts.errors++;
     else if (r.status === '999') counts.anti++;
   }
   const parts = [];
@@ -255,7 +259,9 @@ function extractCheckedUrls(existingBody) {
 
 function buildBody(broken, checkedUrls) {
   const by404 = broken.filter((r) => r.status === '404');
-  const byErrors = broken.filter((r) => r.status === '000' || r.status === 'ERR');
+  const byErrors = broken.filter(
+    (r) => r.status === '000' || r.status === '000ERR' || r.status === 'ERR',
+  );
   const byAnti = broken.filter((r) => r.status === '999');
 
   const lines = [

@@ -193,9 +193,7 @@ function isVerifiedBotBlocked(url, reviews, today) {
 
 const reviews = parseReviewedTsv();
 const today = new Date();
-const suppressedCount = broken.filter((r) =>
-  isVerifiedBotBlocked(r.url, reviews, today),
-).length;
+const suppressedCount = broken.filter((r) => isVerifiedBotBlocked(r.url, reviews, today)).length;
 const filteredBroken = broken.filter((r) => !isVerifiedBotBlocked(r.url, reviews, today));
 if (suppressedCount > 0) {
   console.log(

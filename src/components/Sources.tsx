@@ -27,15 +27,15 @@ import {
 import type { Source } from '@/types';
 import {
   REVIEWS,
-  useStatusByUrl,
   STALENESS_THRESHOLDS_DAYS,
   STALENESS_DEFAULT_DAYS,
   isBrokenStatus,
   isOverdue,
   getStatusKind,
-  StatusDot,
   type Review,
-} from '@/lib/sourceStatus';
+} from '@/lib/audit/status';
+import { useStatusByUrl } from '@/lib/audit/store';
+import { StatusDot } from './audit/StatusDot';
 
 const GITHUB_REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
 

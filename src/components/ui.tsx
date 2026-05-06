@@ -11,14 +11,10 @@ import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { navigate } from '@/lib/nav';
 import { ALL_SOURCES } from '@/data/sources';
-import {
-  StatusDot,
-  ReportFlag,
-  getStatusKind,
-  REVIEWS,
-  useStatusByUrl,
-  type StatusKind,
-} from '@/lib/sourceStatus';
+import { getStatusKind, REVIEWS, type StatusKind } from '@/lib/audit/status';
+import { useStatusByUrl } from '@/lib/audit/store';
+import { StatusDot } from './audit/StatusDot';
+import { ReportFlag } from './audit/ReportFlag';
 
 /**
  * Roll a list of source statuses up to a single "worst" one. Broken

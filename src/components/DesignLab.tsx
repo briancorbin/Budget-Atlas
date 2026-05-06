@@ -28,7 +28,7 @@ import {
 import { theme as T, fonts, rem } from '@/theme';
 import { Cite } from './ui';
 import type { Source } from '@/types';
-import type { ReviewKind } from '@/lib/sourceStatus';
+import type { ReviewKind } from '@/lib/audit/status';
 import { computeBudget } from '@/lib/budget';
 import { BENEFIT_IDS } from '@/lib/benefits';
 import { computePitZones, type PitZone } from '@/lib/cliffs';

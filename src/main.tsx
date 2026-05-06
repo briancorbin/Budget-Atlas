@@ -26,7 +26,7 @@ import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 
 import './index.css';
-import { prefetchStatus } from '@/lib/sourceStatus';
+import { prefetchStatus } from '@/lib/audit/store';
 
 // Kick off the one-time fetch of /api/audit/latest in parallel with the
 // initial render. Status dots populate as soon as the response lands;

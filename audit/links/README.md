@@ -162,21 +162,29 @@ AUDIT_WRITE_TOKEN=<token> node audit/links/backfill-d1.mjs
 
 ### Local backend
 
-For backend changes (worker code, schema, API contract), run a local Worker against a local D1 so production stays untouched:
+For backend changes (worker code, schema, API contract), run a local Worker against a local D1 so production stays untouched.
+
+**One-shot, fresh start** — applies schema, syncs prod → local, then runs the local Worker + Vite dev server together with the proxy already pointed at the local Worker:
 
 ```sh
-# 1. Apply the schema to local D1 (one-time, or after schema edits)
-yarn dev:worker:seed
+yarn dev:local:fresh
+```
 
-# 2. (Recommended) snapshot production D1 into local for realistic data
-yarn db:sync
+**Day-to-day** — once you've done a `:fresh` (or have local data you want to keep), this skips the schema apply and the prod sync and just runs both servers:
 
-# 3. Start the local Worker on :8787 with local D1
-yarn dev:worker
+```sh
+yarn dev:local
+```
 
-# 4. In another terminal, point the Vite dev server's /api proxy at the
-#    local Worker instead of production
-AUDIT_PROXY_TARGET=http://localhost:8787 yarn start
+Both commands run wrangler and vite concurrently in the same terminal with colored prefixes (`worker` / `site`); Ctrl-C kills both. The Vite proxy is set to `http://localhost:8787` automatically.
+
+**Component pieces** (use individually if `dev:local` is too much):
+
+```sh
+yarn dev:worker:seed   # apply worker/schema.sql to local D1 (one-time / after schema edits)
+yarn db:sync           # snapshot prod D1 → local
+yarn dev:worker        # local Worker on :8787, persistent state in .wrangler/state
+yarn start             # Vite dev server (proxies /api to prod by default)
 ```
 
 `yarn start` without `AUDIT_PROXY_TARGET` proxies to production — fine for UI-only work. The local Worker accepts any `AUDIT_WRITE_TOKEN` for writes (no secret is set unless you `wrangler secret put` against the local env), so `local-dev` is conventional but anything works.

@@ -95,7 +95,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 8,
     title: 'Shareable configuration links',
     category: 'Sharing',
-    status: 'planned',
+    status: 'shipped',
     summary:
       'Encode the household state into a URL hash so a specific scenario can be shared. Plus a copy-able short code for paste-into-chat. No backend required.',
   },
@@ -162,9 +162,11 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 15,
     title: 'Community suggestions & contributions',
     category: 'Sharing',
-    status: 'planned',
+    status: 'in-progress',
+    startedAt: '2026-05-04',
+    progress: 20,
     summary:
-      'A lightweight path for visitors to suggest roadmap items, flag bad data, or contribute fixes without needing a GitHub account. Likely a "Suggest an idea" form that opens a pre-filled issue, plus clear CONTRIBUTING docs.',
+      'A lightweight path for visitors to suggest roadmap items, flag bad data, or contribute fixes without needing a GitHub account. Likely a "Suggest an idea" form that opens a pre-filled issue, plus clear CONTRIBUTING docs. Bad-data flagging shipped via the audit:report issue template; suggestion form + ungated contribution path remain.',
   },
   {
     id: 14,
@@ -214,6 +216,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
     status: 'planned',
     summary:
       'When the model says a household qualifies for SNAP / Medicaid / CHIP / EITC, the next question is "so how do I actually apply?" Today the page links to the state agency landing and stops there. A guided flow could surface the application form, the documents needed, the benefits portal URL for that specific state, and (where possible) the income/eligibility pre-check the agency runs — turning "you qualify" into "here\'s the next step," without leaving the page.',
+  },
+  {
+    id: 127,
+    title: 'Pointers + guided assistance for programs outside the Atlas model',
+    category: 'Benefits & safety net',
+    summary:
+      'The Atlas computes eligibility for SNAP, Medicaid, and CHIP, but plenty of programs sit adjacent to the same life situations and never surface. A laid-off worker should hear about unemployment insurance the moment they tell us their income dropped. A new parent should hear about WIC. A renter behind on utilities should hear about LIHEAP. A household near tax-filing time should hear about VITA / Free File. A disabled adult should hear about SSDI / SSI. Two layers: (1) a contextual "you may also want to look into…" callout that triggers off household state changes — state-specific links to the right portal; and (2) the same guided-application treatment #126 plans for SNAP / Medicaid / CHIP, applied here too — application form, documents needed, portal URL for the user\'s state, and any agency-run pre-check we can surface — so "you might qualify" becomes "here\'s the next step," not just a hyperlink and a shrug.',
+    status: 'planned',
   },
 ];
 

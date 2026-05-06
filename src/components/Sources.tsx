@@ -187,6 +187,11 @@ function computeStatusSummary(statusByUrl: ReadonlyMap<string, string>) {
 }
 
 export function Sources({ onBack }: { onBack: () => void }) {
+  // Single subscription to the audit-status store for the whole page —
+  // the snapshot is identical for every SourceRow, so registering one
+  // listener here and passing the map down is equivalent to per-row
+  // subscriptions in correctness, lighter on the store's notify loop.
+  const statusByUrl = useStatusByUrl();
   return (
     <div
       style={{
@@ -206,10 +211,10 @@ export function Sources({ onBack }: { onBack: () => void }) {
             a wider header / footer chrome. */}
         <div style={{ maxWidth: 680 }}>
           <Intro />
-          <Summary />
+          <Summary statusByUrl={statusByUrl} />
           <ThresholdsNote />
           {GROUPS.map((g) => (
-            <GroupSection key={g.title} group={g} />
+            <GroupSection key={g.title} group={g} statusByUrl={statusByUrl} />
           ))}
         </div>
         <Footer onBack={onBack} />
@@ -431,8 +436,7 @@ const TIER_REVIEW_DAYS = {
   commercial: STALENESS_THRESHOLDS_DAYS.commercial ?? STALENESS_DEFAULT_DAYS,
 } as const;
 
-function Summary() {
-  const statusByUrl = useStatusByUrl();
+function Summary({ statusByUrl }: { statusByUrl: ReadonlyMap<string, string> }) {
   const statusSummary = useMemo(() => computeStatusSummary(statusByUrl), [statusByUrl]);
   // Two semantic rows: composition (what's in the registry by class) on top,
   // current state (how the registry is doing) below. Each row gets four
@@ -654,7 +658,13 @@ function StatCell({ stat }: { stat: Stat }) {
   );
 }
 
-function GroupSection({ group }: { group: Group }) {
+function GroupSection({
+  group,
+  statusByUrl,
+}: {
+  group: Group;
+  statusByUrl: ReadonlyMap<string, string>;
+}) {
   const body = (
     <div>
       {group.description && (
@@ -671,7 +681,11 @@ function GroupSection({ group }: { group: Group }) {
       )}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {group.sources.map((s) => (
-          <SourceRow key={`${group.title}-${s.url}-${s.label}`} source={s} />
+          <SourceRow
+            key={`${group.title}-${s.url}-${s.label}`}
+            source={s}
+            statusByUrl={statusByUrl}
+          />
         ))}
       </ul>
     </div>
@@ -715,11 +729,16 @@ function GroupSection({ group }: { group: Group }) {
   );
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({
+  source,
+  statusByUrl,
+}: {
+  source: Source;
+  statusByUrl: ReadonlyMap<string, string>;
+}) {
   const reviews = REVIEWS.get(source.id) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
-  const statusByUrl = useStatusByUrl();
   const statusKind = getStatusKind(source, statusByUrl);
 
   // Single-column stacked layout. Title leads (it's the content); metadata

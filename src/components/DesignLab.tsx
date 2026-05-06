@@ -14,10 +14,31 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { theme as T, fonts, rem } from '@/theme';
 import { Cite } from './ui';
 import type { Source } from '@/types';
 import type { ReviewKind } from '@/lib/sourceStatus';
+import { computeBudget } from '@/lib/budget';
+import { BENEFIT_IDS } from '@/lib/benefits';
+import { fpl } from '@/data/poverty';
+import {
+  MEDICAID_EXPANSION_LIMIT_FPL,
+  STATE_CHIP_LIMIT_FPL,
+  STATE_MEDICAID_POLICY,
+  snapIncomeLimitFpl,
+} from '@/data/benefits';
+import { getCityData } from '@/data/cities';
 
 /**
  * Each lab section gets an entry here. The sidebar reads this list to
@@ -86,6 +107,13 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     status: 'decided',
     decidedAs: 'Primary / Reference / Commercial · green / slate-blue / gold',
     decidedNote: 'Shipped via PR #125. Picker preloads to these names; iterate to compare.',
+  },
+  {
+    id: 'cliffs',
+    nav: 'Cliff threshold annotations',
+    count: 5,
+    Component: SectionCliffAnnotations,
+    status: 'open',
   },
 ];
 
@@ -2668,5 +2696,732 @@ function ShareMockPostData() {
         </span>
       </div>
     </div>
+  );
+}
+
+// ── Section: cliff threshold annotations ─────────────────────────────────
+//
+// All five variations render the same income-sweep curve for one fixed
+// scenario (Columbus, OH · HoH · 2 kids · $40K), where SNAP, Medicaid, and
+// CHIP cutoffs cluster between $33K and $58K. Only the annotation
+// strategy differs. A second scenario (NYC · single · no kids · $30K)
+// renders below each variation to stress-test how each strategy handles
+// fewer cliffs spread further apart — to surface designs that look great
+// with three close cliffs but break down with one or two.
+
+function SectionCliffAnnotations() {
+  return (
+    <Section
+      heading="Cliff threshold annotations"
+      subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve. Each variation is rendered against two scenarios to test robustness."
+    >
+      <Variation
+        title="V1 — Top labels with smart stagger (current production)"
+        description="Labels above each ReferenceLine; collisions auto-bump to a higher row. Reads top-down; eye has to travel from label to line."
+      >
+        <CliffStack Renderer={CliffChartTopLabelsStaggered} />
+      </Variation>
+      <Variation
+        title="V2 — Bottom-axis tags below the X axis"
+        description="Each cutoff gets a small color-coded tag below the axis at the right dollar amount. Chart stays clean above the curve; eye tracks dashed line down to its tag."
+      >
+        <CliffStack Renderer={CliffChartBottomAxisTags} />
+      </Variation>
+      <Variation
+        title="V3 — Inline labels riding the curve at the drop"
+        description="Each label sits next to the actual cliff drop on the curve, anchored to the data instead of floating overhead. Self-evidently which line maps to which program."
+      >
+        <CliffStack Renderer={CliffChartInlineAtDrop} />
+      </Variation>
+      <Variation
+        title="V4 — Numbered markers + legend"
+        description="Tiny ① ② ③ markers on the curve at each cliff; the legend below decodes them. Maximum chart cleanliness, minimum visual weight."
+      >
+        <CliffStack Renderer={CliffChartNumberedMarkers} />
+      </Variation>
+      <Variation
+        title="V5 — Color-banded eligibility regions"
+        description="Soft horizontal background bands shade the income ranges where each program is active. The transitions between bands ARE the cliffs — no separate markers needed. Reads as a stacked-area / state-of-the-world view."
+      >
+        <CliffStack Renderer={CliffChartColorBands} />
+      </Variation>
+    </Section>
+  );
+}
+
+/** Wraps any cliff-chart renderer in two stacked scenarios for comparison. */
+function CliffStack({ Renderer }: { Renderer: React.ComponentType<CliffScenarioProps> }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Renderer
+        scenarioLabel="Columbus, OH · HoH · 2 kids · $40K"
+        scenario={CLIFF_SCENARIO_CMH}
+      />
+      <Renderer
+        scenarioLabel="NYC · single · no kids · $30K"
+        scenario={CLIFF_SCENARIO_NYC}
+      />
+    </div>
+  );
+}
+
+interface CliffScenario {
+  city: string;
+  kids: number;
+  filing: import('@/types').FilingStatus;
+  lifestyle: import('@/types').Lifestyle;
+  hasPartner: boolean;
+  incomeA: number;
+  incomeB: number;
+}
+
+interface CliffScenarioProps {
+  scenarioLabel: string;
+  scenario: CliffScenario;
+}
+
+const CLIFF_SCENARIO_CMH: CliffScenario = {
+  city: 'cmh',
+  kids: 2,
+  filing: 'head',
+  lifestyle: 'moderate',
+  hasPartner: false,
+  incomeA: 40000,
+  incomeB: 0,
+};
+
+const CLIFF_SCENARIO_NYC: CliffScenario = {
+  city: 'nyc',
+  kids: 0,
+  filing: 'single',
+  lifestyle: 'moderate',
+  hasPartner: false,
+  incomeA: 30000,
+  incomeB: 0,
+};
+
+const CLIFF_COLORS: Record<string, string> = {
+  snap: T.warning,
+  medicaid: T.accent,
+  chip: T.aiAccent,
+};
+
+interface CliffPoint {
+  gross: number;
+  discretionary: number;
+}
+
+interface CliffMark {
+  id: string;
+  label: string;
+  shortLabel: string;
+  gross: number;
+  color: string;
+}
+
+/**
+ * Compute the income-sweep curve and cliff thresholds for a scenario. Mirrors
+ * the production CliffCurve component's math but returns plain data so each
+ * variation can render annotations differently without re-doing the work.
+ */
+function useCliffScenario(scenario: CliffScenario): {
+  points: CliffPoint[];
+  cliffs: CliffMark[];
+  maxGross: number;
+  currentGross: number;
+} {
+  return React.useMemo(() => {
+    const cityData = getCityData(scenario.city);
+    const householdSize = (scenario.hasPartner ? 2 : 1) + scenario.kids;
+    const allBenefits = new Set<string>(BENEFIT_IDS);
+    const currentGross = scenario.incomeA + scenario.incomeB;
+    const maxGross = Math.max(120_000, Math.ceil((currentGross * 1.5) / 1000) * 1000);
+    const stepSize = 500;
+
+    const points: CliffPoint[] = [];
+    for (let g = 0; g <= maxGross; g += stepSize) {
+      const sweepIncomeA = Math.max(0, g - scenario.incomeB);
+      const r = computeBudget({
+        incomeA: sweepIncomeA,
+        incomeB: scenario.incomeB,
+        hasPartner: scenario.hasPartner,
+        filing: scenario.filing,
+        city: scenario.city,
+        kids: scenario.kids,
+        lifestyle: scenario.lifestyle,
+        claimedBenefits: allBenefits,
+      });
+      points.push({ gross: g, discretionary: Math.round(r.annualDiscretionary) });
+    }
+
+    const fplBase = fpl(householdSize);
+    const cliffs: CliffMark[] = [];
+
+    cliffs.push({
+      id: 'snap',
+      label: `SNAP (${Math.round(snapIncomeLimitFpl(cityData.state) * 100)}% FPL)`,
+      shortLabel: 'SNAP',
+      gross: Math.round(fplBase * snapIncomeLimitFpl(cityData.state)),
+      color: CLIFF_COLORS.snap,
+    });
+
+    const policy = STATE_MEDICAID_POLICY[cityData.state];
+    if (policy.expanded) {
+      cliffs.push({
+        id: 'medicaid',
+        label: `Medicaid (138% FPL)`,
+        shortLabel: 'Medicaid',
+        gross: Math.round(fplBase * MEDICAID_EXPANSION_LIMIT_FPL),
+        color: CLIFF_COLORS.medicaid,
+      });
+    } else if (scenario.kids > 0 && policy.nonExpansionParentLimit !== undefined) {
+      const pct = Math.round(policy.nonExpansionParentLimit * 100);
+      cliffs.push({
+        id: 'medicaid',
+        label: `Medicaid parents (${pct}% FPL)`,
+        shortLabel: 'Medicaid',
+        gross: Math.round(fplBase * policy.nonExpansionParentLimit),
+        color: CLIFF_COLORS.medicaid,
+      });
+    }
+
+    if (scenario.kids > 0) {
+      const chipLimit = STATE_CHIP_LIMIT_FPL[cityData.state];
+      cliffs.push({
+        id: 'chip',
+        label: `CHIP (${Math.round(chipLimit * 100)}% FPL)`,
+        shortLabel: 'CHIP',
+        gross: Math.round(fplBase * chipLimit),
+        color: CLIFF_COLORS.chip,
+      });
+    }
+
+    return {
+      points,
+      cliffs: cliffs.filter((c) => c.gross > 0 && c.gross <= maxGross).sort((a, b) => a.gross - b.gross),
+      maxGross,
+      currentGross,
+    };
+  }, [scenario]);
+}
+
+function ScenarioFrame({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: '12px 12px 8px' }}>
+      <div
+        style={{
+          fontSize: rem(10),
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: T.inkMuted,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const fmtK = (v: number) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`);
+
+// V1 — Top labels with smart stagger (mirrors current production)
+function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // Stagger: each label takes the lowest row where it doesn't overlap any
+  // already-placed label at that row.
+  const minSpacing = maxGross * 0.1;
+  const placed: { gross: number; row: number }[] = [];
+  const annotated = cliffs.map((c) => {
+    let row = 0;
+    while (placed.some((p) => p.row === row && Math.abs(p.gross - c.gross) < minSpacing)) {
+      row += 1;
+    }
+    placed.push({ gross: c.gross, row });
+    return { ...c, row };
+  });
+  const maxRow = annotated.reduce((m, c) => Math.max(m, c.row), 0);
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart
+          data={points}
+          margin={{ top: 16 + maxRow * 13, right: 16, left: 0, bottom: 8 }}
+        >
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              label={(props: { viewBox?: { x?: number; y?: number } }) => (
+                <text
+                  x={props.viewBox?.x ?? 0}
+                  y={(props.viewBox?.y ?? 0) - 4 - c.row * 13}
+                  fill={c.color}
+                  fontSize={10}
+                  textAnchor="middle"
+                >
+                  {c.shortLabel}
+                </text>
+              )}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V2 — Bottom-axis tags below the X axis
+function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 36 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              label={(props: { viewBox?: { x?: number; y?: number; height?: number } }) => {
+                const x = props.viewBox?.x ?? 0;
+                const y = (props.viewBox?.y ?? 0) + (props.viewBox?.height ?? 0);
+                return (
+                  <g transform={`translate(${x}, ${y + 6})`}>
+                    <rect
+                      x={-32}
+                      y={0}
+                      width={64}
+                      height={16}
+                      fill={c.color}
+                      rx={2}
+                    />
+                    <text
+                      x={0}
+                      y={11}
+                      fill={T.bg}
+                      fontSize={10}
+                      textAnchor="middle"
+                      fontWeight={600}
+                    >
+                      {c.shortLabel}
+                    </text>
+                  </g>
+                );
+              }}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V3 — Inline labels at the drop
+function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // For each cliff, find the discretionary value just before the drop —
+  // that's where we anchor the label.
+  const annotated = cliffs.map((c) => {
+    let before = points[0];
+    for (const p of points) {
+      if (p.gross <= c.gross) before = p;
+      else break;
+    }
+    return { ...c, anchorY: before.discretionary };
+  });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 70, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceDot
+              key={c.id}
+              x={c.gross}
+              y={c.anchorY}
+              r={3}
+              fill={c.color}
+              stroke={T.bg}
+              strokeWidth={1.5}
+              ifOverflow="visible"
+              label={(props: { viewBox?: { cx?: number; cy?: number } }) => (
+                <g
+                  transform={`translate(${(props.viewBox?.cx ?? 0) + 8}, ${(props.viewBox?.cy ?? 0) - 2})`}
+                >
+                  <text fill={c.color} fontSize={10} fontWeight={600}>
+                    {c.shortLabel}
+                  </text>
+                </g>
+              )}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+// V4 — Numbered markers + legend
+function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+
+  const annotated = cliffs.map((c, i) => {
+    let before = points[0];
+    for (const p of points) {
+      if (p.gross <= c.gross) before = p;
+      else break;
+    }
+    return { ...c, anchorY: before.discretionary, num: i + 1 };
+  });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {annotated.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="2 4"
+              strokeOpacity={0.6}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          {annotated.map((c) => (
+            <ReferenceDot
+              key={c.id}
+              x={c.gross}
+              y={c.anchorY}
+              r={9}
+              fill={c.color}
+              stroke={T.bg}
+              strokeWidth={2}
+              ifOverflow="visible"
+              label={(props: { viewBox?: { cx?: number; cy?: number } }) => (
+                <text
+                  x={props.viewBox?.cx ?? 0}
+                  y={(props.viewBox?.cy ?? 0) + 3}
+                  fill={T.bg}
+                  fontSize={10}
+                  textAnchor="middle"
+                  fontWeight={700}
+                >
+                  {c.num}
+                </text>
+              )}
+            />
+          ))}
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          fontSize: rem(11),
+          color: T.inkSoft,
+          marginTop: 6,
+        }}
+      >
+        {annotated.map((c) => (
+          <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: c.color,
+                color: T.bg,
+                textAlign: 'center',
+                lineHeight: '16px',
+                fontSize: rem(10),
+                fontWeight: 700,
+              }}
+            >
+              {c.num}
+            </span>
+            {c.label}
+          </span>
+        ))}
+      </div>
+    </ScenarioFrame>
+  );
+}
+
+// V5 — Color-banded eligibility regions
+function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+
+  // Build sorted ascending cutoff list; each "region" is the interval
+  // between two consecutive cutoffs (or 0 / maxGross at the bookends).
+  // Each region's tint shows which programs are still active in it.
+  const sortedCliffs = [...cliffs].sort((a, b) => a.gross - b.gross);
+  interface Region {
+    x1: number;
+    x2: number;
+    activeIds: string[];
+  }
+  const regions: Region[] = [];
+  let prev = 0;
+  // At income = 0, every program is active. As we cross each cutoff (in
+  // ascending order), the program at that cutoff drops out.
+  let active = sortedCliffs.map((c) => c.id);
+  for (const c of sortedCliffs) {
+    regions.push({ x1: prev, x2: c.gross, activeIds: [...active] });
+    active = active.filter((id) => id !== c.id);
+    prev = c.gross;
+  }
+  regions.push({ x1: prev, x2: maxGross, activeIds: [] });
+
+  return (
+    <ScenarioFrame label={scenarioLabel}>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          {regions.map((r, i) => {
+            // Tint: blend region color from the most "valuable" remaining
+            // program (medicaid > chip > snap, by editorial weight). Using
+            // a soft 8% opacity so it whispers rather than shouts.
+            const dominant = r.activeIds.includes('medicaid')
+              ? CLIFF_COLORS.medicaid
+              : r.activeIds.includes('chip')
+                ? CLIFF_COLORS.chip
+                : r.activeIds.includes('snap')
+                  ? CLIFF_COLORS.snap
+                  : 'transparent';
+            return (
+              <ReferenceArea
+                key={i}
+                x1={r.x1}
+                x2={r.x2}
+                fill={dominant}
+                fillOpacity={dominant === 'transparent' ? 0 : 0.08}
+                stroke="none"
+              />
+            );
+          })}
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          fontSize: rem(11),
+          color: T.inkSoft,
+          marginTop: 6,
+        }}
+      >
+        {sortedCliffs.map((c) => (
+          <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 12,
+                height: 12,
+                background: c.color,
+                opacity: 0.5,
+              }}
+            />
+            {c.label} ends at {fmtK(c.gross)}
+          </span>
+        ))}
+      </div>
+    </ScenarioFrame>
   );
 }

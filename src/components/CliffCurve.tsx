@@ -133,8 +133,27 @@ export function CliffCurve({
     }
 
     // Drop any cliffs the household will never see (e.g. CHIP cutoff above
-    // sweep range, or duplicate income points). Sort low-to-high.
-    return list.filter((c) => c.gross > 0 && c.gross <= maxGross).sort((a, b) => a.gross - b.gross);
+    // sweep range, or duplicate income points). Sort low-to-high, then
+    // assign each cliff a vertical "row" so labels close together on the X
+    // axis stagger upward instead of overprinting each other.
+    const visible = list
+      .filter((c) => c.gross > 0 && c.gross <= maxGross)
+      .sort((a, b) => a.gross - b.gross);
+    // Stagger: each label takes the *lowest* row where it doesn't
+    // horizontally overlap any label already placed at that row. So three
+    // close-together labels go (0, 1, 2), but if the third one is actually
+    // far enough from the first, it drops back to row 0 instead of
+    // climbing forever. Two labels far apart both stay at row 0.
+    const minSpacing = maxGross * 0.1;
+    const placed: { gross: number; row: number }[] = [];
+    return visible.map((c) => {
+      let row = 0;
+      while (placed.some((p) => p.row === row && Math.abs(p.gross - c.gross) < minSpacing)) {
+        row += 1;
+      }
+      placed.push({ gross: c.gross, row });
+      return { ...c, labelRow: row };
+    });
   }, [householdSize, cityData.state, kids, maxGross]);
 
   const userPoint = useMemo(() => {
@@ -194,7 +213,15 @@ export function CliffCurve({
         </div>
 
         <ResponsiveContainer width="100%" height={340}>
-          <LineChart data={points} margin={{ top: 16, right: 24, left: 8, bottom: 16 }}>
+          <LineChart
+            data={points}
+            margin={{
+              top: 20 + Math.max(0, ...cliffs.map((c) => c.labelRow)) * 13,
+              right: 24,
+              left: 8,
+              bottom: 16,
+            }}
+          >
             <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="gross"
@@ -229,12 +256,21 @@ export function CliffCurve({
                 x={c.gross}
                 stroke={c.color}
                 strokeDasharray="3 3"
-                label={{
-                  value: c.label,
-                  position: 'top',
-                  fill: c.color,
-                  fontSize: 10,
-                  fontFamily: fonts.body,
+                label={(props: { viewBox?: { x?: number; y?: number } }) => {
+                  const x = props.viewBox?.x ?? 0;
+                  const y = props.viewBox?.y ?? 0;
+                  return (
+                    <text
+                      x={x}
+                      y={y - 6 - c.labelRow * 13}
+                      fill={c.color}
+                      fontSize={10}
+                      fontFamily={fonts.body}
+                      textAnchor="middle"
+                    >
+                      {c.label}
+                    </text>
+                  );
                 }}
               />
             ))}

@@ -22,6 +22,12 @@ on:
 permissions:
   contents: write
   issues: write
+  # Needed by peter-evans/create-pull-request to open the audit-refresh PR.
+  # Note: the default GITHUB_TOKEN doesn't trigger pull_request workflows on
+  # PRs it opens, so CI checks won't run on the audit-refresh PR. That's
+  # acceptable here — the PR only changes machine-generated audit data, no
+  # code, so the CI checks (lint/typecheck/test) wouldn't be meaningful.
+  pull-requests: write
 
 concurrency:
   group: audit-links
@@ -71,8 +77,11 @@ jobs:
           delete-branch: true
 
       - name: Seed GitHub issues for newly broken links
-        # Always runs, regardless of whether the PR step found changes —
-        # broken-link issues should be opened either way.
+        # Runs regardless of the PR step's outcome — issue tracking
+        # shouldn't be coupled to whether new audit data was committable.
+        # Still depends on `yarn check-links` having produced the results
+        # TSV: if the audit itself failed earlier, seed-issues will exit
+        # cleanly without doing anything.
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

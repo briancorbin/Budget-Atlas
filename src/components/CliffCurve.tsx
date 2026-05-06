@@ -48,7 +48,7 @@ const METRICS: Record<
     key: 'discretionary',
     unitNoun: 'discretionary',
     description:
-      "What's actually left over each year after taxes and modeled household expenses (rent, groceries, healthcare, childcare, etc.). The most editorial measure, but cliffs read smaller here because losing Medicaid also raises healthcare expense — the two partially cancel.",
+      "What's actually left over each year after taxes and modeled household expenses (rent, groceries, healthcare, childcare, etc.). The most editorial measure — answers \"how much can the household actually spend after the bills are paid?\"",
   },
   takeHome: {
     label: 'Take-home',
@@ -56,7 +56,7 @@ const METRICS: Record<
     key: 'takeHome',
     unitNoun: 'take-home',
     description:
-      'Gross income minus federal, state, local, and FICA taxes. Ignores expenses entirely. Cliffs are invisible here because benefit value never enters the take-home line — only the tax-bracket and EITC/CTC phaseouts bend the curve.',
+      "Gross income minus federal, state, local, and FICA taxes. Ignores expenses and benefits entirely. Benefit cliffs are invisible on this line — only tax-bracket transitions and EITC/CTC phaseouts bend the curve. Useful for separating what the tax code does from what the safety net does.",
   },
   takeHomePlusBenefits: {
     label: 'Take-home + benefits',
@@ -64,7 +64,7 @@ const METRICS: Record<
     key: 'takeHomePlusBenefits',
     unitNoun: 'total resources',
     description:
-      'Take-home pay plus the dollar value of every safety-net benefit the household qualifies for (Medicaid, CHIP, SNAP). This is the cleanest cliff view: each vertical drop is the pure cash value of the lost program, with no expense smoothing.',
+      "Take-home pay plus the dollar value of every safety-net benefit the household qualifies for (Medicaid, CHIP, SNAP). The total cash + in-kind resources reaching the household. Cliffs here are the same size as on Discretionary — both just drop by the value of the lost program — but the baseline runs higher because benefits stack onto take-home instead of getting netted out against expenses.",
   },
 };
 
@@ -102,9 +102,7 @@ export function CliffCurve({
   const householdSize = (hasPartner ? 2 : 1) + kids;
 
   // Measure the chart wrapper so the label-stagger math can convert
-  // pixel-width estimates of each label into gross-dollar minSpacing.
-  // Without this we'd be picking a hand-tuned fraction of maxGross that
-  // either over- or under-bumps depending on label text and sweep range.
+  // pixel widths into gross-dollar minSpacing.
   const chartWrapperRef = useRef<HTMLDivElement | null>(null);
   const [chartWidthPx, setChartWidthPx] = useState(640);
   useEffect(() => {
@@ -117,6 +115,7 @@ export function CliffCurve({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
   const allBenefits = useMemo<ReadonlySet<string>>(() => new Set(BENEFIT_IDS), []);
 
   // Which financial measure to plot on the Y axis. Discretionary is the most
@@ -216,23 +215,14 @@ export function CliffCurve({
       .filter((c) => c.gross > 0 && c.gross <= maxGross)
       .sort((a, b) => a.gross - b.gross);
     // Stagger: each label takes the *lowest* row where it doesn't
-    // horizontally overlap any label already placed at that row. We
-    // compute each label's required horizontal clearance in actual gross
-    // dollars from (a) its rendered pixel width estimate (chars × ~5.5px
-    // at 10px font) and (b) the chart's measured pixel width. The plot
-    // area is narrower than the wrapper because the YAxis eats ~56px on
-    // the left and the right margin eats ~24px; subtract those before
-    // converting. This collapses to per-label clearance instead of a
-    // hand-tuned fraction of maxGross.
-    // Plot area: wrapper minus YAxis (56), right margin (24), left margin (8).
+    // horizontally overlap any label already placed at that row. Per-
+    // label clearance is estimated at ~5.5px per character at the 10px
+    // label font size (close enough for the all-caps short labels we
+    // ship — Medicaid / SNAP / CHIP), converted to gross-dollar
+    // clearance via the measured plot width.
     const plotWidthPx = Math.max(50, chartWidthPx - 56 - 24 - 8);
     const pxPerDollar = plotWidthPx / Math.max(1, maxGross);
-    // Empirical: 10px IBM Plex Sans averages ~5px per char, with no extra
-    // padding before two labels visually touch. Earlier estimate of
-    // 5.5px + 8px padding was over-generous and bumped labels that
-    // actually had room — particularly short ones like "SNAP" sitting
-    // between two longer neighbours.
-    const labelHalfWidthDollars = (label: string) => (label.length * 5) / 2 / pxPerDollar;
+    const labelHalfWidthDollars = (label: string) => (label.length * 5.5) / 2 / pxPerDollar;
     const placed: { gross: number; halfWidth: number; row: number }[] = [];
     return visible.map((c) => {
       const halfWidth = labelHalfWidthDollars(c.shortLabel);

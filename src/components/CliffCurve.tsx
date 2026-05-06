@@ -134,36 +134,10 @@ export function CliffCurve({
   const stepCount = 240;
   const stepSize = Math.max(500, Math.round(maxGross / stepCount / 500) * 500);
 
-  const points = useMemo(() => {
-    const out: SweepPoint[] = [];
-    for (let g = 0; g <= maxGross; g += stepSize) {
-      const sweepIncomeA = Math.max(0, g - incomeB);
-      const r = computeBudget({
-        incomeA: sweepIncomeA,
-        incomeB,
-        hasPartner,
-        filing,
-        city,
-        kids,
-        lifestyle,
-        claimedBenefits: allBenefits,
-      });
-      const annualBenefits = r.totalBenefits * 12;
-      out.push({
-        gross: g,
-        discretionary: Math.round(r.annualDiscretionary),
-        takeHome: Math.round(r.netIncome),
-        takeHomePlusBenefits: Math.round(r.netIncome + annualBenefits),
-        benefits: Math.round(annualBenefits),
-      });
-    }
-    return out;
-  }, [maxGross, stepSize, incomeB, hasPartner, filing, city, kids, lifestyle, allBenefits]);
-
-  // Cliff thresholds — annual gross income at which each program's
-  // eligibility flips off. Computed from FPL × the program's multiplier
-  // for this household size and state.
-  const cliffs = useMemo(() => {
+  // Cliff threshold metadata (excluding stagger labelRow). Computed first
+  // so the income-sweep loop can inject sample points exactly at each
+  // cliff boundary — see `points` below.
+  const cliffsBase = useMemo(() => {
     const fplBase = fpl(householdSize);
     const list: { id: string; shortLabel: string; label: string; gross: number; color: string }[] =
       [];
@@ -207,11 +181,75 @@ export function CliffCurve({
       });
     }
 
+    return list;
+  }, [householdSize, cityData.state, kids]);
+
+  const points = useMemo(() => {
+    const out: SweepPoint[] = [];
+    // For two-income households the X axis represents the *household*
+    // gross. The fixed partner income is a floor — household gross can't
+    // be less than incomeB. Start the sweep there so the chart never
+    // shows impossible income points (the partner can't earn negative).
+    const startGross = Math.max(0, incomeB);
+    // Inject sample points immediately before and after each cliff so
+    // linear line interpolation produces near-vertical drops AND the
+    // per-cliff caption math reads the actual cliff magnitude rather
+    // than a $500-window-smudged drop that mixes in tax/benefit phaseouts.
+    const sampleGrosses = new Set<number>();
+    for (let g = startGross; g <= maxGross; g += stepSize) sampleGrosses.add(g);
+    for (const c of cliffsBase) {
+      if (c.gross >= startGross && c.gross <= maxGross) {
+        sampleGrosses.add(Math.max(startGross, c.gross - 1));
+        sampleGrosses.add(Math.min(maxGross, c.gross + 1));
+      }
+    }
+    const sortedGrosses = [...sampleGrosses].sort((a, b) => a - b);
+
+    for (const g of sortedGrosses) {
+      const sweepIncomeA = Math.max(0, g - incomeB);
+      const r = computeBudget({
+        incomeA: sweepIncomeA,
+        incomeB,
+        hasPartner,
+        filing,
+        city,
+        kids,
+        lifestyle,
+        claimedBenefits: allBenefits,
+      });
+      const annualBenefits = r.totalBenefits * 12;
+      out.push({
+        gross: g,
+        discretionary: Math.round(r.annualDiscretionary),
+        takeHome: Math.round(r.netIncome),
+        takeHomePlusBenefits: Math.round(r.netIncome + annualBenefits),
+        benefits: Math.round(annualBenefits),
+      });
+    }
+    return out;
+  }, [
+    maxGross,
+    stepSize,
+    incomeB,
+    hasPartner,
+    filing,
+    city,
+    kids,
+    lifestyle,
+    allBenefits,
+    cliffsBase,
+  ]);
+
+  // Stagger the cliffs (assign labelRow per collision check) on top of the
+  // base list. Done as a separate memo since it depends on chartWidthPx
+  // and we don't want to re-run the (expensive) point sweep when the
+  // user resizes the window.
+  const cliffs = useMemo(() => {
     // Drop any cliffs the household will never see (e.g. CHIP cutoff above
     // sweep range, or duplicate income points). Sort low-to-high, then
     // assign each cliff a vertical "row" so labels close together on the X
     // axis stagger upward instead of overprinting each other.
-    const visible = list
+    const visible = cliffsBase
       .filter((c) => c.gross > 0 && c.gross <= maxGross)
       .sort((a, b) => a.gross - b.gross);
     // Stagger: each label takes the *lowest* row where it doesn't
@@ -235,7 +273,7 @@ export function CliffCurve({
       placed.push({ gross: c.gross, halfWidth, row });
       return { ...c, labelRow: row };
     });
-  }, [householdSize, cityData.state, kids, maxGross, chartWidthPx]);
+  }, [cliffsBase, maxGross, chartWidthPx]);
 
   const userPoint = useMemo(() => {
     if (currentGross < 0 || currentGross > maxGross) return null;
@@ -420,7 +458,7 @@ export function CliffCurve({
                 />
               ))}
               <Line
-                type="monotone"
+                type="linear"
                 dataKey={metricMeta.key}
                 stroke={T.ink}
                 strokeWidth={2}

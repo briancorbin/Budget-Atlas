@@ -4095,7 +4095,7 @@ function CompoundConfigPanel({
     }));
   };
   const reset = () => setConfig(COMPOUND_DEFAULT_CONFIG);
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(true);
 
   return (
     <div

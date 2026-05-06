@@ -159,8 +159,15 @@ function parseLatestReviews() {
   try {
     for (const line of readFileSync(REVIEWED_TSV, 'utf8').split('\n')) {
       if (!line || line.startsWith('#') || line.startsWith('id\t')) continue;
-      const [id, date] = line.split('\t');
+      const [id, date, , kind] = line.split('\t');
       if (!id || !date) continue;
+      // verified-bot-blocked rows certify only that the URL loads, NOT
+      // that the citation still backs the claim. They suppress the
+      // broken-link queue (see audit/links/seed-issues.mjs) but must
+      // not reset the staleness clock — staleness is about whether
+      // someone has done full eyes-on-source verification recently,
+      // and a "loaded fine" check doesn't qualify.
+      if (kind === 'verified-bot-blocked') continue;
       const existing = map.get(id);
       if (!existing || date > existing) map.set(id, date);
     }
@@ -380,6 +387,13 @@ if (overdue.length === 0) {
   if (existing) {
     console.log(`→ Closing existing issue #${existing.number} (queue clear)`);
     if (!DRY_RUN) {
+      // Update the title alongside closing so a glance at the closed
+      // issue doesn't still claim "N overdue" from the last run when
+      // there are actually zero. Without this the closed issue keeps
+      // its last-when-overdue title indefinitely.
+      const today = new Date().toISOString().slice(0, 10);
+      const clearedTitle = `Source review queue: clear (cleared ${today})`;
+      sh(['issue', 'edit', String(existing.number), '--repo', REPO, '--title', clearedTitle]);
       sh([
         'issue',
         'comment',

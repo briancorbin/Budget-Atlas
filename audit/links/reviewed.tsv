@@ -31,6 +31,18 @@
 #               careful read, none) is self-reported and unverifiable, so
 #               the kind doesn't try to subdivide. Be honest: if you
 #               weren't eyes-on-source, it's `ai`.
+#   - `verified-bot-blocked` — confirmation that a URL which curl reports
+#               as bot-blocked (typically 999) loads in a real browser.
+#               Lighter bar than `human`: you only need to confirm the
+#               URL is reachable, not that the destination still cites
+#               the claim. Suppresses that source from the broken-citation
+#               queue for 30 DAYS — deliberately tighter than the
+#               staleness cadence because bot-blocked URLs lose nightly
+#               automated reachability checks, so a human "this loads"
+#               verification is the only liveness signal. Does NOT reset
+#               the staleness clock (that still measures from your last
+#               full `human`/`ai` review). Use for legitimate sites with
+#               anti-bot defenses (LinkedIn, some state agency pages).
 #
 # An earlier three-state vocabulary (`ai-assisted`, `ai-proposed`) is
 # still accepted by the parser for backwards compatibility — both fold
@@ -375,3 +387,5 @@ state-chip-ks	2026-05-04	briancorbin	human	kancare.ks.gov is unreachable from re
 irs-rev-proc-2025-32	2026-05-03	briancorbin	ai	Cross-checked 2026 federal tax brackets and standard deductions in src/data/federalTax.ts against IRS Rev. Proc. 2025-32 (downloaded rp-25-32.pdf, extracted with pypdf). Found 2 errors in head-of-household brackets: 24% upper was 201775 (should be 201750), 32% upper was 256225 (should be 256200). Both appear to be copy-paste from single brackets where IRS publishes HoH $25 lower at those boundaries. Single, married, and all standard deductions verified clean.
 hhs-poverty-guidelines	2026-05-03	briancorbin	ai	Updated from 2025 to 2026 HHS Poverty Guidelines (published in Federal Register late January 2026, verified via aspe.hhs.gov). Updated all 8 household-size values + per-additional-person amount in src/data/poverty.ts. 1: 15650→15960, 2: 21150→21640, 3: 26650→27320, 4: 32150→33000, 5: 37650→38680, 6: 43150→44360, 7: 48650→50040, 8: 54150→55720, per-additional: 5500→5680. Source URL unchanged (live ASPE page); sources.ts date bumped 2025→2026.
 usda-snap-eligibility	2026-05-03	briancorbin	ai	Cross-checked SNAP FY2026 values in src/data/benefits.ts against USDA FY2026 COLA memo (dated August 13, 2025; mirrored at health.alaska.gov/media/4nunu3ob/fy2026-cola-memo.pdf). Found 2 errors: SNAP_MAX_PER_ADDITIONAL_2026 was 224 (correct: 218); SNAP_STD_DEDUCTION_2026 was 204 (correct: 209 for households of 1-3, 48 States and DC). Maximum allotments for sizes 1-8 verified clean.
+state-medicaid-de	2026-05-05	briancorbin	verified-bot-blocked	Loaded https://dhss.delaware.gov/dhss/dmma/ in a real browser and confirmed the DMMA Medicaid landing page is reachable. Curl reports 999 (anti-bot). Did not re-verify the citation backs the claim — pure liveness check, valid for 30 days per the verified-bot-blocked TTL.
+state-snap-de	2026-05-05	briancorbin	verified-bot-blocked	Loaded https://dhss.delaware.gov/dss/foodstamps.html in a real browser and confirmed the DHSS Food Benefits page is reachable. Curl reports 999 (anti-bot). Did not re-verify the citation backs the claim — pure liveness check, valid for 30 days per the verified-bot-blocked TTL.

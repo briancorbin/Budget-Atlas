@@ -1,5 +1,8 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite';
+// Use vitest/config so the `test` key is typed without depending on a
+// triple-slash directive (tsconfig.node.json has an explicit `types` array
+// that suppresses ambient lookups). vitest/config re-exports vite's
+// defineConfig with the test field merged in.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 

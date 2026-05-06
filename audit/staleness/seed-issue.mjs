@@ -380,6 +380,13 @@ if (overdue.length === 0) {
   if (existing) {
     console.log(`→ Closing existing issue #${existing.number} (queue clear)`);
     if (!DRY_RUN) {
+      // Update the title alongside closing so a glance at the closed
+      // issue doesn't still claim "N overdue" from the last run when
+      // there are actually zero. Without this the closed issue keeps
+      // its last-when-overdue title indefinitely.
+      const today = new Date().toISOString().slice(0, 10);
+      const clearedTitle = `Source review queue: clear (cleared ${today})`;
+      sh(['issue', 'edit', String(existing.number), '--repo', REPO, '--title', clearedTitle]);
       sh([
         'issue',
         'comment',

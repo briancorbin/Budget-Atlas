@@ -28,6 +28,15 @@
 //   200 / 3xx     - it loaded; review state tracked in reviewed.tsv
 //   403           - bot-blocked; almost always fine in a real browser
 //
+// Per-source suppression via reviewed.tsv:
+//   Some bot-blocked URLs (typically 999) genuinely work in a real
+//   browser. Adding a row to reviewed.tsv with kind = `verified-bot-blocked`
+//   suppresses that source from the broken-citation issue for
+//   VERIFIED_BOT_BLOCKED_TTL_DAYS, after which it re-flags so the
+//   verification doesn't go stale. Date and reviewer are recorded in
+//   the unified resolution log either way — the suppression is editorial
+//   discipline, not a hidden allowlist.
+//
 // Usage:
 //   node audit/links/seed-issues.mjs               # update the rolling issue
 //   node audit/links/seed-issues.mjs --dry-run     # print what would happen
@@ -98,9 +107,19 @@ function buildSourcesIndex() {
   const index = new Map();
   let pendingLabel = null;
   let labelOnNextLine = false;
+  let pendingId = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+
+    // Track the most recent outer key (id) — entries look like
+    //   'kff-employer-health-benefits': {
+    // Used for reviewed.tsv suppression lookup.
+    const idMatch = line.match(/^['"]?([a-z][a-z0-9-]*)['"]?:\s*\{$/);
+    if (idMatch) {
+      pendingId = idMatch[1];
+      pendingLabel = null;
+    }
 
     if (labelOnNextLine) {
       const m = line.match(/^['"`]([^'"`]+)['"`]/);
@@ -127,7 +146,7 @@ function buildSourcesIndex() {
     if (urlMatch) {
       const url = urlMatch[1];
       if (!index.has(url)) {
-        index.set(url, { label: pendingLabel ?? url, line: i + 1 });
+        index.set(url, { label: pendingLabel ?? url, line: i + 1, id: pendingId });
       }
     }
   }
@@ -135,6 +154,54 @@ function buildSourcesIndex() {
 }
 
 const sourcesIndex = buildSourcesIndex();
+
+// ── 3.5. Apply reviewed.tsv suppression for verified-bot-blocked URLs ────
+//
+// A row in reviewed.tsv with kind=`verified-bot-blocked` declares that a
+// human checked the URL in a real browser and confirmed it works despite
+// curl's bot-blocked status. Suppress those entries from the broken-
+// citation queue for VERIFIED_BOT_BLOCKED_TTL_DAYS so the manual
+// verification work isn't redundantly re-done every audit run. After the
+// TTL elapses we re-flag — verifications get stale.
+const REVIEWED_TSV = resolve(__dirname, 'reviewed.tsv');
+const VERIFIED_BOT_BLOCKED_TTL_DAYS = 90;
+
+function parseReviewedTsv() {
+  const text = readFileSync(REVIEWED_TSV, 'utf8');
+  // id → most-recent { date, kind } (later rows shadow earlier ones).
+  const latest = new Map();
+  for (const line of text.split('\n')) {
+    if (!line || line.startsWith('#')) continue;
+    const [id, date, , kind] = line.split('\t');
+    if (!id || !date || !kind) continue;
+    const prev = latest.get(id);
+    if (!prev || date > prev.date) latest.set(id, { date, kind });
+  }
+  return latest;
+}
+
+function isVerifiedBotBlocked(url, reviews, today) {
+  const meta = sourcesIndex.get(url);
+  if (!meta?.id) return false;
+  const r = reviews.get(meta.id);
+  if (!r || r.kind !== 'verified-bot-blocked') return false;
+  // Keep suppression only while the verification is still fresh.
+  const ageMs = today.getTime() - new Date(r.date).getTime();
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  return ageDays <= VERIFIED_BOT_BLOCKED_TTL_DAYS;
+}
+
+const reviews = parseReviewedTsv();
+const today = new Date();
+const suppressedCount = broken.filter((r) =>
+  isVerifiedBotBlocked(r.url, reviews, today),
+).length;
+const filteredBroken = broken.filter((r) => !isVerifiedBotBlocked(r.url, reviews, today));
+if (suppressedCount > 0) {
+  console.log(
+    `→ Suppressing ${suppressedCount} verified-bot-blocked URL(s) per reviewed.tsv (TTL ${VERIFIED_BOT_BLOCKED_TTL_DAYS}d).`,
+  );
+}
 
 // ── 4. Build the issue body ──────────────────────────────────────────────
 function buildTitle(broken) {
@@ -246,10 +313,15 @@ function findOpenRolling() {
 // ── Main ─────────────────────────────────────────────────────────────────
 const existing = findOpenRolling();
 
-if (broken.length === 0) {
+if (filteredBroken.length === 0) {
   if (existing) {
     console.log(`→ Closing existing rolling issue #${existing.number} (queue clear)`);
     if (!DRY_RUN) {
+      // Update title alongside closing so the closed issue doesn't keep
+      // claiming "N broken" from the last run when there are now zero.
+      const clearedDate = new Date().toISOString().slice(0, 10);
+      const clearedTitle = `Broken citation queue: clear (cleared ${clearedDate})`;
+      sh(['issue', 'edit', String(existing.number), '--repo', REPO, '--title', clearedTitle]);
       sh([
         'issue',
         'comment',
@@ -271,8 +343,8 @@ const checkedUrls = extractCheckedUrls(existing?.body);
 if (checkedUrls.size > 0) {
   console.log(`→ Preserving ${checkedUrls.size} checked claim(s) from existing body.`);
 }
-const title = buildTitle(broken);
-const body = buildBody(broken, checkedUrls);
+const title = buildTitle(filteredBroken);
+const body = buildBody(filteredBroken, checkedUrls);
 
 if (DRY_RUN) {
   console.log(`\n--- WOULD ${existing ? 'EDIT #' + existing.number : 'CREATE'} ---`);

@@ -80,6 +80,7 @@ The audit's value comes from honest accounting of how each citation got verified
 
 - `human` — eyes-on-source, no AI assistance. Strongest evidence. You opened the URL yourself, read the destination, and confirmed the claim with your own eyes.
 - `ai` — AI was involved in proposing, extracting, or refreshing the entry. Whatever human review followed (a glance, a careful read, none) is self-reported and unverifiable, so the kind doesn't try to subdivide.
+- `verified-bot-blocked` — eyes-on-source confirmation that a URL which curl reports as bot-blocked (typically status 999) is reachable in a real browser. **Suppresses that source from the broken-citation queue for 90 days**, after which the audit re-flags it so verifications don't go stale. Use for legitimate sites with anti-bot defenses (LinkedIn, some state agency pages) when curl can't reach them but you've personally loaded the page and confirmed the citation still holds. Same eyes-on-source bar as `human`.
 
 The audit's job is to make the level of human involvement **transparent**, not **absent**. AI assistance is allowed and useful, especially during active solo development — the column is the honest record. Don't launder AI work as `human`: if you weren't eyes-on-source, it's `ai`.
 

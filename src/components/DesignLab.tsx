@@ -4343,15 +4343,20 @@ function computePerCliffZones(
 ): PitZone[] {
   const zones: PitZone[] = [];
   for (const c of cliffs) {
-    let beforeIdx = 0;
+    // Find the last point STRICTLY before the cliff. The synthesized curve
+    // applies the drop at gross === cliff.gross, so the at-cliff point is
+    // already post-drop and would yield a trivially-met recovery. Use the
+    // pre-drop peak instead.
+    let beforeIdx = -1;
     for (let i = 0; i < points.length; i++) {
-      if (points[i].gross <= c.gross) beforeIdx = i;
+      if (points[i].gross < c.gross) beforeIdx = i;
       else break;
     }
+    if (beforeIdx < 0) continue;
     const beforeValue = points[beforeIdx].discretionary;
     let recoveryGross: number | null = null;
     for (let i = beforeIdx + 1; i < points.length; i++) {
-      if (points[i].discretionary >= beforeValue) {
+      if (points[i].gross > c.gross && points[i].discretionary >= beforeValue) {
         recoveryGross = points[i].gross;
         break;
       }

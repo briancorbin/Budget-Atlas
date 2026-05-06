@@ -126,7 +126,7 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
   {
     id: 'compound',
     nav: 'Compound pit attribution',
-    count: 5,
+    count: 6,
     Component: SectionCompoundPits,
     status: 'open',
   },
@@ -4057,6 +4057,12 @@ function SectionCompoundPits() {
       >
         <CompoundChartUniformColor config={config} />
       </Variation>
+      <Variation
+        title="V6 — Ghost line + uniform warning shading"
+        description="V3 and V5 combined. Soft warning tint behind every pit (says 'look here, something's wrong'); faded best-so-far line above the actual curve (shows how much money the household is leaving on the table at every income). No attribution decisions, depth is automatic."
+      >
+        <CompoundChartGhostShaded config={config} />
+      </Variation>
     </Section>
   );
 }
@@ -4460,6 +4466,86 @@ function CompoundChartGhost({ config }: { config: CompoundConfig }) {
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={ghostPoints.find((p) => p.gross >= currentGross)?.actual ?? ghostPoints[0].actual}
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartGhostShaded({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  const ghostPoints = (() => {
+    let runningMax = -Infinity;
+    return points.map((p) => {
+      runningMax = Math.max(runningMax, p.discretionary);
+      return { gross: p.gross, ghost: runningMax, actual: p.discretionary };
+    });
+  })();
+  return (
+    <CompoundFrame>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          {pitZones.map((z, i) => (
+            <ReferenceArea
+              key={i}
+              x1={z.x1}
+              x2={z.x2}
+              fill={T.warning}
+              fillOpacity={0.1}
+              stroke="none"
+            />
+          ))}
           <XAxis
             dataKey="gross"
             type="number"

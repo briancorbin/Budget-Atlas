@@ -4,11 +4,11 @@ Reproducible audit of every external URL cited from the codebase — does it sti
 
 ## How it works
 
-1. **`check.sh`** extracts every `http(s)://` URL from [`src/data/sources.ts`](../../src/data/sources.ts) — the citation registry — hits each with curl, and writes a dated TSV to `results/`. Other URLs in the codebase (font CDN preconnects, repo links, build artifacts) aren't checked: only declared citations are auditable, by design. When `AUDIT_WRITE_TOKEN` is set, the run is also POSTed to the D1-backed audit API (see "Backend" below).
+1. **`check.sh`** extracts every `http(s)://` URL from [`src/data/sources.ts`](../../src/data/sources.ts) — the citation registry — hits each with curl, and POSTs the run to the D1-backed audit API at `/api/audit/runs`. Other URLs in the codebase (font CDN preconnects, repo links, build artifacts) aren't checked: only declared citations are auditable, by design.
 2. **`reviewed.tsv`** is the unified resolution log (see below). One row per `id · date · reviewer · kind · notes` event — keyed by stable source slug, not URL, so review history follows a citation across URL changes. `kind` is `human` (eyes-on-source) or `ai` (AI involved in proposing/extracting). **Rows are append-only**: existing rows can't be modified, removed, or reordered (CI enforces this via `scripts/check-reviewed-immutable.mjs`). If a past review needs correction, append a new row that supersedes it — don't edit history.
-3. **`results/<date>.tsv`** captures the union: machine status (does it load?) + human review state (did someone verify the content?).
+3. The **D1 backend** holds machine status history (every nightly run, every URL); `reviewed.tsv` holds human review state. The /sources page joins them at render time. Past runs are queryable via `/api/audit/latest`, `/api/audit/runs/:date`, `/api/audit/history?url=...`.
 
-A `200 OK` from curl only tells us _something_ loaded. Only a human can tell us whether the loaded page still cites the document we built the model around. Both columns matter.
+A `200 OK` from curl only tells us _something_ loaded. Only a human can tell us whether the loaded page still cites the document we built the model around. Both inputs matter.
 
 ## Any source change pairs with a `reviewed.tsv` row
 
@@ -104,7 +104,7 @@ Legacy rows in 4-column format (pre-`kind` schema) parse as `kind=human`.
 
 Be honest in the notes — if the page moved but the content is the same, say so. If the document was superseded but the new one still backs the same claim, say so. If the citation was retired, say so. The notes are the audit trail.
 
-The next audit run picks it up; `status.md` regenerates with the latest review reflected on the relevant source row (or the row disappears, in the removal case).
+The next audit run picks it up; the /sources page reflects the latest review on the relevant source row (or the row disappears, in the removal case).
 
 ## Schema migrations: the rotation pattern
 
@@ -124,9 +124,10 @@ A rotation is an intentional, recorded operation — it produces a new archive f
 
 The audit runs nightly via [GitHub Actions](../../.github/workflows/audit-links.yml) (09:00 UTC) and can be triggered manually from the Actions tab. The nightly job:
 
-1. Runs `check.sh` against the current `main` branch.
+1. Runs `check.sh` against the current `main` branch — probes URLs and POSTs the run to `/api/audit/runs`.
 2. Maintains a single rolling [`audit:link`](https://github.com/TheBudgetAtlas/thebudgetatlas/issues?q=is%3Aopen+label%3Aaudit%3Alink) issue with the current broken-citation queue, mirroring the staleness audit pattern. The issue is pinned to the top of the issues list.
-3. Uploads the dated TSV as a workflow artifact (90-day retention).
+
+Run history is queryable from anywhere that can hit the API; the repo no longer carries machine-generated audit data.
 
 Status codes flagged: `404`, `000`/`ERR`, and `999`. `200`/`3xx` live in `reviewed.tsv`; `403` is excluded (almost always bot-blocking that resolves under human eyes).
 
@@ -136,7 +137,7 @@ To run manually: `yarn audit:seed-issues` (or `--dry-run` to preview).
 
 ## At-a-glance status
 
-[`status.md`](./status.md) is the human-readable view of every cited source — auto-generated each audit run. One row per source, with current curl status, who added it, when, and any human-review history. Sort order is broken-first so the things needing attention surface immediately.
+The [/sources page](https://thebudgetatlas.com/sources) is the human-readable view of every cited source — joined live with the latest audit run from the API and the human-review log. One row per source, with current curl status, who added it, when, and any human-review history. Sort order surfaces broken and overdue items first.
 
 ## Backend (D1)
 
@@ -147,15 +148,17 @@ Run history lives in a Cloudflare D1 database (`budget-atlas-audit`) bound to th
 - `GET  /api/audit/runs/:date` — specific run.
 - `GET  /api/audit/history?url=…` — last 30 statuses for a URL.
 
-**Stand-up status (PR A):** the nightly job now dual-writes — TSVs to the repo _and_ a POST to the API. The site (and `seed-issues.mjs`) still read from the in-repo TSVs; the backend exists but isn't on the read path yet.
+The audit pipeline is fully API-backed — the nightly job POSTs runs, the /sources page fetches `/api/audit/latest`, the rolling broken-citation issue is seeded from `/api/audit/latest` + `/api/audit/history`. No machine-generated audit data lives in the repo. `reviewed.tsv` stays as the only file under version control because it's authored content (git history is meaningful).
 
-**One-time backfill** (after `wrangler d1 create budget-atlas-audit` + `wrangler d1 execute … --file=worker/schema.sql`):
+**One-time bootstrap** (only relevant for setting up a fresh D1 instance, e.g. moving providers or recreating from scratch):
 
 ```sh
+wrangler d1 create budget-atlas-audit
+wrangler d1 execute budget-atlas-audit --remote --file=worker/schema.sql
+# If old TSVs exist somewhere (e.g. an artifact), backfill-d1.mjs reads
+# from a `results/` directory and POSTs each run.
 AUDIT_WRITE_TOKEN=<token> node audit/links/backfill-d1.mjs
 ```
-
-PRs B and C will move the site's reads to the API and finally remove the in-repo TSVs.
 
 ### Local backend
 

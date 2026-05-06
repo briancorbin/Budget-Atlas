@@ -31,6 +31,7 @@ import type { Source } from '@/types';
 import type { ReviewKind } from '@/lib/sourceStatus';
 import { computeBudget } from '@/lib/budget';
 import { BENEFIT_IDS } from '@/lib/benefits';
+import { computePitZones, type PitZone } from '@/lib/cliffs';
 import { fpl } from '@/data/poverty';
 import {
   MEDICAID_EXPANSION_LIMIT_FPL,
@@ -113,6 +114,13 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
     nav: 'Cliff threshold annotations',
     count: 5,
     Component: SectionCliffAnnotations,
+    status: 'open',
+  },
+  {
+    id: 'pits',
+    nav: 'Pit-zone presentation',
+    count: 4,
+    Component: SectionPitZones,
     status: 'open',
   },
 ];
@@ -2028,10 +2036,15 @@ function ColorPickerRow({
 function Section({
   heading,
   subhead,
+  columns = 'auto',
   children,
 }: {
   heading: string;
   subhead?: string;
+  /** 'auto' = responsive multi-column (default for compact variations).
+   *  1 = single column, full width — for visualization variations that need
+   *  the horizontal room to breathe. */
+  columns?: 'auto' | 1;
   children: React.ReactNode;
 }) {
   // Sort decided variations to the front so the chosen design is the first
@@ -2059,7 +2072,8 @@ function Section({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+          gridTemplateColumns:
+            columns === 1 ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))',
           gap: 24,
         }}
       >
@@ -2710,58 +2724,71 @@ function ShareMockPostData() {
 // with three close cliffs but break down with one or two.
 
 function SectionCliffAnnotations() {
+  const [showPits, setShowPits] = useState(true);
   return (
     <Section
+      columns={1}
       heading="Cliff threshold annotations"
-      subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve. Each variation is rendered against two scenarios to test robustness."
+      subhead="The Medicaid/SNAP/CHIP cutoffs cluster within $25K of each other for a Columbus household. The challenge: identify which vertical line is which program without overprinting labels, eating chart real estate, or burying the curve."
     >
+      <SectionToolbar>
+        <ToolbarToggle
+          label="Pit-zone shading"
+          checked={showPits}
+          onChange={setShowPits}
+          hint="The warning-tinted ranges where the household is worse off than at some lower income. Useful to keep on while comparing label strategies; turn off to see the labels alone."
+        />
+      </SectionToolbar>
       <Variation
         title="V1 — Top labels with smart stagger (current production)"
         description="Labels above each ReferenceLine; collisions auto-bump to a higher row. Reads top-down; eye has to travel from label to line."
       >
-        <CliffStack Renderer={CliffChartTopLabelsStaggered} />
+        <CliffStack Renderer={CliffChartTopLabelsStaggered} showPits={showPits} />
       </Variation>
       <Variation
         title="V2 — Bottom-axis tags below the X axis"
         description="Each cutoff gets a small color-coded tag below the axis at the right dollar amount. Chart stays clean above the curve; eye tracks dashed line down to its tag."
       >
-        <CliffStack Renderer={CliffChartBottomAxisTags} />
+        <CliffStack Renderer={CliffChartBottomAxisTags} showPits={showPits} />
       </Variation>
       <Variation
         title="V3 — Inline labels riding the curve at the drop"
         description="Each label sits next to the actual cliff drop on the curve, anchored to the data instead of floating overhead. Self-evidently which line maps to which program."
       >
-        <CliffStack Renderer={CliffChartInlineAtDrop} />
+        <CliffStack Renderer={CliffChartInlineAtDrop} showPits={showPits} />
       </Variation>
       <Variation
         title="V4 — Numbered markers + legend"
         description="Tiny ① ② ③ markers on the curve at each cliff; the legend below decodes them. Maximum chart cleanliness, minimum visual weight."
       >
-        <CliffStack Renderer={CliffChartNumberedMarkers} />
+        <CliffStack Renderer={CliffChartNumberedMarkers} showPits={showPits} />
       </Variation>
       <Variation
         title="V5 — Color-banded eligibility regions"
         description="Soft horizontal background bands shade the income ranges where each program is active. The transitions between bands ARE the cliffs — no separate markers needed. Reads as a stacked-area / state-of-the-world view."
       >
-        <CliffStack Renderer={CliffChartColorBands} />
+        <CliffStack Renderer={CliffChartColorBands} showPits={showPits} />
       </Variation>
     </Section>
   );
 }
 
-/** Wraps any cliff-chart renderer in two stacked scenarios for comparison. */
-function CliffStack({ Renderer }: { Renderer: React.ComponentType<CliffScenarioProps> }) {
+/** Renders the variation against the canonical Columbus scenario, which
+ *  has all three program cutoffs clustered together — the hard case for
+ *  any annotation strategy. */
+function CliffStack({
+  Renderer,
+  showPits,
+}: {
+  Renderer: React.ComponentType<CliffScenarioProps>;
+  showPits?: boolean;
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Renderer
-        scenarioLabel="Columbus, OH · HoH · 2 kids · $40K"
-        scenario={CLIFF_SCENARIO_CMH}
-      />
-      <Renderer
-        scenarioLabel="NYC · single · no kids · $30K"
-        scenario={CLIFF_SCENARIO_NYC}
-      />
-    </div>
+    <Renderer
+      scenarioLabel="Columbus, OH · HoH · 2 kids · $40K"
+      scenario={CLIFF_SCENARIO_CMH}
+      showPits={showPits}
+    />
   );
 }
 
@@ -2778,6 +2805,10 @@ interface CliffScenario {
 interface CliffScenarioProps {
   scenarioLabel: string;
   scenario: CliffScenario;
+  /** When true, render the warning-tinted "worse off than at some lower
+   *  income" zones behind the curve. Lifted out of each variation so the
+   *  whole section shares one toggle. */
+  showPits?: boolean;
 }
 
 const CLIFF_SCENARIO_CMH: CliffScenario = {
@@ -2787,16 +2818,6 @@ const CLIFF_SCENARIO_CMH: CliffScenario = {
   lifestyle: 'moderate',
   hasPartner: false,
   incomeA: 40000,
-  incomeB: 0,
-};
-
-const CLIFF_SCENARIO_NYC: CliffScenario = {
-  city: 'nyc',
-  kids: 0,
-  filing: 'single',
-  lifestyle: 'moderate',
-  hasPartner: false,
-  incomeA: 30000,
   incomeB: 0,
 };
 
@@ -2827,6 +2848,7 @@ interface CliffMark {
 function useCliffScenario(scenario: CliffScenario): {
   points: CliffPoint[];
   cliffs: CliffMark[];
+  pitZones: PitZone[];
   maxGross: number;
   currentGross: number;
 } {
@@ -2896,9 +2918,14 @@ function useCliffScenario(scenario: CliffScenario): {
       });
     }
 
+    const visibleCliffs = cliffs
+      .filter((c) => c.gross > 0 && c.gross <= maxGross)
+      .sort((a, b) => a.gross - b.gross);
+    const pitZones = computePitZones(points, 'discretionary', visibleCliffs);
     return {
       points,
-      cliffs: cliffs.filter((c) => c.gross > 0 && c.gross <= maxGross).sort((a, b) => a.gross - b.gross),
+      cliffs: visibleCliffs,
+      pitZones,
       maxGross,
       currentGross,
     };
@@ -2932,9 +2959,26 @@ function ScenarioFrame({
 
 const fmtK = (v: number) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`);
 
+/** Common pit-zone shading used in cliff-annotation variations so they
+ *  reflect what production looks like. Each zone tinted by causing program. */
+function renderPitZones(zones: readonly PitZone[]) {
+  return zones.map((z, i) => (
+    <ReferenceArea
+      key={`pit-${i}`}
+      x1={z.x1}
+      x2={z.x2}
+      fill={z.color ?? T.warning}
+      fillOpacity={0.12}
+      stroke={z.color ?? T.warning}
+      strokeOpacity={0.3}
+      strokeDasharray="2 3"
+    />
+  ));
+}
+
 // V1 — Top labels with smart stagger (mirrors current production)
-function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenarioProps) {
-  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+function CliffChartTopLabelsStaggered({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // Stagger: each label takes the lowest row where it doesn't overlap any
   // already-placed label at that row.
@@ -2992,6 +3036,7 @@ function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenario
               )}
             />
           ))}
+          {showPits ? renderPitZones(pitZones) : null}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3019,8 +3064,8 @@ function CliffChartTopLabelsStaggered({ scenarioLabel, scenario }: CliffScenario
 }
 
 // V2 — Bottom-axis tags below the X axis
-function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProps) {
-  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+function CliffChartBottomAxisTags({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   return (
     <ScenarioFrame label={scenarioLabel}>
@@ -3076,6 +3121,7 @@ function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProp
               }}
             />
           ))}
+          {showPits ? renderPitZones(pitZones) : null}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3103,8 +3149,8 @@ function CliffChartBottomAxisTags({ scenarioLabel, scenario }: CliffScenarioProp
 }
 
 // V3 — Inline labels at the drop
-function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps) {
-  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+function CliffChartInlineAtDrop({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // For each cliff, find the discretionary value just before the drop —
   // that's where we anchor the label.
@@ -3158,6 +3204,7 @@ function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps)
               )}
             />
           ))}
+          {showPits ? renderPitZones(pitZones) : null}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3185,8 +3232,8 @@ function CliffChartInlineAtDrop({ scenarioLabel, scenario }: CliffScenarioProps)
 }
 
 // V4 — Numbered markers + legend
-function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioProps) {
-  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+function CliffChartNumberedMarkers({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   const annotated = cliffs.map((c, i) => {
     let before = points[0];
@@ -3226,6 +3273,7 @@ function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioPro
               strokeOpacity={0.6}
             />
           ))}
+          {showPits ? renderPitZones(pitZones) : null}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3309,8 +3357,8 @@ function CliffChartNumberedMarkers({ scenarioLabel, scenario }: CliffScenarioPro
 }
 
 // V5 — Color-banded eligibility regions
-function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
-  const { points, cliffs, maxGross, currentGross } = useCliffScenario(scenario);
+function CliffChartColorBands({ scenarioLabel, scenario, showPits }: CliffScenarioProps) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(scenario);
 
   // Build sorted ascending cutoff list; each "region" is the interval
   // between two consecutive cutoffs (or 0 / maxGross at the bookends).
@@ -3375,6 +3423,7 @@ function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
             width={48}
           />
           <ReferenceLine y={0} stroke={T.inkMuted} />
+          {showPits ? renderPitZones(pitZones) : null}
           <Line
             type="monotone"
             dataKey="discretionary"
@@ -3425,3 +3474,452 @@ function CliffChartColorBands({ scenarioLabel, scenario }: CliffScenarioProps) {
     </ScenarioFrame>
   );
 }
+
+// ── Section toolbar primitives ───────────────────────────────────────────
+
+function SectionToolbar({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 16,
+        padding: '10px 14px',
+        marginBottom: 4,
+        background: T.bgAlt,
+        border: `1px dashed ${T.border}`,
+        borderRadius: 4,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ToolbarToggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+        fontSize: rem(12),
+        color: T.inkSoft,
+      }}
+      title={hint}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ accentColor: T.accent }}
+      />
+      <span style={{ fontWeight: 600, color: T.ink }}>{label}</span>
+      {hint && <span style={{ color: T.inkMuted, fontStyle: 'italic' }}>· {hint.split('.')[0]}</span>}
+    </label>
+  );
+}
+
+// ── Section: pit-zone presentation ───────────────────────────────────────
+//
+// Four ways to depict the income ranges where the household is worse off
+// than at some lower income. All render against the canonical Columbus
+// scenario where two pits exist (Medicaid and CHIP).
+
+function SectionPitZones() {
+  return (
+    <Section
+      columns={1}
+      heading="Pit-zone presentation"
+      subhead="Four ways to depict the income ranges where the household ends up with less than they'd have at some lower income. The data is identical; only the visual encoding changes."
+    >
+      <Variation
+        title="V1 — Tinted full-height area (current production)"
+        description="ReferenceArea spans the full chart height for each pit, tinted by the program that caused it. Hard to miss; can feel heavy when pits stack up."
+      >
+        <PitChartTintedArea />
+      </Variation>
+      <Variation
+        title="V2 — Recolored line segment in the pit"
+        description="Don't shade the background; instead, recolor the curve itself in pit segments to the program's accent. Chart stays clean; the pit is communicated by the line's color change rather than a tint."
+      >
+        <PitChartColoredSegment />
+      </Variation>
+      <Variation
+        title="V3 — Ghost 'best-so-far' line"
+        description="Render a faded line showing the running max of the metric. The visible gap between the actual curve and the ghost IS the pit. Powerful because it visually quantifies depth — you can see exactly how much money is being left on the table."
+      >
+        <PitChartGhostLine />
+      </Variation>
+      <Variation
+        title="V4 — Bottom-band brackets"
+        description="Pit ranges marked only by a small color-coded bracket along the X axis, not as background fill. Maximum chart cleanliness; pits are signaled but don't dominate the visual."
+      >
+        <PitChartBottomBand />
+      </Variation>
+    </Section>
+  );
+}
+
+function PitChartTintedArea() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {pitZones.map((z, i) => (
+            <ReferenceArea
+              key={i}
+              x1={z.x1}
+              x2={z.x2}
+              fill={z.color ?? T.warning}
+              fillOpacity={0.12}
+              stroke={z.color ?? T.warning}
+              strokeOpacity={0.3}
+              strokeDasharray="2 3"
+            />
+          ))}
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.7}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartColoredSegment() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+
+  // Build per-pit "in-segment" series so each can be drawn as its own
+  // colored line on top of the base line. A point belongs to a pit's
+  // segment when its gross is inside the zone.
+  const segments = pitZones.map((z) => ({
+    color: z.color ?? T.warning,
+    data: points.map((p) => ({
+      gross: p.gross,
+      value: p.gross >= z.x1 && p.gross <= z.x2 ? p.discretionary : null,
+    })),
+  }));
+
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.5}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeOpacity={0.55}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          {segments.map((seg, i) => (
+            <Line
+              key={i}
+              type="monotone"
+              data={seg.data}
+              dataKey="value"
+              stroke={seg.color}
+              strokeWidth={3}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+          ))}
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartGhostLine() {
+  const { points, cliffs, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+
+  // Running-max series: at each income, the max discretionary seen at any
+  // lower income. The gap between this and the actual curve is the pit.
+  const ghostPoints = (() => {
+    let runningMax = -Infinity;
+    return points.map((p) => {
+      runningMax = Math.max(runningMax, p.discretionary);
+      return { gross: p.gross, ghost: runningMax, actual: p.discretionary };
+    });
+  })();
+
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={ghostPoints} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.5}
+            />
+          ))}
+          <Line
+            type="stepAfter"
+            dataKey="ghost"
+            stroke={T.warning}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              ghostPoints.find((p) => p.gross >= currentGross)?.actual ??
+              ghostPoints[0].actual
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          fontSize: rem(11),
+          color: T.inkMuted,
+          marginTop: 6,
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 0,
+              borderTop: `2px solid ${T.ink}`,
+              marginRight: 6,
+              verticalAlign: 'middle',
+            }}
+          />
+          Actual discretionary
+        </span>
+        <span>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 0,
+              borderTop: `1.5px dashed ${T.warning}`,
+              marginRight: 6,
+              verticalAlign: 'middle',
+            }}
+          />
+          Best-so-far (running max)
+        </span>
+      </div>
+    </ScenarioFrame>
+  );
+}
+
+function PitChartBottomBand() {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCliffScenario(CLIFF_SCENARIO_CMH);
+  return (
+    <ScenarioFrame label="Columbus, OH · HoH · 2 kids · $40K">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 28 }}>
+          <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+          <XAxis
+            dataKey="gross"
+            type="number"
+            domain={[0, maxGross]}
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            stroke={T.inkMuted}
+            tick={{ fontSize: 10, fill: T.inkSoft }}
+            width={48}
+          />
+          <ReferenceLine y={0} stroke={T.inkMuted} />
+          {cliffs.map((c) => (
+            <ReferenceLine
+              key={c.id}
+              x={c.gross}
+              stroke={c.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.6}
+            />
+          ))}
+          {pitZones.map((z, i) => {
+            // Render a small "[==]" bracket at the bottom of the chart
+            // spanning the pit range. Uses ReferenceLine with a custom
+            // SVG label to avoid pulling in extra primitives.
+            const color = z.color ?? T.warning;
+            return (
+              <ReferenceLine
+                key={i}
+                segment={[
+                  { x: z.x1, y: 0 },
+                  { x: z.x2, y: 0 },
+                ]}
+                stroke={color}
+                strokeWidth={4}
+                ifOverflow="visible"
+                label={(props: { viewBox?: { x?: number; y?: number; width?: number } }) => {
+                  const cx = (props.viewBox?.x ?? 0) + (props.viewBox?.width ?? 0) / 2;
+                  const y = (props.viewBox?.y ?? 0) + 16;
+                  return (
+                    <text x={cx} y={y} textAnchor="middle" fill={color} fontSize={10}>
+                      pit
+                    </text>
+                  );
+                }}
+              />
+            );
+          })}
+          <Line
+            type="monotone"
+            dataKey="discretionary"
+            stroke={T.ink}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <ReferenceDot
+            x={currentGross}
+            y={
+              points.find((p) => p.gross >= currentGross)?.discretionary ??
+              points[0].discretionary
+            }
+            r={4}
+            fill={T.positive}
+            stroke={T.bg}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ScenarioFrame>
+  );
+}
+

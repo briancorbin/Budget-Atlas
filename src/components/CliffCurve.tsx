@@ -25,6 +25,7 @@ import {
   snapIncomeLimitFpl,
 } from '@/data/benefits';
 import { getCityData } from '@/data/cities';
+import { computePitZones } from '@/lib/cliffs';
 import { SectionTitle } from './ui';
 
 type MetricId = 'discretionary' | 'takeHome' | 'takeHomePlusBenefits';
@@ -252,47 +253,14 @@ export function CliffCurve({
     });
   }, [cliffs, points, metricMeta]);
 
-  // Pit zones: contiguous income ranges where the household ends up with
-  // less of the active metric than they would at some lower income. Walks
-  // the curve left→right tracking the running max; any point below that
-  // running max is "in a pit." Each zone is attributed to the cliff that
-  // caused it — the highest-gross cliff at or below the zone start —
-  // so the shading color can match that program's accent.
-  const pitZones = useMemo(() => {
-    const sortedCliffs = [...cliffs].sort((a, b) => b.gross - a.gross); // desc
-    const findCauseColor = (zoneStart: number): string => {
-      const cause = sortedCliffs.find((c) => c.gross < zoneStart);
-      return cause?.color ?? T.warning;
-    };
-
-    const zones: { x1: number; x2: number; color: string }[] = [];
-    let runningMax = -Infinity;
-    let currentZoneStart: number | null = null;
-    for (let i = 0; i < points.length; i++) {
-      const v = points[i][metricMeta.key] as number;
-      if (v < runningMax) {
-        if (currentZoneStart === null) currentZoneStart = points[i].gross;
-      } else {
-        if (currentZoneStart !== null) {
-          zones.push({
-            x1: currentZoneStart,
-            x2: points[i].gross,
-            color: findCauseColor(currentZoneStart),
-          });
-          currentZoneStart = null;
-        }
-        runningMax = v;
-      }
-    }
-    if (currentZoneStart !== null) {
-      zones.push({
-        x1: currentZoneStart,
-        x2: points[points.length - 1].gross,
-        color: findCauseColor(currentZoneStart),
-      });
-    }
-    return zones;
-  }, [points, metricMeta, cliffs]);
+  const pitZones = useMemo(
+    () =>
+      computePitZones(points, metricMeta.key, cliffs).map((z) => ({
+        ...z,
+        color: z.color ?? T.warning,
+      })),
+    [points, metricMeta, cliffs],
+  );
 
   return (
     <div style={{ marginBottom: 48 }}>

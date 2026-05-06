@@ -3,6 +3,68 @@ import { computeBudget } from '@/lib/budget';
 import { BENEFIT_IDS, checkBenefit, type BenefitId } from '@/lib/benefits';
 
 /**
+ * Compute "pit zones" along an income sweep: contiguous income ranges where
+ * the household ends up with less of `metricKey` than they would have at
+ * some lower income — i.e. crossing a benefit cutoff cost more than the
+ * raise was worth.
+ *
+ * Each zone is attributed to the cliff that caused it (the highest-gross
+ * cliff at or below the zone's start) so the UI can color-match zones to
+ * the program lost. If no cliff matches, the zone is returned without a
+ * color so the caller can apply a fallback.
+ */
+export interface PitZone {
+  x1: number;
+  x2: number;
+  /** Color of the cliff that triggered this zone, if attributable. */
+  color?: string;
+  /** Id of the cliff that triggered this zone, if attributable. */
+  cliffId?: string;
+}
+
+export function computePitZones<P extends { gross: number }>(
+  points: readonly P[],
+  metricKey: keyof P,
+  cliffs: readonly { id: string; gross: number; color: string }[],
+): PitZone[] {
+  const sortedCliffs = [...cliffs].sort((a, b) => b.gross - a.gross); // desc
+  const findCause = (zoneStart: number) => sortedCliffs.find((c) => c.gross < zoneStart);
+
+  const zones: PitZone[] = [];
+  let runningMax = -Infinity;
+  let currentZoneStart: number | null = null;
+
+  for (let i = 0; i < points.length; i++) {
+    const v = points[i][metricKey] as unknown as number;
+    if (v < runningMax) {
+      if (currentZoneStart === null) currentZoneStart = points[i].gross;
+    } else {
+      if (currentZoneStart !== null) {
+        const cause = findCause(currentZoneStart);
+        zones.push({
+          x1: currentZoneStart,
+          x2: points[i].gross,
+          color: cause?.color,
+          cliffId: cause?.id,
+        });
+        currentZoneStart = null;
+      }
+      runningMax = v;
+    }
+  }
+  if (currentZoneStart !== null && points.length > 0) {
+    const cause = findCause(currentZoneStart);
+    zones.push({
+      x1: currentZoneStart,
+      x2: points[points.length - 1].gross,
+      color: cause?.color,
+      cliffId: cause?.id,
+    });
+  }
+  return zones;
+}
+
+/**
  * "Pit" detection: at the current scenario, is there an income *below* the
  * current one where the household would end up with *more* annual
  * discretionary income? That happens when raising income across a benefit

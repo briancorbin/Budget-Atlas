@@ -14,7 +14,7 @@
  * lives in the rolling [`audit:link`] issue.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { SectionTitle } from '@/components/ui';
 import {
@@ -30,11 +30,13 @@ import {
   STALENESS_THRESHOLDS_DAYS,
   STALENESS_DEFAULT_DAYS,
   isBrokenStatus,
+  isBotBlockedVerified,
   isOverdue,
   getStatusKind,
   type Review,
+  type StatusKind,
 } from '@/lib/audit/status';
-import { useStatusByUrl } from '@/lib/audit/store';
+import { useStatusByUrl, useIntermittentUrls } from '@/lib/audit/store';
 import { StatusDot } from '@/components/audit/StatusDot';
 
 const GITHUB_REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
@@ -166,12 +168,22 @@ const TIER_SUMMARY = (() => {
 // pass. See audit/staleness/ for the rolling-issue workflow that
 // surfaces the queue for triage.
 function computeStatusSummary(statusByUrl: ReadonlyMap<string, string>) {
+  // The two softer states roll into existing buckets so the row stays at
+  // four cells. `bot-blocked-verified` is, in practice, a recent human
+  // review (just one declaring "I loaded the page" rather than affirming
+  // the citation), so it counts as humanVerified. `intermittent` is still
+  // broken in the latest run, so it counts as broken — the dot in the
+  // list below carries the nuance.
   let humanVerified = 0;
   let aiVerified = 0;
   let overdue = 0;
   let broken = 0;
   for (const s of ALL_SOURCES) {
     if (isBrokenStatus(statusByUrl.get(s.url))) {
+      if (isBotBlockedVerified(s)) {
+        humanVerified++;
+        continue;
+      }
       broken++;
       continue;
     }
@@ -192,6 +204,7 @@ export function Sources({ onBack }: { onBack: () => void }) {
   // listener here and passing the map down is equivalent to per-row
   // subscriptions in correctness, lighter on the store's notify loop.
   const statusByUrl = useStatusByUrl();
+  const intermittentUrls = useIntermittentUrls();
   return (
     <div
       style={{
@@ -214,7 +227,12 @@ export function Sources({ onBack }: { onBack: () => void }) {
           <Summary statusByUrl={statusByUrl} />
           <ThresholdsNote />
           {GROUPS.map((g) => (
-            <GroupSection key={g.title} group={g} statusByUrl={statusByUrl} />
+            <GroupSection
+              key={g.title}
+              group={g}
+              statusByUrl={statusByUrl}
+              intermittentUrls={intermittentUrls}
+            />
           ))}
         </div>
         <Footer onBack={onBack} />
@@ -388,15 +406,130 @@ function ThresholdsNote() {
           not peer-reviewed. Index-style data updates frequently, so the cadence matches Primary.
         </li>
       </ul>
-      <div style={{ marginTop: 10, color: T.inkMuted, fontSize: rem(12), lineHeight: 1.6 }}>
-        A source is <strong style={{ color: T.positive }}>Human verified</strong> when it loads
-        correctly <em>and</em> the most recent review was eyes-on-source by a human within its
-        window. <strong style={{ color: T.aiAccent }}>AI verified</strong> means within the window
-        but the most recent pass was AI-flavoured, awaiting a human signoff.{' '}
-        <strong style={{ color: T.warning }}>Overdue</strong> means no review of any kind in time;{' '}
-        <strong style={{ color: T.accent }}>Broken</strong> means curl can't reach the URL.
+      <div
+        style={{
+          fontSize: rem(12),
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: T.inkMuted,
+          fontWeight: 600,
+          marginTop: 18,
+          marginBottom: 10,
+        }}
+      >
+        Status indicators
       </div>
+      <StatusLegend />
     </div>
+  );
+}
+
+/**
+ * Six rows, one per `StatusKind`, each rendering the live `StatusDot` so
+ * the legend stays in sync with whatever the dots actually look like —
+ * change a colour or hollow/filled in StatusDot and the legend updates
+ * automatically. Two-column grid (dot + label / description) keeps the
+ * reading rhythm consistent with the class list above.
+ */
+function StatusLegend() {
+  const entries: ReadonlyArray<{
+    kind: StatusKind;
+    label: string;
+    color: string;
+    body: ReactNode;
+  }> = [
+    {
+      kind: 'verified',
+      label: 'Human verified',
+      color: T.positive,
+      body: (
+        <>
+          Loads correctly <em>and</em> the most recent review was eyes-on-source by a human within
+          the tier window.
+        </>
+      ),
+    },
+    {
+      kind: 'ai-verified',
+      label: 'AI verified',
+      color: T.positive,
+      body: (
+        <>
+          Loads correctly and was reviewed within the window, but the most recent pass was
+          AI-flavoured — awaiting a human signoff.
+        </>
+      ),
+    },
+    {
+      kind: 'bot-blocked-verified',
+      label: 'Bot-blocked',
+      color: T.aiAccent,
+      body: (
+        <>
+          The audit can't reach the URL from CI (a state agency that refuses non-browser user
+          agents), but a human verified it loads in a real browser within the last 30 days.
+        </>
+      ),
+    },
+    {
+      kind: 'intermittent',
+      label: 'Intermittent',
+      color: T.aiAccent,
+      body: (
+        <>
+          Broken in the latest run but reachable in at least one of the last 3 — held back from
+          escalation while the flap clears.
+        </>
+      ),
+    },
+    {
+      kind: 'overdue',
+      label: 'Overdue',
+      color: T.warning,
+      body: <>No review of any kind within the tier window.</>,
+    },
+    {
+      kind: 'broken',
+      label: 'Broken',
+      color: T.accent,
+      body: <>The audit can't reach the URL and there's no recent human verification.</>,
+    },
+  ];
+  return (
+    <ul
+      style={{
+        listStyle: 'none',
+        margin: 0,
+        padding: 0,
+        display: 'grid',
+        gridTemplateColumns: 'auto 1fr',
+        columnGap: 12,
+        rowGap: 8,
+        alignItems: 'baseline',
+        color: T.inkMuted,
+        fontSize: rem(12),
+        lineHeight: 1.5,
+      }}
+    >
+      {entries.map((e) => (
+        <li key={e.kind} style={{ display: 'contents' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 14,
+              paddingTop: 4,
+            }}
+          >
+            <StatusDot kind={e.kind} size={10} showTooltip={false} />
+          </span>
+          <span>
+            <strong style={{ color: e.color }}>{e.label}</strong> — {e.body}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -506,7 +639,7 @@ function Summary({ statusByUrl }: { statusByUrl: ReadonlyMap<string, string> }) 
       value: statusSummary.broken,
       tone: 'broken',
       tooltip:
-        'URL is currently unreachable (404 or other error code from the periodic curl audit). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
+        'URL is currently unreachable (404 or other error code from the periodic curl audit). Includes flapping URLs that loaded in some recent runs (rendered as Intermittent in the list below). Excludes citations a human has verified in a browser within 30 days (rendered as Bot-blocked). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
     },
   ];
   return (
@@ -661,9 +794,11 @@ function StatCell({ stat }: { stat: Stat }) {
 function GroupSection({
   group,
   statusByUrl,
+  intermittentUrls,
 }: {
   group: Group;
   statusByUrl: ReadonlyMap<string, string>;
+  intermittentUrls: ReadonlySet<string>;
 }) {
   const body = (
     <div>
@@ -685,6 +820,7 @@ function GroupSection({
             key={`${group.title}-${s.url}-${s.label}`}
             source={s}
             statusByUrl={statusByUrl}
+            intermittentUrls={intermittentUrls}
           />
         ))}
       </ul>
@@ -732,14 +868,16 @@ function GroupSection({
 function SourceRow({
   source,
   statusByUrl,
+  intermittentUrls,
 }: {
   source: Source;
   statusByUrl: ReadonlyMap<string, string>;
+  intermittentUrls: ReadonlySet<string>;
 }) {
   const reviews = REVIEWS.get(source.id) ?? [];
   const latest = reviews[0];
   const tier = (source as Source & { tier?: string }).tier;
-  const statusKind = getStatusKind(source, statusByUrl);
+  const statusKind = getStatusKind(source, statusByUrl, intermittentUrls);
 
   // Single-column stacked layout. Title leads (it's the content); metadata
   // strip contextualizes it; URL is the reference / wayfinding; actions

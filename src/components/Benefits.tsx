@@ -32,6 +32,10 @@ interface BenefitMeta {
   source: Source | readonly Source[];
   /** Optional state-specific citation, computed at render time. */
   stateSource?: (inputs: BenefitInputs) => Source;
+  /** Plain-language explanation of how this benefit's monthly dollar value
+   *  is derived. Surfaced as a hover tooltip on the value display so the
+   *  reader can see what's behind the number. */
+  valueDerivation: string;
 }
 
 const BENEFIT_META: readonly BenefitMeta[] = [
@@ -43,6 +47,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: 'Reduces the grocery line.',
     source: SNAP_SOURCE,
     stateSource: (inputs) => snapStateSource(inputs.state),
+    valueDerivation:
+      "USDA formula: max benefit for your household size (FY2026 schedule) minus 30% of estimated net income. Net income = gross − 20% earned-income deduction − the standard deduction. Real SNAP also subtracts shelter and childcare deductions; we don't model those yet.",
   },
   {
     id: 'medicaid',
@@ -52,6 +58,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: 'Zeros out the healthcare line.',
     source: [MEDICAID_SOURCE, MEDICAID_EXPANSION_SOURCE],
     stateSource: (inputs) => medicaidStateSource(inputs.state),
+    valueDerivation:
+      "Treats Medicaid as worth your full modeled monthly healthcare premium — sourced from KFF's Employer Health Benefits Survey (worker share of an employer-sponsored family or single plan). The model uses the same number for both 'value of public coverage' and 'post-cliff out-of-pocket cost,' so the cliff drop on Discretionary equals the cliff drop on Take-home + benefits. A more honest model would split these (Medicaid is genuinely better than typical employer coverage; ACA marketplace replacements typically cost more). On the roadmap.",
   },
   {
     id: 'chip',
@@ -61,6 +69,8 @@ const BENEFIT_META: readonly BenefitMeta[] = [
     appliesTo: "Reduces the kids' share of healthcare.",
     source: [CHIP_SOURCE, CHIP_STATE_THRESHOLDS_SOURCE],
     stateSource: (inputs) => chipStateSource(inputs.state),
+    valueDerivation:
+      "The kids' marginal share of the family premium: family premium minus an adult-only baseline (single-coverage premium × number of adults). Both premiums sourced from KFF's Employer Health Benefits Survey. Real CHIP often charges small premiums above ~150% FPL; we treat coverage as fully replacing the kids' share for simplicity.",
   },
 ];
 
@@ -276,17 +286,11 @@ function Card({
 
       {eligible && eligibility.monthlyBenefit > 0 ? (
         <>
-          <div
-            style={{
-              fontFamily: fonts.mono,
-              fontSize: rem(16),
-              marginBottom: 4,
-              color: claimed ? T.bg : T.positive,
-              fontWeight: 600,
-            }}
-          >
-            ~{fmt(eligibility.monthlyBenefit)}/mo
-          </div>
+          <ValueWithDerivation
+            value={`~${fmt(eligibility.monthlyBenefit)}/mo`}
+            derivation={meta.valueDerivation}
+            claimed={claimed}
+          />
           <div
             style={{
               fontSize: rem(11),
@@ -420,6 +424,87 @@ function EligibilityBadge({
  * or press Escape to dismiss. e.stopPropagation prevents the click from
  * bubbling to the card-level role=button handler.
  */
+/** Renders the benefit's monthly dollar value with a hover/focus popover
+ *  that explains how the number was derived (formula, source, simplifying
+ *  assumptions). The value itself stays the same prominent mono number;
+ *  the tooltip is opt-in for readers who want to know what's behind it. */
+function ValueWithDerivation({
+  value,
+  derivation,
+  claimed,
+}: {
+  value: string;
+  derivation: string;
+  claimed: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 4 }}>
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-describedby={open ? 'value-derivation' : undefined}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          cursor: 'help',
+          fontFamily: fonts.mono,
+          fontSize: rem(16),
+          fontWeight: 600,
+          color: claimed ? T.bg : T.positive,
+          textDecoration: 'underline',
+          textDecorationStyle: 'dotted',
+          textUnderlineOffset: 4,
+        }}
+      >
+        {value}
+      </button>
+      {open && (
+        <div
+          id="value-derivation"
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 5,
+            width: 300,
+            padding: '10px 12px',
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(27, 24, 21, 0.12)',
+            fontFamily: fonts.body,
+            fontSize: rem(12),
+            lineHeight: 1.5,
+            color: T.ink,
+            fontStyle: 'normal',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontSize: rem(10),
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: T.inkMuted,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            How this is computed
+          </div>
+          {derivation}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhantomEligibilityNote({
   programName,
   claimed,

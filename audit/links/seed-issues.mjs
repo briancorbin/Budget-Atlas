@@ -111,16 +111,32 @@ function buildSourcesIndex() {
   let pendingLabel = null;
   let labelOnNextLine = false;
   let pendingId = null;
+  // When we're inside a per-state agency map (RAW_STATE_DOR /
+  // RAW_STATE_SNAP_AGENCY / etc.), the actual source id is synthesized
+  // by withStateIds() as `state-${kind}-${code.toLowerCase()}` instead
+  // of the raw outer key (which is just the state code, e.g. 'DE').
+  // Track which kind we're inside so the lookup id matches what the
+  // /sources page and reviewed.tsv use.
+  let stateMapKind = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
+    // Detect entry into a per-state raw map.
+    const stateDecl = line.match(/^const RAW_STATE_(?:(\w+)_AGENCY|DOR)\s*[:=]/);
+    if (stateDecl) {
+      stateMapKind = stateDecl[1] ? stateDecl[1].toLowerCase() : 'dor';
+    } else if (stateMapKind && line === '};') {
+      // Top-level closing of the raw map ends the state-keyed mode.
+      stateMapKind = null;
+    }
+
     // Track the most recent outer key (id) — entries look like
     //   'kff-employer-health-benefits': {
     // Used for reviewed.tsv suppression lookup.
-    const idMatch = line.match(/^['"]?([a-z][a-z0-9-]*)['"]?:\s*\{$/);
+    const idMatch = line.match(/^['"]?([a-zA-Z][a-zA-Z0-9-]*)['"]?:\s*\{$/);
     if (idMatch) {
-      pendingId = idMatch[1];
+      pendingId = stateMapKind ? `state-${stateMapKind}-${idMatch[1].toLowerCase()}` : idMatch[1];
       pendingLabel = null;
     }
 

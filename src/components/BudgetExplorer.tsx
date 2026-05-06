@@ -26,7 +26,7 @@ import { Notes } from './Notes';
 import { PageNav, type PageNavSection } from './PageNav';
 import { PitWarning } from './PitWarning';
 
-const PAGE_NAV_SECTIONS: readonly PageNavSection[] = [
+const PAGE_NAV_SECTIONS_BASE: readonly PageNavSection[] = [
   { id: 'customize', label: 'Customize' },
   { id: 'benefits', label: 'Benefits' },
   { id: 'summary', label: 'Summary' },
@@ -222,7 +222,14 @@ export function BudgetExplorer() {
          radial-gradient(circle at 80% 100%, rgba(45, 80, 22, 0.03), transparent 50%)`,
       }}
     >
-      <PageNav sections={PAGE_NAV_SECTIONS} />
+      <PageNav
+        sections={PAGE_NAV_SECTIONS_BASE.filter(
+          // DiscretionaryPlan renders nothing when discretionary < 0,
+          // so the nav entry would scroll to nowhere — drop it from
+          // the rail in that case.
+          (s) => s.id !== 'plan' || result.discretionary >= 0,
+        )}
+      />
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
         <section id="customize" style={{ scrollMarginTop: 24 }}>

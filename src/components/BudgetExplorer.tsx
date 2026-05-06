@@ -20,6 +20,7 @@ import { BracketWalkthrough } from './BracketWalkthrough';
 import { ExpenseBreakdown } from './ExpenseBreakdown';
 import { DiscretionaryPlan } from './DiscretionaryPlan';
 import { CityComparison } from './CityComparison';
+import { CliffCurve } from './CliffCurve';
 import { Benefits } from './Benefits';
 import { Notes } from './Notes';
 
@@ -225,6 +226,15 @@ export function BudgetExplorer() {
           filing={filing}
           kids={kids}
           lifestyle={lifestyle}
+        />
+        <CliffCurve
+          city={city}
+          kids={kids}
+          filing={filing}
+          lifestyle={lifestyle}
+          hasPartner={twoIncome}
+          incomeA={incomeA}
+          incomeB={effectiveIncomeB}
         />
         <Notes filing={filing} stateTaxSource={result.stateData.taxSource} />
       </div>

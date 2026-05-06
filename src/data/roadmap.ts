@@ -105,7 +105,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Benefits & safety net',
     status: 'planned',
     summary:
-      'Add shelter and childcare deductions to the SNAP net-income formula — real SNAP subtracts both before applying the 30% multiplier, meaningful in high-rent metros. Plus a calculation breakdown UI and a cliff visualization.',
+      'Add shelter and childcare deductions to the SNAP net-income formula — real SNAP subtracts both before applying the 30% multiplier, meaningful in high-rent metros. Plus a calculation breakdown UI. (The income-sweep cliff visualization shipped separately.)',
   },
   {
     id: 10,
@@ -113,7 +113,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Benefits & safety net',
     status: 'planned',
     summary:
-      'Surface alternate Medicaid tracks the model omits — SSI-linked, aged (65+), and pregnancy (often 200%+ FPL even in non-expansion states). Plus state waiver programs and a visualization of the Medicaid cliff at 138% FPL.',
+      'Surface alternate Medicaid tracks the model omits — SSI-linked, aged (65+), and pregnancy (often 200%+ FPL even in non-expansion states). Plus state waiver programs. (The 138% FPL Medicaid cliff is now visualized in the income-sweep curve.)',
   },
   {
     id: 11,

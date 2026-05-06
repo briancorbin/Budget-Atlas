@@ -16,7 +16,7 @@
 
 import { useMemo, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
-import { SectionTitle } from './ui';
+import { SectionTitle } from '@/components/ui';
 import {
   SOURCES,
   STATE_DOR,
@@ -35,7 +35,7 @@ import {
   type Review,
 } from '@/lib/audit/status';
 import { useStatusByUrl } from '@/lib/audit/store';
-import { StatusDot } from './audit/StatusDot';
+import { StatusDot } from '@/components/audit/StatusDot';
 
 const GITHUB_REPO = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
 

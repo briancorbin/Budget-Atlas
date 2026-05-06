@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { ROADMAP, SHIPPED, type RoadmapItem, type RoadmapStatus } from '@/data/roadmap';
-import { SectionTitle } from './ui';
+import { SectionTitle } from '@/components/ui';
 
 export function Roadmap({ onBack }: { onBack: () => void }) {
   return (

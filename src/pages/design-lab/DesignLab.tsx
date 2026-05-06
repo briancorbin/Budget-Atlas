@@ -26,7 +26,7 @@ import {
   YAxis,
 } from 'recharts';
 import { theme as T, fonts, rem } from '@/theme';
-import { Cite } from './ui';
+import { Cite } from '@/components/ui';
 import type { Source } from '@/types';
 import type { ReviewKind } from '@/lib/audit/status';
 import { computeBudget } from '@/lib/budget';

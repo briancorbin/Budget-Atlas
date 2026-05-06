@@ -195,7 +195,13 @@ function Card({
   // The household is on paper qualified for the program, yet receives no
   // actual aid. This is editorially important — surface it loudly.
   const phantomEligible = eligible && eligibility.monthlyBenefit === 0;
-  const actionable = eligible && !phantomEligible;
+  // Clicking a phantom-eligible card to *claim* is a no-op (you'd be
+  // claiming $0/mo) and we don't want to invite that. But if the user
+  // previously claimed the program at a different income and then drifted
+  // into the phantom zone, the auto-drop logic in BudgetExplorer won't
+  // fire (eligibility is still true), so we must keep the unclaim path
+  // open — otherwise the card gets stuck "claimed at $0" forever.
+  const actionable = (eligible && !phantomEligible) || (phantomEligible && claimed);
   const handleClick = () => {
     if (actionable) onToggle();
   };

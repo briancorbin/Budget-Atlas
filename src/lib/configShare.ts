@@ -42,7 +42,11 @@ export const DEFAULTS_V1: SharedConfig = Object.freeze({
   kids: 2,
   lifestyle: 'moderate' as Lifestyle,
   compareCity: 'sf',
-  claimedBenefits: Object.freeze(new Set<string>()) as ReadonlySet<string>,
+  // Plain empty Set. We don't `Object.freeze` it because freeze doesn't
+  // affect Set internal slots (`.add()` / `.delete()` still work). The
+  // immutability of DEFAULTS_V1 is enforced by convention plus the fact
+  // that decodeConfig always clones into a fresh Set before writing.
+  claimedBenefits: new Set<string>() as ReadonlySet<string>,
 });
 
 const FILING_TO_CODE: Record<FilingStatus, string> = { single: 's', married: 'm', head: 'h' };
@@ -122,11 +126,15 @@ export function decodeConfig(payload: string): SharedConfig {
   const t = p.get('t');
   if (t === '0' || t === '1') out.twoIncome = t === '1';
 
+  // Validators below use `Object.hasOwn` rather than the `in` operator.
+  // `in` walks the prototype chain, so a crafted hash like `f=toString`
+  // would otherwise match `Object.prototype.toString` and assign a
+  // function reference into `out.filing`, crashing downstream code.
   const f = p.get('f');
-  if (f != null && f in CODE_TO_FILING) out.filing = CODE_TO_FILING[f];
+  if (f != null && Object.hasOwn(CODE_TO_FILING, f)) out.filing = CODE_TO_FILING[f];
 
   const c = p.get('c');
-  if (c != null && c in CITIES) out.city = c;
+  if (c != null && Object.hasOwn(CITIES, c)) out.city = c;
 
   const k = p.get('k');
   if (k != null) {
@@ -135,10 +143,10 @@ export function decodeConfig(payload: string): SharedConfig {
   }
 
   const l = p.get('l');
-  if (l != null && l in CODE_TO_LIFESTYLE) out.lifestyle = CODE_TO_LIFESTYLE[l];
+  if (l != null && Object.hasOwn(CODE_TO_LIFESTYLE, l)) out.lifestyle = CODE_TO_LIFESTYLE[l];
 
   const cc = p.get('cc');
-  if (cc != null && cc in CITIES) out.compareCity = cc;
+  if (cc != null && Object.hasOwn(CITIES, cc)) out.compareCity = cc;
 
   const cb = p.get('cb');
   if (cb != null) {

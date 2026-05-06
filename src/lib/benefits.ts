@@ -11,11 +11,13 @@ import {
   snapIncomeLimitFpl,
 } from '@/data/benefits';
 
-/** All benefit programs we model. Add new IDs here as we ship them. */
-export type BenefitId = 'snap' | 'medicaid' | 'chip';
-
-/** Runtime list of every BenefitId, for validation / iteration. Keep in sync with the type. */
-export const BENEFIT_IDS: readonly BenefitId[] = ['snap', 'medicaid', 'chip'];
+/**
+ * All benefit programs we model. The runtime list is the source of truth;
+ * `BenefitId` is derived from it via `(typeof BENEFIT_IDS)[number]` so the
+ * two cannot drift out of sync. Add new IDs to the array.
+ */
+export const BENEFIT_IDS = ['snap', 'medicaid', 'chip'] as const;
+export type BenefitId = (typeof BENEFIT_IDS)[number];
 
 /**
  * Dispatch eligibility for any program by id. New programs add a case here

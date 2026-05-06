@@ -250,6 +250,7 @@ function Card({
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'baseline',
           marginBottom: 4,

@@ -99,7 +99,13 @@ if (tsvs.length === 0) {
   process.exit(1);
 }
 const latestPath = resolve(RESULTS_DIR, tsvs[tsvs.length - 1]);
-const latestDate = tsvs[tsvs.length - 1].replace('.tsv', '');
+// Derive the run date from the most recent dated TSV — `latest.tsv` is a
+// duplicate copy and would yield the literal string "latest", which makes
+// downstream date comparisons no-ops.
+const datedTsvs = tsvs.filter((f) => /^\d{4}-\d{2}-\d{2}\.tsv$/.test(f));
+const latestDate = datedTsvs.length
+  ? datedTsvs[datedTsvs.length - 1].replace('.tsv', '')
+  : new Date().toISOString().slice(0, 10);
 console.log(`→ Reading ${latestPath}`);
 
 // ── 2. Parse rows ────────────────────────────────────────────────────────
@@ -233,10 +239,14 @@ function isVerifiedBotBlocked(url, reviews, today) {
 
 const reviews = parseReviewedTsv();
 const today = new Date();
-const verifiedBotBlockedCount = broken.filter((r) =>
-  isVerifiedBotBlocked(r.url, reviews, today),
-).length;
-let filteredBroken = broken.filter((r) => !isVerifiedBotBlocked(r.url, reviews, today));
+let verifiedBotBlockedCount = 0;
+let filteredBroken = broken.filter((r) => {
+  if (isVerifiedBotBlocked(r.url, reviews, today)) {
+    verifiedBotBlockedCount++;
+    return false;
+  }
+  return true;
+});
 if (verifiedBotBlockedCount > 0) {
   console.log(
     `→ Suppressing ${verifiedBotBlockedCount} verified-bot-blocked URL(s) per reviewed.tsv (TTL ${VERIFIED_BOT_BLOCKED_TTL_DAYS}d).`,

@@ -126,7 +126,7 @@ const LAB_SECTIONS: ReadonlyArray<LabSection> = [
   {
     id: 'compound',
     nav: 'Compound pit attribution',
-    count: 4,
+    count: 5,
     Component: SectionCompoundPits,
     status: 'open',
   },
@@ -4051,6 +4051,12 @@ function SectionCompoundPits() {
       >
         <CompoundChartLayered config={config} />
       </Variation>
+      <Variation
+        title="V5 — Uniform warning color (no attribution at all)"
+        description="Every pit zone shaded the same warning orange regardless of which program caused it. Cleanest possible read; sacrifices attribution entirely but never lies about which program is responsible since it never claims one."
+      >
+        <CompoundChartUniformColor config={config} />
+      </Variation>
     </Section>
   );
 }
@@ -4376,6 +4382,25 @@ function CompoundChartSingleColor({ config }: { config: CompoundConfig }) {
         points={points}
         cliffs={cliffs}
         zones={pitZones}
+        maxGross={maxGross}
+        currentGross={currentGross}
+      />
+    </CompoundFrame>
+  );
+}
+
+function CompoundChartUniformColor({ config }: { config: CompoundConfig }) {
+  const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
+  // Strip per-program color attribution — every zone painted with the
+  // same warning hue. CompoundChartBase falls back to T.warning when a
+  // zone's color is undefined.
+  const uniformZones: PitZone[] = pitZones.map((z) => ({ ...z, color: undefined }));
+  return (
+    <CompoundFrame>
+      <CompoundChartBase
+        points={points}
+        cliffs={cliffs}
+        zones={uniformZones}
         maxGross={maxGross}
         currentGross={currentGross}
       />

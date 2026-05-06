@@ -407,8 +407,6 @@ export function CustomizePanel(s: InputsState) {
           </div>
         </div>
       </div>
-
     </div>
   );
 }
-

@@ -48,8 +48,16 @@ export const DEFAULTS_V1: SharedConfig = Object.freeze({
 const FILING_TO_CODE: Record<FilingStatus, string> = { single: 's', married: 'm', head: 'h' };
 const CODE_TO_FILING: Record<string, FilingStatus> = { s: 'single', m: 'married', h: 'head' };
 
-const LIFESTYLE_TO_CODE: Record<Lifestyle, string> = { modest: '0', moderate: '1', comfortable: '2' };
-const CODE_TO_LIFESTYLE: Record<string, Lifestyle> = { '0': 'modest', '1': 'moderate', '2': 'comfortable' };
+const LIFESTYLE_TO_CODE: Record<Lifestyle, string> = {
+  modest: '0',
+  moderate: '1',
+  comfortable: '2',
+};
+const CODE_TO_LIFESTYLE: Record<string, Lifestyle> = {
+  '0': 'modest',
+  '1': 'moderate',
+  '2': 'comfortable',
+};
 
 const VALID_BENEFITS: ReadonlySet<string> = new Set<BenefitId>(BENEFIT_IDS);
 
@@ -94,7 +102,9 @@ export function decodeConfig(payload: string): SharedConfig {
 
   const v = p.get('v');
   if (v != null && v !== String(SCHEMA_VERSION)) {
-    console.warn(`[configShare] Unknown schema version v=${v}; parsing known keys against v=${SCHEMA_VERSION} defaults.`);
+    console.warn(
+      `[configShare] Unknown schema version v=${v}; parsing known keys against v=${SCHEMA_VERSION} defaults.`,
+    );
   }
 
   const a = p.get('a');

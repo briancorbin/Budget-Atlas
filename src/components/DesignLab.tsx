@@ -164,10 +164,21 @@ function Sidebar({ selected, onSelect }: { selected: string; onSelect: (id: stri
         fontSize: rem(13),
       }}
     >
-      <SidebarGroup heading="Open for discussion" sections={open} selected={selected} onSelect={onSelect} />
+      <SidebarGroup
+        heading="Open for discussion"
+        sections={open}
+        selected={selected}
+        onSelect={onSelect}
+      />
       {decided.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <SidebarGroup heading="Decided" sections={decided} selected={selected} onSelect={onSelect} muted />
+          <SidebarGroup
+            heading="Decided"
+            sections={decided}
+            selected={selected}
+            onSelect={onSelect}
+            muted
+          />
         </div>
       )}
     </nav>
@@ -1445,7 +1456,8 @@ const TIER_COLORS = {
   gold: {
     bg: 'rgba(154, 130, 50, 0.15)',
     fg: '#7A6628',
-    description: 'Deep gold — between olive and amber. Reads as commercial / aggregated without alarm.',
+    description:
+      'Deep gold — between olive and amber. Reads as commercial / aggregated without alarm.',
   },
 } as const;
 type TierColorKey = keyof typeof TIER_COLORS;
@@ -1471,8 +1483,7 @@ const TIER_MEANINGS: Record<TierRole, string> = {
     'Publisher of the underlying data or rule. Federal agencies + state agencies on their own programs.',
   tier2:
     'Peer-respected third-party interpretation, methodology document, or original research-org survey.',
-  tier3:
-    'Commercial or crowd-sourced data product — methodology proprietary or community-driven.',
+  tier3: 'Commercial or crowd-sourced data product — methodology proprietary or community-driven.',
 };
 
 /**
@@ -1494,8 +1505,7 @@ const TIER_NAME_OPTIONS: Record<TierRole, ReadonlyArray<NameOption>> = {
     },
     {
       name: 'Original',
-      description:
-        'Past terminology. Emphasizes that this tier produces the data themselves.',
+      description: 'Past terminology. Emphasizes that this tier produces the data themselves.',
     },
     {
       name: 'Source',
@@ -1565,7 +1575,6 @@ const SHIPPED_NAMES: Record<TierRole, string> = {
   tier2: 'Reference',
   tier3: 'Commercial',
 };
-
 
 type RoleColors = Record<TierRole, TierColorKey>;
 
@@ -1766,9 +1775,7 @@ function NamePickerRow({
         return (
           <div key={role} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span
-                style={{ minWidth: 110, fontSize: rem(12), fontWeight: 600, color: T.inkSoft }}
-              >
+              <span style={{ minWidth: 110, fontSize: rem(12), fontWeight: 600, color: T.inkSoft }}>
                 {ROLE_LABELS[role]}
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1939,9 +1946,7 @@ function ColorPickerRow({
                       type="button"
                       onClick={() => onChange({ ...colors, [role]: k })}
                       aria-pressed={isActive}
-                      title={
-                        isShipped ? `${preset.description} (shipped)` : preset.description
-                      }
+                      title={isShipped ? `${preset.description} (shipped)` : preset.description}
                       style={{
                         cursor: 'pointer',
                         border: isActive ? `2px solid ${T.ink}` : `1px solid ${T.border}`,
@@ -2041,10 +2046,7 @@ function sortVariationsDecidedFirst(children: React.ReactNode): React.ReactNode[
   const decided: React.ReactNode[] = [];
   const rest: React.ReactNode[] = [];
   for (const child of arr) {
-    if (
-      React.isValidElement<{ decided?: boolean }>(child) &&
-      child.props.decided === true
-    ) {
+    if (React.isValidElement<{ decided?: boolean }>(child) && child.props.decided === true) {
       decided.push(child);
     } else {
       rest.push(child);
@@ -2330,7 +2332,6 @@ function PopoverDot({ row }: { row: SyntheticRow }) {
   return <LabStatusDot status={rowStatusV5(row)} size={8} />;
 }
 
-
 // ── Section: Share-link affordance ───────────────────────────────────────
 //
 // The share affordance is a meta action — it copies a URL, it doesn't
@@ -2433,7 +2434,9 @@ function ShareMockBottom({ variant }: { variant: 'outlined-button' }) {
           Share this view
         </button>
       </div>
-      <span aria-hidden style={{ display: 'none' }}>{variant}</span>
+      <span aria-hidden style={{ display: 'none' }}>
+        {variant}
+      </span>
     </PanelShell>
   );
 }
@@ -2443,7 +2446,9 @@ function ShareMockInline() {
   return (
     <PanelShell>
       <PanelHeading />
-      <div style={{ marginBottom: 8, fontSize: rem(11), color: T.inkSoft, letterSpacing: '0.05em' }}>
+      <div
+        style={{ marginBottom: 8, fontSize: rem(11), color: T.inkSoft, letterSpacing: '0.05em' }}
+      >
         LIFESTYLE LEVEL
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -218,11 +218,7 @@ function Card({
       }}
       style={{
         padding: '16px 18px',
-        background: claimed
-          ? T.ink
-          : phantomEligible
-            ? phantomTint
-            : T.surface,
+        background: claimed ? T.ink : phantomEligible ? phantomTint : T.surface,
         color: claimed ? T.bg : T.ink,
         border: claimed
           ? `1px solid ${T.ink}`
@@ -258,11 +254,7 @@ function Card({
           <span>{meta.name}</span>
           <CiteGroup sources={sources} />
         </div>
-        <EligibilityBadge
-          eligible={eligible}
-          claimed={claimed}
-          phantomEligible={phantomEligible}
-        />
+        <EligibilityBadge eligible={eligible} claimed={claimed} phantomEligible={phantomEligible} />
       </div>
 
       <div
@@ -494,9 +486,8 @@ function PhantomEligibilityNote({
             fontStyle: 'normal',
           }}
         >
-          On paper this household qualifies for {programName} — but the
-          calculated benefit phases to $0 once 30% of net income exceeds
-          the maximum benefit. Eligibility without aid.
+          On paper this household qualifies for {programName} — but the calculated benefit phases to
+          $0 once 30% of net income exceeds the maximum benefit. Eligibility without aid.
         </div>
       )}
     </div>

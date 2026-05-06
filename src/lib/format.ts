@@ -5,7 +5,12 @@ export function fmt(n: number): string {
   return '$' + r.toLocaleString();
 }
 
-/** Always shows the sign; useful for deltas and discretionary amounts. */
+/**
+ * Currently equivalent to `fmt`: typographic minus for negatives, no explicit
+ * '+' for positives. Kept as a separate name so call sites that handle
+ * potentially-negative deltas (discretionary income, comparisons) read
+ * intentionally — and so a future "+" prefix can land here without churn.
+ */
 export function fmtSigned(n: number): string {
   return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString();
 }

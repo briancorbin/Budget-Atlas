@@ -4633,7 +4633,19 @@ function CompoundChartLayered({ config }: { config: CompoundConfig }) {
 
 function CompoundChartImpactBar({ config }: { config: CompoundConfig }) {
   const { points, cliffs, pitZones, maxGross, currentGross } = useCompoundDemoData(config);
-  const impactZones = computePerCliffZones(points, cliffs);
+  // Per-program "impact zone" computed independently: each program's bar
+  // spans from its cliff to the income at which the curve would recover
+  // IF ONLY THIS PROGRAM HAD FIRED. Equals cliff.gross + drop/slope. Using
+  // computePerCliffZones (which uses the actual compound curve) instead
+  // would make every program's zone span almost the entire merged pit,
+  // since the curve doesn't reach a single program's pre-cliff peak until
+  // the other programs have also recovered.
+  const impactZones: PitZone[] = config.programs.map((p) => ({
+    cliffId: p.id,
+    color: p.color,
+    x1: p.gross,
+    x2: Math.min(maxGross, p.gross + p.drop / Math.max(0.01, config.slope)),
+  }));
   return (
     <CompoundFrame>
       <CompoundChartBase

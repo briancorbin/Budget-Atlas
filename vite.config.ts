@@ -1,10 +1,19 @@
-import { defineConfig } from 'vite';
+// Use vitest/config so the `test` key is typed without depending on a
+// triple-slash directive (tsconfig.node.json has an explicit `types` array
+// that suppresses ambient lookups). vitest/config re-exports vite's
+// defineConfig with the test field merged in.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
   base: './', // works for static hosts and GitHub Pages out of the box
+  // Vitest reads this same config; tests are colocated as `*.test.ts` next
+  // to the source they cover. Pure-function libs only — no jsdom needed.
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
   server: {
     host: true,
     port: 5173,

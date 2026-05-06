@@ -43,6 +43,8 @@ jobs:
             run: yarn format:check
           - name: typecheck
             run: yarn typecheck
+          - name: test
+            run: yarn test
           - name: unused-sources
             run: node --experimental-strip-types scripts/source-inventory.mjs --check
           - name: source-pairing

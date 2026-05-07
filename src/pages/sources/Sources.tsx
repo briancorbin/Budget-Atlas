@@ -167,13 +167,23 @@ const TIER_SUMMARY = (() => {
 // verification has happened, not to soft-start with addedAt as a free
 // pass. See audit/staleness/ for the rolling-issue workflow that
 // surfaces the queue for triage.
-function computeStatusSummary(statusByUrl: ReadonlyMap<string, string>) {
-  // The two softer states roll into existing buckets so the row stays at
-  // four cells. `bot-blocked-verified` is, in practice, a recent human
-  // review (just one declaring "I loaded the page" rather than affirming
-  // the citation), so it counts as humanVerified. `intermittent` is still
-  // broken in the latest run, so it counts as broken — the dot in the
-  // list below carries the nuance.
+function computeStatusSummary(
+  statusByUrl: ReadonlyMap<string, string>,
+  intermittentUrls: ReadonlySet<string>,
+) {
+  // Stays at four cells. The two softer states are bucketed by their
+  // underlying review provenance instead of getting their own cells:
+  //   - `bot-blocked-verified` always counts as humanVerified — the
+  //     verified-bot-blocked TSV row is itself a human action ("I
+  //     loaded the URL in a browser within the last 30 days").
+  //   - `intermittent` defers to the latest entry in REVIEWS for the
+  //     source: kind=human → humanVerified, kind=ai → aiVerified, no
+  //     review → broken (the audit's flap history isn't a citation
+  //     review and shouldn't pretend to be one).
+  // The dot colour in the row below carries the audit-caveat nuance;
+  // the Summary cells answer "is this citation human-verified, AI-
+  // verified, overdue, or actually broken?" without inventing a fifth
+  // bucket the row layout doesn't have room for.
   let humanVerified = 0;
   let aiVerified = 0;
   let overdue = 0;
@@ -182,6 +192,13 @@ function computeStatusSummary(statusByUrl: ReadonlyMap<string, string>) {
     if (isBrokenStatus(statusByUrl.get(s.url))) {
       if (isBotBlockedVerified(s)) {
         humanVerified++;
+        continue;
+      }
+      if (intermittentUrls.has(s.url)) {
+        const latest = REVIEWS.get(s.id)?.[0];
+        if (latest?.kind === 'human') humanVerified++;
+        else if (latest?.kind === 'ai') aiVerified++;
+        else broken++;
         continue;
       }
       broken++;
@@ -224,7 +241,7 @@ export function Sources({ onBack }: { onBack: () => void }) {
             a wider header / footer chrome. */}
         <div style={{ maxWidth: 680 }}>
           <Intro />
-          <Summary statusByUrl={statusByUrl} />
+          <Summary statusByUrl={statusByUrl} intermittentUrls={intermittentUrls} />
           <ThresholdsNote />
           {GROUPS.map((g) => (
             <GroupSection
@@ -569,8 +586,17 @@ const TIER_REVIEW_DAYS = {
   commercial: STALENESS_THRESHOLDS_DAYS.commercial ?? STALENESS_DEFAULT_DAYS,
 } as const;
 
-function Summary({ statusByUrl }: { statusByUrl: ReadonlyMap<string, string> }) {
-  const statusSummary = useMemo(() => computeStatusSummary(statusByUrl), [statusByUrl]);
+function Summary({
+  statusByUrl,
+  intermittentUrls,
+}: {
+  statusByUrl: ReadonlyMap<string, string>;
+  intermittentUrls: ReadonlySet<string>;
+}) {
+  const statusSummary = useMemo(
+    () => computeStatusSummary(statusByUrl, intermittentUrls),
+    [statusByUrl, intermittentUrls],
+  );
   // Two semantic rows: composition (what's in the registry by class) on top,
   // current state (how the registry is doing) below. Each row gets four
   // cells, fits cleanly without auto-fit awkwardness.
@@ -639,7 +665,7 @@ function Summary({ statusByUrl }: { statusByUrl: ReadonlyMap<string, string> }) 
       value: statusSummary.broken,
       tone: 'broken',
       tooltip:
-        'URL is currently unreachable (404 or other error code from the periodic curl audit). Includes flapping URLs that loaded in some recent runs (rendered as Intermittent in the list below). Excludes citations a human has verified in a browser within 30 days (rendered as Bot-blocked). Needs a fix in src/data/sources.ts paired with a row in reviewed.tsv.',
+        'URL is currently unreachable (404 or other error code from the periodic curl audit). Bot-blocked and Intermittent citations are bucketed by their underlying review kind (Human or AI verified) — see the dot colour in the list below for that nuance. Broken here means: actually unreachable AND no recent human browser-verification AND no successful audit run in the last 3.',
     },
   ];
   return (

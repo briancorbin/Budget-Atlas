@@ -249,6 +249,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Plot the *slope* of the discretionary curve as its own line — the implicit marginal tax rate the household actually faces, including benefit phase-outs and refundable-credit reductions, not just income-tax brackets. Each cliff would show as a brief spike to ≥100% (every $1 earned costs more than $1) followed by an elevated plateau through the recovery zone. Makes legible why a $4K Medicaid loss takes an $11K raise to climb out of: the marginal keep-rate is much worse than the headline tax bracket suggests once EITC/SNAP phase-downs and untaxed-benefit replacement costs stack up. Companion to the existing cliff curve.',
   },
   {
+    id: 166,
+    title: 'Sources list filter + search',
+    category: 'UX & navigation',
+    status: 'planned',
+    summary:
+      "Today /sources is one long scroll across 230+ citations. Add filter chips (tier, status, group) and free-text search (URL or label) so a reader can ask 'show me all broken citations' or 'show me everything from KFF' without manual scanning.",
+  },
+  {
     id: 165,
     title: 'Income-sweep cliff curve',
     category: 'Benefits & safety net',

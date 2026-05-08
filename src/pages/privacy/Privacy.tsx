@@ -125,7 +125,7 @@ function Intro() {
       </h1>
       <p style={proseStyle}>
         The short version:{' '}
-        <strong style={{ color: T.ink }}>this site runs entirely in your browser</strong>. No
+        <strong style={{ color: T.ink }}>the atlas runs entirely in your browser</strong>. No
         accounts, no forms, no cookies. Nothing you input — your income, location, household — is
         ever sent to a server we operate.
       </p>
@@ -164,15 +164,42 @@ function NoBackend() {
         leave the device.
       </p>
       <p style={proseStyle}>
-        <em>One precision footnote:</em> the site does run a small server-side piece — a Cloudflare
-        Worker plus a small database that powers the live citation-status indicators on the{' '}
-        <a href="/sources" style={linkStyle}>
+        <em>One precision footnote:</em> the project does run a small server-side piece that powers
+        the live citation-status indicators on the{' '}
+        <a
+          href="/sources"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/sources');
+          }}
+          style={linkStyle}
+        >
           /sources
         </a>{' '}
-        page. It works like a public link checker: it periodically hits each URL in our citation
-        list and stores the HTTP status code so we can flag broken citations. It never sees what you
-        type into the atlas, never receives household data of any kind, and only knows about our own
-        published source URLs. The full source is in{' '}
+        page. The pieces, separated honestly: a nightly{' '}
+        <a
+          href="https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/audit/links/check.sh"
+          target="_blank"
+          rel="noreferrer"
+          style={linkStyle}
+        >
+          GitHub Action
+        </a>{' '}
+        probes each URL in our citation list (the way a public link checker would), then a
+        Cloudflare Worker plus a small database persist and serve those results to the{' '}
+        <a
+          href="/sources"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/sources');
+          }}
+          style={linkStyle}
+        >
+          /sources
+        </a>{' '}
+        page so we can flag broken citations. None of it sees what you type into the atlas, none of
+        it receives household data of any kind, and the only URLs in scope are our own published
+        sources. The full Worker source is in{' '}
         <a
           href="https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/worker/index.ts"
           target="_blank"

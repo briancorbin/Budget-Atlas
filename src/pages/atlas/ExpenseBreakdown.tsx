@@ -8,7 +8,8 @@ import { EXPENSE_SOURCE, type ExpenseSource } from '@/lib/budget';
 
 const TIER_COLOR: Record<ExpenseSource['tier'], string> = {
   primary: '#5B7C3F', // muted green — primary BLS / agency
-  reference: '#A88A40', // muted gold — reference (KFF, EPI, etc.)
+  reference: '#A88A40', // muted gold — single-source reference (KFF, EPI, etc.)
+  mixed: '#6E7AA8', // muted blue — multi-source combinations (KFF + BLS, etc.)
   commercial: '#7A6B5A', // muted brown — commercial / proprietary
   none: '#B85C5C', // muted red — audit gap, no formal source
 };
@@ -16,6 +17,7 @@ const TIER_COLOR: Record<ExpenseSource['tier'], string> = {
 const TIER_NAME: Record<ExpenseSource['tier'], string> = {
   primary: 'Primary',
   reference: 'Reference',
+  mixed: 'Mixed',
   commercial: 'Commercial',
   none: 'No formal source',
 };
@@ -630,7 +632,21 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
               }}
             >
               <span style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>Source:</span>
-              {(['primary', 'reference', 'commercial', 'none'] as const).map((tier) => (
+              {/* Only show tiers actually used by the current EXPENSE_SOURCE
+                  entries — keeps the legend honest (no dot for "Reference"
+                  when no line uses it; dot appears when a future line does). */}
+              {(() => {
+                const used = new Set<ExpenseSource['tier']>();
+                for (const v of Object.values(EXPENSE_SOURCE)) used.add(v.tier);
+                const order: ExpenseSource['tier'][] = [
+                  'primary',
+                  'reference',
+                  'mixed',
+                  'commercial',
+                  'none',
+                ];
+                return order.filter((t) => used.has(t));
+              })().map((tier) => (
                 <span key={tier} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <span
                     style={{

@@ -43,7 +43,15 @@ import {
  */
 export interface ExpenseSource {
   label: string;
-  tier: 'primary' | 'reference' | 'commercial' | 'none';
+  /**
+   * The visual tier here labels how a *line* is sourced (not just the
+   * tier of a single source). Single-source lines use the underlying
+   * source's tier (primary / reference / commercial). Lines that
+   * combine multiple sources use 'mixed'. Lines without a formal
+   * source use 'none'. This is decoupled from `Source.tier` in
+   * sources.ts which classifies individual sources only.
+   */
+  tier: 'primary' | 'reference' | 'commercial' | 'mixed' | 'none';
   /** Short description shown in the hover popover. */
   description: string;
 }
@@ -76,7 +84,7 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
   'Vehicle (purchase)': BLS_CEX,
   Healthcare: {
     label: 'KFF (premium) + BLS CEX (OOP)',
-    tier: 'reference',
+    tier: 'mixed',
     description:
       'Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting.',
   },

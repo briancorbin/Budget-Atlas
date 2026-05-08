@@ -292,6 +292,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       "Condense the 15-line monthly cost-of-living view back to a scannable few rolled-up categories by default; let users expand any line to drill into its BLS CEX sub-categories (food at home vs away, premiums vs OOP, gas vs vehicle purchase vs other vehicle), with the household's income quintile and threshold context surfaced and a per-cell indicator of which geographic granularity (MSA / division / region) sourced the value. Companion to the BLS CEX line-item schema (#131) — the schema gave us the depth; this is what keeps the surface clean while still letting curious readers go deep.",
   },
   {
+    id: 203,
+    title: 'Essentials vs. lifestyle split',
+    category: 'Cost of living',
+    status: 'planned',
+    summary:
+      "Today's 'Discretionary' line is misnamed: it's the surplus AFTER deducting every line including dining out and entertainment, not income minus necessities. Split the BLS CEX line items into essentials (rent, utilities, groceries, healthcare, childcare, utilitarian transport) vs. lifestyle (dining out, entertainment, vehicle upgrades, fashion, furnishings) and surface two numbers: discretionary income (textbook) = take-home − essentials, and surplus = discretionary income − lifestyle. Reframes the cliff curve and unblocks the two-sided plan in #201.",
+  },
+  {
     id: 200,
     title: 'Demographic + population context',
     category: 'Cost of living',

@@ -38,7 +38,6 @@ export function MethodologyNote() {
         fontSize: rem(13),
         lineHeight: 1.65,
         color: T.inkSoft,
-        maxWidth: 760,
       }}
     >
       <div

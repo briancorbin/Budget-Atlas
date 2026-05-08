@@ -1,5 +1,5 @@
 import type { BudgetResult } from '@/types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
@@ -32,6 +32,19 @@ const TIER_NAME: Record<ExpenseSource['tier'], string> = {
  */
 function SourceBadge({ src }: { src: ExpenseSource }) {
   const [open, setOpen] = useState(false);
+  // Escape closes the popover, mirroring HoverGloss / Cite for a
+  // consistent dismissal across the popover family.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+  // Stable id wires aria-describedby → tooltip so screen readers
+  // reach the description text when the badge is focused.
+  const tooltipId = `source-tooltip-${src.label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
   return (
     <span
       onMouseEnter={() => setOpen(true)}
@@ -40,6 +53,7 @@ function SourceBadge({ src }: { src: ExpenseSource }) {
       onBlur={() => setOpen(false)}
       tabIndex={0}
       aria-label={`Source: ${src.label}`}
+      aria-describedby={open ? tooltipId : undefined}
       style={{
         position: 'relative',
         display: 'inline-flex',
@@ -61,6 +75,7 @@ function SourceBadge({ src }: { src: ExpenseSource }) {
       {open && (
         <span
           role="tooltip"
+          id={tooltipId}
           style={{
             position: 'absolute',
             bottom: 'calc(100% + 6px)',
@@ -610,7 +625,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
               <a
                 href="https://github.com/TheBudgetAtlas/thebudgetatlas/issues/190"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 style={{ color: T.accent }}
               >
                 issue #190

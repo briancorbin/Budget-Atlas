@@ -185,7 +185,9 @@ export interface BudgetResult {
    * Keys that aren't present here mean the shipped value already IS
    * the model value — no override happened.
    */
-  expenseModelNotes: Readonly<Record<string, { modelValue: number | null; reason: string }>>;
+  expenseModelNotes: Readonly<
+    Partial<Record<string, { modelValue: number | null; reason: string }>>
+  >;
   totalExpenses: number;
   /**
    * Sum of "essential" expense lines: housing, utilities, food at home,

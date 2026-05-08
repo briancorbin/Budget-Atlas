@@ -72,7 +72,7 @@ export function MethodologyNote() {
         <a
           href="https://github.com/TheBudgetAtlas/thebudgetatlas/issues/new?template=source-report.yml"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           style={linkStyle}
         >
           please report it

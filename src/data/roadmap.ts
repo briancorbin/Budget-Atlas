@@ -354,6 +354,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       "BLS CEX spending shape is a step function across quintile boundaries (q1Max=$29,931, q4Max=$155,924). Crossing a boundary makes modeled expenses jump, producing artifact 'pits' on the cliff curve that look identical to real benefit cliffs. Linear interpolation between published quintile means ($16,658 / $42,925 / $74,474 / $121,548 / $264,510) eliminates the steps; the income axis is now continuous.",
   },
   {
+    id: 208,
+    title: 'Per-line baseline comparison',
+    category: 'UX & navigation',
+    status: 'planned',
+    summary:
+      "For every expense line, show the income-quintile baseline ('average for your income') alongside the model's adjusted value ('after kids / city / lifestyle apply'), so personalization becomes visible — readers see what each input did to the number. Pairs naturally with #5 (lifestyle granularity).",
+  },
+  {
     id: 207,
     title: 'BLS composition cross-tab',
     category: 'Cost of living',

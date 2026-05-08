@@ -2,11 +2,14 @@
 
 The Budget Atlas is a mostly-static web app with a small Cloudflare Worker
 backend (the link-audit API at `/api/audit/*`, backed by a D1 database).
-There are no user accounts, no PII collection, no authentication for site
-visitors, and no client-side data persistence beyond URL state. The audit
-API is read-public and write-token-gated (the token lives only in the
-Worker secret + GitHub Actions repo secret). See [/privacy](https://thebudgetatlas.com/privacy)
-for the full transparency note on what data leaves the user's browser.
+There are no user accounts, no PII collection, and no authentication for
+site visitors. The app does persist the user's current budget configuration
+to `localStorage` (and encodes it into the URL for shareable links) so the
+view survives reload — see `src/lib/configShare.ts`. Nothing is sent to a
+server. The audit API is read-public and write-token-gated (the token
+lives only in the Worker secret + GitHub Actions repo secret). See
+[/privacy](https://thebudgetatlas.com/privacy) for the full transparency
+note on what data leaves the user's browser.
 
 Most classes of vulnerability that affect typical web services don't apply
 here — but supply-chain issues, build-pipeline tampering, third-party
@@ -32,9 +35,10 @@ When reporting, include:
 ## What's in scope
 
 - The deployed site at `thebudgetatlas.com` and any subdomains we operate.
-- The Cloudflare Worker + D1 audit API (`/api/audit/runs`, `/latest`,
-  `/history`, etc.) — auth gaps, D1 injection, write-token leaks, and any
-  way to corrupt or exfiltrate the audit dataset.
+- The Cloudflare Worker + D1 audit API (`/api/audit/runs`,
+  `/api/audit/latest`, `/api/audit/runs/:date`, `/api/audit/history`) —
+  auth gaps, D1 injection, write-token leaks, and any way to corrupt or
+  exfiltrate the audit dataset.
 - The build and deploy pipeline (Cloudflare Workers Builds, GitHub Actions
   workflows in `.github/workflows/`).
 - The contents of this repository, including dependency supply chain.

@@ -19,7 +19,7 @@ yarn test         # Vitest unit tests
 yarn verify       # typecheck + lint + format check + tests (the gate before opening a PR)
 ```
 
-Requires Node 20+. The package manager is **Yarn classic (1.x)** — install via `brew install yarn` or `corepack enable`. Don't use `npm` (it'll create a conflicting `package-lock.json`).
+Requires **Node 22** (pinned via `.nvmrc` and CI). The package manager is **Yarn 4** (`packageManager: yarn@4.9.1` in `package.json`), provisioned via Corepack — run `corepack enable` once and `yarn` will resolve to the pinned version. CI uses `yarn install --immutable`. Don't use `npm` (it'll create a conflicting `package-lock.json`).
 
 ## Project structure
 

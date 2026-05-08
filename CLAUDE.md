@@ -66,6 +66,16 @@ When making changes that touch tax math, sanity-check with a quick mental exampl
 - **Every data-driven page renders `<PageSources>`** at the bottom. It's the reusable footer that lists "Sources backing this view" + the dotted-underline citation list + a link to the full bibliography on `/sources`. Pass it the array of `Source` objects relevant to that page. Exception: the `/sources` page itself, which IS the bibliography.
 - **Every resolved audit issue writes a row to `audit/links/reviewed.tsv`.** This is the unified resolution log — the durable "this got handled" record, regardless of whether the resolution was "validated as-is," "URL updated," "data corrected," or "citation removed." Code changes (sources.ts edit, data-file edit, removal) happen alongside but `reviewed.tsv` is always the canonical entry point for "what's been resolved."
 
+## AI process conventions
+
+Two files at the repo root track how AI shows up in this project: `AI_TIME_LOG.md` (quantitative — hours per PR) and `AI_LEARNINGS.md` (qualitative — patterns, traps, instincts). Both are maintainer-tracked. The PR template surfaces both at merge time. Two rules apply to anyone using AI assistance on this repo:
+
+- **`AI_TIME_LOG.md` — running estimate, updated during the PR.** The `## AI time log` section in the PR description is not a one-time fill at merge. Bump the numbers as you work: when review feedback adds another round, when scope grows, when the original estimate turns out off. The final state at merge is what feeds the row in `AI_TIME_LOG.md`. Calibration over time is the goal; precision isn't.
+
+- **`AI_LEARNINGS.md` — author-only content. Never pre-fill on the author's behalf.** Entries here exist to capture the maintainer's unfiltered first-person observations about working with AI on this project. **AI assistants must not propose, draft, or synthesize entries — even based on the conversation, even when the author is signing off, even with a "no new entry" placeholder.** Transcribing verbatim what the author dictates is fine; everything else launders AI prose as the author's voice and defeats the file's purpose. The PR description's `## AI learnings` section is the same: leave it blank for the author. If the author hasn't said anything, the section stays empty.
+
+These are project conventions, not personal preferences — they're meant to apply to every Claude (or other AI assistant) collaborator on this repo, not just one maintainer. If you find yourself about to write text into either file or section that didn't originate from the human, stop.
+
 ## Adding a new city
 
 1. Open `src/data/cities.ts`.
@@ -83,8 +93,8 @@ When making changes that touch tax math, sanity-check with a quick mental exampl
 
 1. `src/data/federalTax.ts` — replace the 2026 numbers.
 2. `src/data/states.ts` — update state rates and minimum wages.
-3. `src/components/Masthead.tsx` — bump the "Vol. 2026" label.
-4. `src/components/Notes.tsx` — update the data citation footer.
+3. `src/pages/atlas/Masthead.tsx` — bump the "Vol. 2026" label.
+4. `src/pages/atlas/Notes.tsx` — update the data citation footer.
 
 ## What's deliberately NOT in the model
 

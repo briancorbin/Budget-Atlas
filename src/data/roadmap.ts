@@ -300,6 +300,24 @@ export const ROADMAP: readonly RoadmapItem[] = [
       "Today's 'Discretionary' line is misnamed: it's the surplus AFTER deducting every line including dining out and entertainment, not income minus necessities. Split the BLS CEX line items into essentials (rent, utilities, groceries, healthcare, childcare, utilitarian transport) vs. lifestyle (dining out, entertainment, vehicle upgrades, fashion, furnishings) and surface two numbers: discretionary income (textbook) = take-home − essentials, and surplus = discretionary income − lifestyle. Reframes the cliff curve and unblocks the two-sided plan in #201.",
   },
   {
+    id: 202,
+    title: 'Smooth CEX quintile transitions',
+    category: 'Cost of living',
+    status: 'in-progress',
+    startedAt: '2026-05-08',
+    progress: 90,
+    summary:
+      "BLS CEX spending shape is a step function across quintile boundaries (q1Max=$29,931, q4Max=$155,924). Crossing a boundary makes modeled expenses jump, producing artifact 'pits' on the cliff curve that look identical to real benefit cliffs. Linear interpolation between published quintile means ($16,658 / $42,925 / $74,474 / $121,548 / $264,510) eliminates the steps; the income axis is now continuous.",
+  },
+  {
+    id: 201,
+    title: 'Two-sided discretionary plan',
+    category: 'Household detail',
+    status: 'planned',
+    summary:
+      "Today the model only allocates surplus (savings / vacation / splurge / emergency) when discretionary is positive. Generalize: when it's negative, surface concrete gap-closing levers ranked by impact — claimable benefits the household isn't using, lifestyle step-down, lower-rent housing tier, transit vs. car, childcare alternatives — with the dollar delta of each. Symmetric guidance whether the household has $400 left over or is $400 short.",
+  },
+  {
     id: 200,
     title: 'Demographic + population context',
     category: 'Cost of living',

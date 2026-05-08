@@ -209,6 +209,14 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Today every dollar is treated as W-2 wages. Add the income types that get taxed differently — Social Security, pensions and traditional 401(k), Roth withdrawals, long-term capital gains, municipal bond interest, unemployment, SE income. Likely shipped in waves; SS + retirement first.',
   },
   {
+    id: 206,
+    title: 'Marginalia (weekly notes)',
+    category: 'Transparency',
+    status: 'planned',
+    summary:
+      "Weekly-cadence microsite for project updates, time-save retros, and lessons learned — same editorial voice as the explorer. Likely static markdown at blog.thebudgetatlas.com (Cloudflare Pages). Working name 'Marginalia' (editorial-margin notes + financial-margin pun); open to alternatives (The Margin, Field Notes, Dispatches).",
+  },
+  {
     id: 21,
     title: 'Funding transparency dashboard',
     category: 'Transparency',

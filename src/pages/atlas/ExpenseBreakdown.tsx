@@ -447,54 +447,89 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                   >
                     {SECTION_HEADER[kind].label}
                   </div>
-                  {sectionRows.map((r) => (
-                    <div key={r.def.id} style={{ marginBottom: 14 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'baseline',
-                          marginBottom: 6,
-                        }}
-                      >
-                        <span
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, color: T.ink }}
+                  {/* Two-column grid keeps each rollup card narrow so the
+                      label and dollar amount sit close together. Cards
+                      reflow to one column on narrow viewports. */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: '8px 32px',
+                    }}
+                  >
+                    {sectionRows.map((r) => (
+                      <div key={r.def.id} style={{ marginBottom: 6 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'baseline',
+                            gap: 12,
+                            marginBottom: 4,
+                          }}
                         >
                           <span
                             style={{
-                              width: 6,
-                              height: 6,
-                              background: r.color,
-                              display: 'inline-block',
-                            }}
-                          />
-                          <span style={{ fontWeight: 600, fontSize: rem(13) }}>{r.def.label}</span>
-                        </span>
-                        <span style={{ fontFamily: fonts.mono, fontSize: rem(13), color: T.ink }}>
-                          {fmt(r.total)}
-                        </span>
-                      </div>
-                      {[...r.lines]
-                        .sort((a, b) => b.value - a.value)
-                        .map((line) => (
-                          <div
-                            key={line.label}
-                            style={{
                               display: 'flex',
-                              justifyContent: 'space-between',
-                              padding: '4px 0 4px 14px',
-                              fontSize: rem(12),
-                              color: T.inkSoft,
+                              alignItems: 'center',
+                              gap: 8,
+                              color: T.ink,
+                              minWidth: 0,
                             }}
                           >
-                            <span>{line.label}</span>
-                            <span style={{ fontFamily: fonts.mono, color: T.ink }}>
-                              {fmt(line.value)}
+                            <span
+                              style={{
+                                width: 6,
+                                height: 6,
+                                background: r.color,
+                                display: 'inline-block',
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span style={{ fontWeight: 600, fontSize: rem(13) }}>
+                              {r.def.label}
                             </span>
-                          </div>
-                        ))}
-                    </div>
-                  ))}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: fonts.mono,
+                              fontSize: rem(13),
+                              color: T.ink,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {fmt(r.total)}
+                          </span>
+                        </div>
+                        {[...r.lines]
+                          .sort((a, b) => b.value - a.value)
+                          .map((line) => (
+                            <div
+                              key={line.label}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                padding: '3px 0 3px 14px',
+                                fontSize: rem(12),
+                                color: T.inkSoft,
+                              }}
+                            >
+                              <span style={{ minWidth: 0 }}>{line.label}</span>
+                              <span
+                                style={{
+                                  fontFamily: fonts.mono,
+                                  color: T.ink,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {fmt(line.value)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}

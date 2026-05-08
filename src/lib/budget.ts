@@ -25,6 +25,47 @@ import {
  * essentials with discretionary), filed as lifestyle because the
  * discretionary share dominates spending in those categories.
  */
+/**
+ * Per-line source attribution. Drives the small "source: X" label in
+ * the detail-view UI so a reader can tell at a glance whether a number
+ * came from BLS CEX, a commercial dataset, or a hand-tuned formula.
+ *
+ * Healthcare is mixed: the premium component comes from KFF (reference
+ * tier), the OOP component from BLS CEX (primary tier). Both are
+ * surfaced.
+ *
+ * Audit gaps: Phone & Internet, Insurance, and Transit currently
+ * carry no formal source (Phone+Internet and Insurance are hand
+ * formulas in this file; Transit is a per-city curated value in
+ * cityData with no published source citation). These are flagged as
+ * `tier: 'none'` so the UI can render them honestly rather than
+ * pretending they're cited.
+ */
+export const EXPENSE_SOURCE: Record<
+  string,
+  { label: string; tier: 'primary' | 'reference' | 'commercial' | 'none' }
+> = {
+  Housing: { label: 'RentCafe / Zillow', tier: 'commercial' },
+  Utilities: { label: 'BLS CEX', tier: 'primary' },
+  'Food at home': { label: 'BLS CEX', tier: 'primary' },
+  'Food away': { label: 'BLS CEX', tier: 'primary' },
+  Transit: { label: 'Transit-agency rates (uncited)', tier: 'none' },
+  Gasoline: { label: 'BLS CEX', tier: 'primary' },
+  'Vehicle (insurance & maint.)': { label: 'BLS CEX', tier: 'primary' },
+  'Vehicle (purchase)': { label: 'BLS CEX', tier: 'primary' },
+  Healthcare: { label: 'KFF (premium) + BLS CEX (OOP)', tier: 'reference' },
+  Childcare: { label: 'Care.com', tier: 'commercial' },
+  'Phone & Internet': { label: 'Hand formula (uncited)', tier: 'none' },
+  Insurance: { label: 'Hand formula (uncited)', tier: 'none' },
+  Apparel: { label: 'BLS CEX', tier: 'primary' },
+  Entertainment: { label: 'BLS CEX', tier: 'primary' },
+  'Personal Care': { label: 'BLS CEX', tier: 'primary' },
+  Education: { label: 'BLS CEX', tier: 'primary' },
+  'Household Operations': { label: 'BLS CEX', tier: 'primary' },
+  'Housekeeping Supplies': { label: 'BLS CEX', tier: 'primary' },
+  Furnishings: { label: 'BLS CEX', tier: 'primary' },
+};
+
 export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
   Housing: 'essential',
   Utilities: 'essential',

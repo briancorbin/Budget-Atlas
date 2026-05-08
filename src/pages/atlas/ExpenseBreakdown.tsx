@@ -4,6 +4,14 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { SectionTitle } from '@/components/ui';
+import { EXPENSE_SOURCE } from '@/lib/budget';
+
+const TIER_COLOR: Record<'primary' | 'reference' | 'commercial' | 'none', string> = {
+  primary: '#5B7C3F', // muted green — primary BLS / agency
+  reference: '#A88A40', // muted gold — reference (KFF, EPI, etc.)
+  commercial: '#7A6B5A', // muted brown — commercial / proprietary
+  none: '#B85C5C', // muted red — audit gap, no formal source
+};
 
 /**
  * Rollup definitions. Each rollup is a high-level category visible in
@@ -626,7 +634,38 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                     gap: 12,
                                   }}
                                 >
-                                  <span style={{ minWidth: 0 }}>{line.label}</span>
+                                  <span
+                                    style={{
+                                      minWidth: 0,
+                                      display: 'inline-flex',
+                                      alignItems: 'baseline',
+                                      gap: 6,
+                                      flexWrap: 'wrap',
+                                    }}
+                                  >
+                                    <span>{line.label}</span>
+                                    {(() => {
+                                      const src = EXPENSE_SOURCE[line.label];
+                                      if (!src) return null;
+                                      return (
+                                        <span
+                                          title={`Source: ${src.label}`}
+                                          style={{
+                                            fontSize: rem(9),
+                                            letterSpacing: '0.08em',
+                                            textTransform: 'uppercase',
+                                            color: TIER_COLOR[src.tier],
+                                            border: `1px solid ${TIER_COLOR[src.tier]}`,
+                                            padding: '0 5px',
+                                            borderRadius: 2,
+                                            opacity: 0.85,
+                                          }}
+                                        >
+                                          {src.label}
+                                        </span>
+                                      );
+                                    })()}
+                                  </span>
                                   <span
                                     style={{
                                       fontFamily: fonts.mono,

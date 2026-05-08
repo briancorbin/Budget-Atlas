@@ -252,10 +252,24 @@ export function IncomePosition({ result }: { result: BudgetResult }) {
             lineHeight: 1.6,
           }}
         >
-          {fmt(income)}/yr puts this household in the <strong>{qLabel[quintile]}</strong> of US
-          households — {fmt(meanDelta)} {aboveOrBelow} the {quintile.toUpperCase()} mean of{' '}
-          {fmt(meanForQ)}. The average {region} household earns {fmt(regionalMean)}; this household
-          is {fmt(regionDelta)} {regionAboveOrBelow}.
+          {fmt(income)}/yr puts this household in the <strong>{qLabel[quintile]}</strong> of US{' '}
+          <span
+            title={
+              'BLS surveys "consumer units" — people who share major expenses. ' +
+              'Roughly the same as a household (a married couple = one CU = one household), ' +
+              'with edge cases: unrelated roommates with separate finances count as separate CUs ' +
+              'even in one address. There are ~135.8M CUs in the 2024 sample.'
+            }
+            style={{
+              borderBottom: `1px dotted ${T.inkSoft}`,
+              cursor: 'help',
+            }}
+          >
+            households
+          </span>{' '}
+          — {fmt(meanDelta)} {aboveOrBelow} the {quintile.toUpperCase()} mean of {fmt(meanForQ)}.
+          The average {region} household earns {fmt(regionalMean)}; this household is{' '}
+          {fmt(regionDelta)} {regionAboveOrBelow}.
         </div>
 
         <div

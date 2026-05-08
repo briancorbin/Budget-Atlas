@@ -587,16 +587,17 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                           .sort((a, b) => b.value - a.value)
                           .map((line) => {
                             const note = result.expenseModelNotes[line.label];
-                            // A line is "overridden" when expenseModelNotes
-                            // has an entry AND the modelValue (when known)
-                            // differs from the shipped value. Lines without
-                            // a BLS counterpart (modelValue: null) are
-                            // always treated as overridden — there's no
-                            // pure-model value to fall back to.
-                            const isOverridden =
+                            // The strike+arrow comparison only makes sense
+                            // when there's a real BLS number to compare
+                            // against. For lines without a BLS counterpart
+                            // (Childcare, Transit — sourced from cityData /
+                            // Care.com), modelValue is null and we just
+                            // show the shipped value with the reason —
+                            // no fake "n/a → $0" comparison.
+                            const showComparison =
                               !!note &&
-                              (note.modelValue === null ||
-                                Math.abs(note.modelValue - line.value) > 0.5);
+                              note.modelValue !== null &&
+                              Math.abs(note.modelValue - line.value) > 0.5;
                             return (
                               <div
                                 key={line.label}
@@ -623,7 +624,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                       gap: 6,
                                     }}
                                   >
-                                    {isOverridden && (
+                                    {showComparison && note.modelValue !== null && (
                                       <>
                                         <span
                                           style={{
@@ -631,7 +632,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                             textDecoration: 'line-through',
                                           }}
                                         >
-                                          {note.modelValue !== null ? fmt(note.modelValue) : 'n/a'}
+                                          {fmt(note.modelValue)}
                                         </span>
                                         <span style={{ color: T.inkMuted }}>→</span>
                                       </>
@@ -639,7 +640,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                     <span style={{ color: T.ink }}>{fmt(line.value)}</span>
                                   </span>
                                 </div>
-                                {isOverridden && note && (
+                                {note && (
                                   <div
                                     style={{
                                       fontSize: rem(11),

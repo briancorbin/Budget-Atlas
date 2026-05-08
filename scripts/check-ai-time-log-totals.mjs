@@ -32,7 +32,10 @@ if (totalsLineIdx === -1) {
 }
 
 const parseHours = (cell) => {
-  const m = cell.replace(/[*_~`]/g, '').trim().match(/^(-?[\d.]+)h$/);
+  const m = cell
+    .replace(/[*_~`]/g, '')
+    .trim()
+    .match(/^(-?[\d.]+)h$/);
   if (!m) return null;
   return parseFloat(m[1]);
 };

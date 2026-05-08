@@ -337,9 +337,8 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 203,
     title: 'Essentials vs. lifestyle split',
     category: 'Cost of living',
-    status: 'in-progress',
-    startedAt: '2026-05-08',
-    progress: 80,
+    status: 'shipped',
+    shippedAt: '2026-05-08',
     summary:
       "Today's 'Discretionary' line is misnamed: it's the surplus AFTER deducting every line including dining out and entertainment, not income minus necessities. Split the BLS CEX line items into essentials (rent, utilities, groceries, healthcare, childcare, utilitarian transport) vs. lifestyle (dining out, entertainment, vehicle upgrades, fashion, furnishings) and surface two numbers: discretionary income (textbook) = take-home − essentials, and surplus = discretionary income − lifestyle. Reframes the cliff curve and unblocks the two-sided plan in #201.",
   },
@@ -347,9 +346,8 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 202,
     title: 'Smooth CEX quintile transitions',
     category: 'Cost of living',
-    status: 'in-progress',
-    startedAt: '2026-05-08',
-    progress: 90,
+    status: 'shipped',
+    shippedAt: '2026-05-08',
     summary:
       "BLS CEX spending shape is a step function across quintile boundaries (q1Max=$29,931, q4Max=$155,924). Crossing a boundary makes modeled expenses jump, producing artifact 'pits' on the cliff curve that look identical to real benefit cliffs. Linear interpolation between published quintile means ($16,658 / $42,925 / $74,474 / $121,548 / $264,510) eliminates the steps; the income axis is now continuous.",
   },

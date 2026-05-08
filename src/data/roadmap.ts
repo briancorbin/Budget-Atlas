@@ -318,6 +318,22 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'The income-position thermometer (#187) currently overlays the BLS Census-region average ($94K South / $97K Midwest / $116K Northeast / $120K West). State-level is the more useful cut — Mississippi vs. Massachusetts vs. California are very different stories within their regions. Pull median household income by state from Census ACS 1-year (2024) and add a state-marker that supersedes the regional one when present. Adds the Census ACS source to the registry with a paired reviewed.tsv row.',
   },
   {
+    id: 205,
+    title: 'Expand income thermometer',
+    category: 'Geography',
+    status: 'planned',
+    summary:
+      'Expand the income thermometer (#187) beyond a fixed national + regional view: scope toggles (national / region / state / MSA where available), comparison mode (Midwest vs. NYC, two cities side-by-side), richer per-scope anchors (median + mean + percentile floors).',
+  },
+  {
+    id: 204,
+    title: 'State-level median income marker',
+    category: 'Geography',
+    status: 'planned',
+    summary:
+      'The income-position thermometer (#187) currently overlays the BLS Census-region average ($94K South / $97K Midwest / $116K Northeast / $120K West). State-level is the more useful cut — Mississippi vs. Massachusetts vs. California are very different stories within their regions. Pull median household income by state from Census ACS 1-year (2024) and add a state-marker that supersedes the regional one when present. Adds the Census ACS source to the registry with a paired reviewed.tsv row.',
+  },
+  {
     id: 203,
     title: 'Essentials vs. lifestyle split',
     category: 'Cost of living',

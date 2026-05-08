@@ -15,6 +15,30 @@ The point is calibration over time. After 50+ entries the patterns become visibl
 
 <!-- Newest entries at the top. -->
 
+### 2026-05-07 — The multiplier may be skewed low because solo would also produce worse output `[trust]`
+
+Asked whether the calibrated ~4× multiplier matched my gut. Answer: lower than expected, but maybe not — solo would have meant a lot of research and learning-while-doing, which is a huge time sink _and_ produces a less cohesive product (because the half-learning gets baked into the codebase as inconsistencies). The time log captures hours saved but can't capture the quality dimension: AI's leverage isn't just "Brian goes faster," it's "Brian doesn't have to half-learn five things at once and ship the half-learning as architecture."
+
+### 2026-05-07 — Spot-correct beats fill-in-blank for backfill `[process]`
+
+For the 22-PR time log backfill, Claude proposed estimates with confidence flags rather than asking 22 questions. Useful, "especially as memory fades." Convention going forward: when the user has to recall something fuzzy, lead with proposed numbers + uncertainty markers, not blank prompts. Recognition beats recall.
+
+### 2026-05-07 — Letting AI prune branches felt good and scary `[trust] [scope]`
+
+Deleted ~25 stale local + remote branches in one session, including 20 force-pushed `--delete`s. "Felt so nice but kinda scary. Did it haphazardly with this project because I knew most of my stuff was safe and linear." Caveat for future: in larger projects, with collaborators, or when juggling multiple in-flight things, the same blast-radius action would warrant a more curated pass — verify each branch's status, ask before bulk deletes. Project context determines whether "drop the bomb" is OK or a mistake.
+
+### 2026-05-07 — Worktrees: great until they're not `[tooling]`
+
+"One second I'm working in one directory, the next I'm making changes to the wrong version of the repo and wondering why nothing is changing for me on the app." The cwd-vs-main split is too easy to lose track of mid-task. Saved as a memory already (don't use worktrees unless asked). Open question for later: is there a project shape where worktrees actually pay rent here, or is single-checkout the permanent right answer?
+
+### 2026-05-07 — Memory toggle was off and I didn't know `[memory] [meta]`
+
+Realized late in the day: the in-product Claude Code memory feature wasn't toggled on. Unclear what that's affected. The file-based memory system Claude has been writing to (`~/.claude/projects/.../memory/`) is separate and gets loaded into context as system reminders at session start, so today's saves should be effective on next restart — but worth verifying explicitly on session resume rather than assuming. The "I'll save this to memory" moments don't always map to a single mechanism.
+
+### 2026-05-07 — Compaction is a real throughput lever `[meta]`
+
+End-of-session observation: "compact, compact, compact, or don't and hit your limit with 3 hours to sit around and do nothing." The auto-compact rhythm is the difference between continuing to work and burning quota waiting. No clean answer, just naming it — when sessions go long, compaction strategy starts mattering more than tool choice or model choice.
+
 ### 2026-05-07 — Worktree cleanup as a forcing function `[process]`
 
 Accidentally deleted my Claude worktree and panicked about losing memory. Memory turned out to be in `~/.claude/` (separate from the worktree), so nothing was lost — but the panic itself surfaced that I'd been operating without a clear mental model of what's where. Worth knowing: memory is durable, worktrees are disposable, branches are recoverable via reflog. Don't overload one mechanism with assumptions about another.
@@ -33,4 +57,4 @@ Spent ~6 minutes scaffolding `AI_TIME_LOG.md`; would have spent ~45 minutes solo
 
 A periodically-rewritten distillation of the entries above. Not authoritative — entries are. This section is the cliff-notes a future-me can scan in 30 seconds.
 
-- _Too few entries yet to synthesize. Revisit at ~10 entries._
+- _9 entries — synthesis pending until ~15. Threads forming: trust calibration when AI takes destructive actions; the gap between "hours saved" and "quality of output"; memory/tooling-mechanism transparency; project-context-dependent risk tolerance._

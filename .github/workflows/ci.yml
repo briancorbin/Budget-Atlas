@@ -51,6 +51,8 @@ jobs:
             run: node scripts/check-source-pairing.mjs
           - name: reviewed-immutable
             run: node scripts/check-reviewed-immutable.mjs
+          - name: ai-time-log-row
+            run: node scripts/check-ai-time-log-row.mjs
 
     steps:
       - uses: actions/checkout@v6

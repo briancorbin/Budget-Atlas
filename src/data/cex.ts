@@ -1221,18 +1221,26 @@ export function geoGranularityFor(inputs: {
 }
 
 /**
- * Build the per-quintile vector for a single line item — used as input
- * to `smoothNationalQuintile`.
+ * Per-line-item quintile vector, precomputed once at module init.
+ * `computeBudget` runs in tight sweeps (the cliff curve takes ~50 income
+ * samples × ~15 line items each), so allocating a fresh `{q1..q5}`
+ * object per lookup would create avoidable GC churn. Built once here
+ * and reused by every call into `smoothNationalQuintile`.
  */
-function quintileVector(item: BLSCEXLineItem): Readonly<Record<IncomeQuintile, number>> {
-  return {
-    q1: NATIONAL_QUINTILE_SPENDING.q1[item],
-    q2: NATIONAL_QUINTILE_SPENDING.q2[item],
-    q3: NATIONAL_QUINTILE_SPENDING.q3[item],
-    q4: NATIONAL_QUINTILE_SPENDING.q4[item],
-    q5: NATIONAL_QUINTILE_SPENDING.q5[item],
-  };
-}
+const QUINTILE_VECTORS: Readonly<Record<BLSCEXLineItem, Readonly<Record<IncomeQuintile, number>>>> =
+  (() => {
+    const out = {} as Record<BLSCEXLineItem, Record<IncomeQuintile, number>>;
+    for (const item of BLS_CEX_LINE_ITEMS) {
+      out[item] = {
+        q1: NATIONAL_QUINTILE_SPENDING.q1[item],
+        q2: NATIONAL_QUINTILE_SPENDING.q2[item],
+        q3: NATIONAL_QUINTILE_SPENDING.q3[item],
+        q4: NATIONAL_QUINTILE_SPENDING.q4[item],
+        q5: NATIONAL_QUINTILE_SPENDING.q5[item],
+      };
+    }
+    return out;
+  })();
 
 /**
  * Compute a single line item's annual spending for a (state × income ×
@@ -1256,7 +1264,7 @@ export function cexLineItemSpending(
   const division = STATE_TO_DIVISION[state];
   return blendCexSpending({
     nationalAllCU: NATIONAL_ALLCU_SPENDING[item],
-    nationalQuintile: smoothNationalQuintile(grossIncome, quintileVector(item)),
+    nationalQuintile: smoothNationalQuintile(grossIncome, QUINTILE_VECTORS[item]),
     divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
   });
@@ -1285,7 +1293,7 @@ export function cexLineItemSpendingForCity(
   const msaAllCU = msa ? MSA_ALLCU_SPENDING[msa][item] : undefined;
   const inputs = {
     nationalAllCU: NATIONAL_ALLCU_SPENDING[item],
-    nationalQuintile: smoothNationalQuintile(grossIncome, quintileVector(item)),
+    nationalQuintile: smoothNationalQuintile(grossIncome, QUINTILE_VECTORS[item]),
     msaAllCU,
     divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
     regionAllCU: REGION_ALLCU_SPENDING[region][item],

@@ -414,10 +414,9 @@ describe('cexLineItemSpending (end-to-end with real BLS data)', () => {
   // Use the published quintile mean incomes as test inputs — at exactly
   // the quintile mean, the smoothed value equals that quintile's
   // published spending, so hand-computed expectations stay valid.
-  const Q1_MEAN = 16_658;
-  const Q3_MEAN = 74_474;
-  const Q4_MEAN = 121_548;
-  const Q5_MEAN = 264_510;
+  // Reference the registry directly so these stay in lockstep if the
+  // published means are ever updated.
+  const { q1: Q1_MEAN, q3: Q3_MEAN, q4: Q4_MEAN, q5: Q5_MEAN } = QUINTILE_MEANS_2024_BEFORE_TAX;
 
   it('returns positive non-zero values for every state × quintile-mean × line item', () => {
     for (const item of BLS_CEX_LINE_ITEMS) {
@@ -558,7 +557,12 @@ describe('cexLineItemSpendingForCity (city-aware city → MSA → division → r
     // At grossIncome = q3 mean ($74,474), smoothing returns the q3 value
     // exactly. foodAway: q3 nationalQuintile = 3277, NYC MSA = 4679, national = 3939.
     // Expected: 3277 × (4679 / 3939) ≈ 3893.4
-    const { spending, granularity } = cexLineItemSpendingForCity('nyc', 'NY', 74_474, 'foodAway');
+    const { spending, granularity } = cexLineItemSpendingForCity(
+      'nyc',
+      'NY',
+      QUINTILE_MEANS_2024_BEFORE_TAX.q3,
+      'foodAway',
+    );
     expect(spending).toBeCloseTo(3277 * (4679 / 3939), 1);
     expect(granularity).toBe('msa');
   });
@@ -569,7 +573,7 @@ describe('cexLineItemSpendingForCity (city-aware city → MSA → division → r
     const { spending, granularity } = cexLineItemSpendingForCity(
       'nyc',
       'NY',
-      74_474,
+      QUINTILE_MEANS_2024_BEFORE_TAX.q3,
       'utilitiesElectricGas',
     );
     expect(spending).toBeGreaterThan(0);
@@ -579,7 +583,12 @@ describe('cexLineItemSpendingForCity (city-aware city → MSA → division → r
   it('falls through to division when the city has no MSA mapping', () => {
     // Austin (aus) is not in CITY_TO_MSA — should use Texas division
     // (West South Central).
-    const { spending, granularity } = cexLineItemSpendingForCity('aus', 'TX', 121_548, 'foodAway');
+    const { spending, granularity } = cexLineItemSpendingForCity(
+      'aus',
+      'TX',
+      QUINTILE_MEANS_2024_BEFORE_TAX.q4,
+      'foodAway',
+    );
     expect(spending).toBeGreaterThan(0);
     expect(granularity).toBe('division');
   });

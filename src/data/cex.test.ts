@@ -11,6 +11,11 @@ import {
   REGION_ALLCU_SPENDING,
   DIVISION_ALLCU_SPENDING,
   NATIONAL_QUINTILE_SPENDING,
+  MSA_ALLCU_SPENDING,
+  MSA_TO_REGION,
+  CITY_TO_MSA,
+  cexLineItemSpendingForCity,
+  geoGranularityFor,
 } from './cex';
 import type { StateCode } from '@/types';
 
@@ -395,5 +400,143 @@ describe('cexLineItemSpending (end-to-end with real BLS data)', () => {
     // Expected: 4682 × (4231 / 3939) ≈ 5028.6
     const got = cexLineItemSpending('NY', 'q4', 'foodAway');
     expect(got).toBeCloseTo(4682 * (4231 / 3939), 1);
+  });
+});
+
+describe('MSA_ALLCU_SPENDING (BLS CEX 2023-2024 MSA tables)', () => {
+  const ALL_22 = [
+    'New York',
+    'Philadelphia',
+    'Boston',
+    'Chicago',
+    'Detroit',
+    'Minneapolis-St. Paul',
+    'St. Louis',
+    'Washington DC',
+    'Baltimore',
+    'Atlanta',
+    'Miami',
+    'Dallas-Fort Worth',
+    'Houston',
+    'Tampa',
+    'Los Angeles',
+    'San Francisco',
+    'San Diego',
+    'Seattle',
+    'Phoenix',
+    'Denver',
+    'Honolulu',
+    'Anchorage',
+  ] as const;
+
+  it('covers all 22 MSAs', () => {
+    for (const msa of ALL_22) {
+      expect(MSA_ALLCU_SPENDING[msa]).toBeDefined();
+    }
+    expect(Object.keys(MSA_ALLCU_SPENDING).sort()).toEqual([...ALL_22].sort());
+  });
+
+  it('every MSA → region mapping is consistent (no orphans)', () => {
+    for (const msa of ALL_22) {
+      expect(MSA_TO_REGION[msa]).toBeDefined();
+    }
+  });
+
+  it('populates 12 of 15 line items per MSA — utilities/healthcare composites omitted', () => {
+    // BLS publishes MSA utilities as a single rolled-up "Utilities, fuels,
+    // and public services" and MSA healthcare as a single rolled-up
+    // "Healthcare" — neither broken out into our schema's sub-fields. So
+    // utilitiesElectricGas, utilitiesWaterPublic, and healthcareOOP stay
+    // undefined per MSA and the blend falls through to division.
+    const expectedPopulated = [
+      'foodAtHome',
+      'foodAway',
+      'gasoline',
+      'vehiclePurchase',
+      'vehicleOther',
+      'apparel',
+      'entertainment',
+      'personalCare',
+      'education',
+      'householdOperations',
+      'housekeepingSupplies',
+      'furnishings',
+    ] as const;
+    const expectedMissing = [
+      'utilitiesElectricGas',
+      'utilitiesWaterPublic',
+      'healthcareOOP',
+    ] as const;
+    for (const msa of ALL_22) {
+      for (const item of expectedPopulated) {
+        expect(MSA_ALLCU_SPENDING[msa][item], `${msa} / ${item}`).toBeGreaterThan(0);
+      }
+      for (const item of expectedMissing) {
+        expect(MSA_ALLCU_SPENDING[msa][item], `${msa} / ${item}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('matches a few known cells from BLS Tables 3004/3024/3033', () => {
+    expect(MSA_ALLCU_SPENDING['New York'].foodAway).toBe(4679);
+    expect(MSA_ALLCU_SPENDING['San Francisco'].foodAway).toBe(7143);
+    expect(MSA_ALLCU_SPENDING['Miami'].education).toBe(493);
+    expect(MSA_ALLCU_SPENDING['Honolulu'].foodAtHome).toBe(8502);
+  });
+});
+
+describe('CITY_TO_MSA', () => {
+  it('only maps curated city slugs that have a direct BLS MSA match', () => {
+    // 11 cities have direct MSA matches; the rest fall back to state.
+    expect(Object.keys(CITY_TO_MSA).sort()).toEqual(
+      ['atl', 'bos', 'chi', 'dc', 'den', 'la', 'mia', 'nyc', 'phx', 'sea', 'sf'].sort(),
+    );
+  });
+
+  it('every mapped MSA exists in MSA_ALLCU_SPENDING', () => {
+    for (const msa of Object.values(CITY_TO_MSA)) {
+      expect(MSA_ALLCU_SPENDING[msa]).toBeDefined();
+    }
+  });
+});
+
+describe('cexLineItemSpendingForCity (city-aware city → MSA → division → region)', () => {
+  it('uses MSA when the city has a mapping and the MSA cell is populated', () => {
+    // foodAway: q3 nationalQuintile = 3277, NYC MSA = 4679, national = 3939.
+    // Expected: 3277 × (4679 / 3939) ≈ 3893.4
+    const { spending, granularity } = cexLineItemSpendingForCity('nyc', 'NY', 'q3', 'foodAway');
+    expect(spending).toBeCloseTo(3277 * (4679 / 3939), 1);
+    expect(granularity).toBe('msa');
+  });
+
+  it('falls through to division for line items not broken out at MSA level', () => {
+    // utilitiesElectricGas: not published per MSA. NYC should fall through
+    // to Middle Atlantic division (2783).
+    const { spending, granularity } = cexLineItemSpendingForCity(
+      'nyc',
+      'NY',
+      'q3',
+      'utilitiesElectricGas',
+    );
+    expect(spending).toBeGreaterThan(0);
+    expect(granularity).toBe('division');
+  });
+
+  it('falls through to division when the city has no MSA mapping', () => {
+    // Austin (aus) is not in CITY_TO_MSA — should use Texas division
+    // (West South Central).
+    const { spending, granularity } = cexLineItemSpendingForCity('aus', 'TX', 'q4', 'foodAway');
+    expect(spending).toBeGreaterThan(0);
+    expect(granularity).toBe('division');
+  });
+
+  it('reports null granularity when nothing was populated', () => {
+    // Synthesize via the pure helper to ensure the all-zero path returns null.
+    const granularity = geoGranularityFor({
+      msaAllCU: undefined,
+      divisionAllCU: undefined,
+      regionAllCU: 0,
+    });
+    expect(granularity).toBe(null);
   });
 });

@@ -25,15 +25,20 @@
  * list and per-item exceptions.
  *
  * Status:
- *   - Geographic data (national all-CU, region all-CU, division all-CU)
- *     populated from BLS CEX 2023-2024 two-year-average tables.
- *   - Income-quintile data (NATIONAL_QUINTILE_SPENDING,
- *     QUINTILE_THRESHOLDS_2024) populated from BLS CEX 2024 single-year
+ *   - Geographic data populated from BLS CEX 2023-2024 two-year-average
+ *     tables — national all-CU, 4 regions, 9 divisions, and 22 selected
+ *     MSAs (12 of 15 line items per MSA; the three composite-utilities/
+ *     healthcare fields aren't broken out at the MSA level by BLS).
+ *   - Income-quintile data populated from BLS CEX 2024 single-year
  *     Table 1101.
- *   - `cexLineItemSpending` returns real numbers for every (state ×
- *     quintile × line item) cell. Not yet wired into `lib/budget.ts` —
- *     the existing rolled-up fields still drive the model; integration
- *     happens behind a flag in a follow-up PR.
+ *   - `cexLineItemSpending(state, ...)` returns real numbers via the
+ *     state → division → region chain.
+ *   - `cexLineItemSpendingForCity(citySlug, state, ...)` extends the
+ *     chain with MSA when the city has a mapping in `CITY_TO_MSA`,
+ *     and reports back which granularity was used.
+ *   - Not yet wired into `lib/budget.ts` — the existing rolled-up
+ *     fields still drive the model; integration happens behind a flag
+ *     in a follow-up PR.
  */
 
 import type { StateCode } from '@/types';
@@ -146,6 +151,104 @@ export const DIVISION_TO_REGION: Record<BLSDivision, BLSRegion> = {
 export function stateToRegion(state: StateCode): BLSRegion {
   return DIVISION_TO_REGION[STATE_TO_DIVISION[state]];
 }
+
+/**
+ * BLS Metropolitan Statistical Areas published with their own line-item
+ * tables in the 2023-2024 vintage (`cu-msa-{ne,mw,s,w}-2-year-average`).
+ * 22 MSAs total. Cities outside this set fall back to division → region.
+ *
+ * Caveat on coverage: the MSA tables don't break utilities and healthcare
+ * into the same fine-grained sub-categories the region/division tables
+ * do. They publish "Utilities, fuels, and public services" as a single
+ * rolled-up number (combining natural gas + electricity + fuel oil +
+ * telephone + water) and "Healthcare" as a single rolled-up number
+ * (combining premium + medical services + drugs + supplies).
+ *
+ * As a result, `MSA_ALLCU_SPENDING` populates 12 of 15 line items per
+ * MSA: foodAtHome, foodAway, gasoline, vehiclePurchase, vehicleOther,
+ * apparel, entertainment, personalCare, education, householdOperations,
+ * housekeepingSupplies, furnishings. The three composites
+ * (utilitiesElectricGas, utilitiesWaterPublic, healthcareOOP) stay
+ * undefined per MSA and `blendCexSpending` falls through to division for
+ * those line items.
+ *
+ * Gasoline at the MSA level is "Gasoline and other fuels" rather than
+ * just "Gasoline" — small inflation (a few percent) versus the
+ * region/division denominator which is "Gasoline" only. Acceptable for
+ * the synthetic blend's accuracy goals.
+ */
+export type BLSMSA =
+  // Northeast
+  | 'New York'
+  | 'Philadelphia'
+  | 'Boston'
+  // Midwest
+  | 'Chicago'
+  | 'Detroit'
+  | 'Minneapolis-St. Paul'
+  | 'St. Louis'
+  // South
+  | 'Washington DC'
+  | 'Baltimore'
+  | 'Atlanta'
+  | 'Miami'
+  | 'Dallas-Fort Worth'
+  | 'Houston'
+  | 'Tampa'
+  // West
+  | 'Los Angeles'
+  | 'San Francisco'
+  | 'San Diego'
+  | 'Seattle'
+  | 'Phoenix'
+  | 'Denver'
+  | 'Honolulu'
+  | 'Anchorage';
+
+/** MSA → region rollup, derived from the BLS MSA-table groupings. */
+export const MSA_TO_REGION: Record<BLSMSA, BLSRegion> = {
+  'New York': 'Northeast',
+  Philadelphia: 'Northeast',
+  Boston: 'Northeast',
+  Chicago: 'Midwest',
+  Detroit: 'Midwest',
+  'Minneapolis-St. Paul': 'Midwest',
+  'St. Louis': 'Midwest',
+  'Washington DC': 'South',
+  Baltimore: 'South',
+  Atlanta: 'South',
+  Miami: 'South',
+  'Dallas-Fort Worth': 'South',
+  Houston: 'South',
+  Tampa: 'South',
+  'Los Angeles': 'West',
+  'San Francisco': 'West',
+  'San Diego': 'West',
+  Seattle: 'West',
+  Phoenix: 'West',
+  Denver: 'West',
+  Honolulu: 'West',
+  Anchorage: 'West',
+};
+
+/**
+ * Curated-city slug → BLS MSA mapping. Only includes cities with a direct
+ * MSA match in the BLS 2023-2024 publication. Slugs not in this map fall
+ * back to state → division → region during the geo lookup.
+ */
+export const CITY_TO_MSA: Readonly<Record<string, BLSMSA>> = {
+  nyc: 'New York',
+  bos: 'Boston',
+  chi: 'Chicago',
+  dc: 'Washington DC',
+  atl: 'Atlanta',
+  mia: 'Miami',
+  la: 'Los Angeles',
+  sf: 'San Francisco',
+  sea: 'Seattle',
+  phx: 'Phoenix',
+  den: 'Denver',
+};
 
 // ─── Income axis ─────────────────────────────────────────────────────────
 
@@ -659,6 +762,326 @@ export const DIVISION_ALLCU_SPENDING: Readonly<Record<BLSDivision, Partial<LineI
   },
 };
 
+/**
+ * Per-MSA all-CU annual spending. Most-specific geographic level —
+ * preferred over division when populated.
+ *
+ * Source: BLS CEX 2023-2024 two-year average, Tables 3004 / 3015 / 3024 /
+ * 3033 (selected MSAs by region). Only 12 of 15 line items are
+ * populated per MSA — see the BLSMSA type docstring for which fields
+ * BLS doesn't break out at the MSA level.
+ */
+export const MSA_ALLCU_SPENDING: Readonly<Record<BLSMSA, Partial<LineItemSpending>>> = {
+  'New York': {
+    foodAtHome: 7033,
+    foodAway: 4679,
+    gasoline: 1804,
+    vehiclePurchase: 3578,
+    vehicleOther: 4166,
+    apparel: 3040,
+    entertainment: 3239,
+    personalCare: 1163,
+    education: 2674,
+    householdOperations: 2251,
+    housekeepingSupplies: 754,
+    furnishings: 2162,
+  },
+  Philadelphia: {
+    foodAtHome: 7044,
+    foodAway: 5032,
+    gasoline: 2244,
+    vehiclePurchase: 4571,
+    vehicleOther: 4395,
+    apparel: 2252,
+    entertainment: 4097,
+    personalCare: 1040,
+    education: 2891,
+    householdOperations: 2368,
+    housekeepingSupplies: 1179,
+    furnishings: 2516,
+  },
+  Boston: {
+    foodAtHome: 7993,
+    foodAway: 5522,
+    gasoline: 2224,
+    vehiclePurchase: 5999,
+    vehicleOther: 4110,
+    apparel: 2659,
+    entertainment: 4140,
+    personalCare: 1339,
+    education: 4453,
+    householdOperations: 3443,
+    housekeepingSupplies: 1397,
+    furnishings: 3070,
+  },
+  Chicago: {
+    foodAtHome: 7148,
+    foodAway: 4567,
+    gasoline: 2569,
+    vehiclePurchase: 4429,
+    vehicleOther: 4237,
+    apparel: 2865,
+    entertainment: 4684,
+    personalCare: 1123,
+    education: 2962,
+    householdOperations: 1978,
+    housekeepingSupplies: 1039,
+    furnishings: 2776,
+  },
+  Detroit: {
+    foodAtHome: 5815,
+    foodAway: 3250,
+    gasoline: 2733,
+    vehiclePurchase: 3775,
+    vehicleOther: 5053,
+    apparel: 1801,
+    entertainment: 3311,
+    personalCare: 969,
+    education: 1375,
+    householdOperations: 1686,
+    housekeepingSupplies: 662,
+    furnishings: 2164,
+  },
+  'Minneapolis-St. Paul': {
+    foodAtHome: 6273,
+    foodAway: 5059,
+    gasoline: 2434,
+    vehiclePurchase: 7357,
+    vehicleOther: 4462,
+    apparel: 2944,
+    entertainment: 5657,
+    personalCare: 1259,
+    education: 2791,
+    householdOperations: 2126,
+    housekeepingSupplies: 894,
+    furnishings: 3832,
+  },
+  'St. Louis': {
+    foodAtHome: 6312,
+    foodAway: 4383,
+    gasoline: 2685,
+    vehiclePurchase: 5878,
+    vehicleOther: 4208,
+    apparel: 1725,
+    entertainment: 4368,
+    personalCare: 974,
+    education: 1418,
+    householdOperations: 2277,
+    housekeepingSupplies: 767,
+    furnishings: 2539,
+  },
+  'Washington DC': {
+    foodAtHome: 7005,
+    foodAway: 5905,
+    gasoline: 2350,
+    vehiclePurchase: 7593,
+    vehicleOther: 4677,
+    apparel: 3566,
+    entertainment: 5129,
+    personalCare: 1627,
+    education: 3314,
+    householdOperations: 3106,
+    housekeepingSupplies: 998,
+    furnishings: 3178,
+  },
+  Baltimore: {
+    foodAtHome: 8305,
+    foodAway: 5290,
+    gasoline: 2363,
+    vehiclePurchase: 7943,
+    vehicleOther: 4235,
+    apparel: 2591,
+    entertainment: 4559,
+    personalCare: 1217,
+    education: 2518,
+    householdOperations: 2334,
+    housekeepingSupplies: 1374,
+    furnishings: 2962,
+  },
+  Atlanta: {
+    foodAtHome: 6074,
+    foodAway: 3886,
+    gasoline: 2884,
+    vehiclePurchase: 5321,
+    vehicleOther: 4479,
+    apparel: 3175,
+    entertainment: 3389,
+    personalCare: 1266,
+    education: 1863,
+    householdOperations: 2529,
+    housekeepingSupplies: 1067,
+    furnishings: 2539,
+  },
+  Miami: {
+    foodAtHome: 5331,
+    foodAway: 2064,
+    gasoline: 2149,
+    vehiclePurchase: 4183,
+    vehicleOther: 4401,
+    apparel: 1561,
+    entertainment: 2221,
+    personalCare: 679,
+    education: 493,
+    householdOperations: 1594,
+    housekeepingSupplies: 595,
+    furnishings: 1486,
+  },
+  'Dallas-Fort Worth': {
+    foodAtHome: 5353,
+    foodAway: 4358,
+    gasoline: 2811,
+    vehiclePurchase: 7115,
+    vehicleOther: 4373,
+    apparel: 2208,
+    entertainment: 2945,
+    personalCare: 1282,
+    education: 1257,
+    householdOperations: 1825,
+    housekeepingSupplies: 795,
+    furnishings: 2469,
+  },
+  Houston: {
+    foodAtHome: 6055,
+    foodAway: 4414,
+    gasoline: 2957,
+    vehiclePurchase: 8020,
+    vehicleOther: 4714,
+    apparel: 2157,
+    entertainment: 5245,
+    personalCare: 1074,
+    education: 918,
+    householdOperations: 2126,
+    housekeepingSupplies: 855,
+    furnishings: 2346,
+  },
+  Tampa: {
+    foodAtHome: 5127,
+    foodAway: 3486,
+    gasoline: 2452,
+    vehiclePurchase: 4369,
+    vehicleOther: 4694,
+    apparel: 1278,
+    entertainment: 4756,
+    personalCare: 756,
+    education: 852,
+    householdOperations: 1469,
+    housekeepingSupplies: 814,
+    furnishings: 4090,
+  },
+  'Los Angeles': {
+    foodAtHome: 6546,
+    foodAway: 5312,
+    gasoline: 3588,
+    vehiclePurchase: 4652,
+    vehicleOther: 4870,
+    apparel: 2565,
+    entertainment: 3441,
+    personalCare: 1155,
+    education: 1767,
+    householdOperations: 2243,
+    housekeepingSupplies: 777,
+    furnishings: 2694,
+  },
+  'San Francisco': {
+    foodAtHome: 7534,
+    foodAway: 7143,
+    gasoline: 2722,
+    vehiclePurchase: 7548,
+    vehicleOther: 4727,
+    apparel: 3035,
+    entertainment: 4600,
+    personalCare: 1324,
+    education: 3353,
+    householdOperations: 3919,
+    housekeepingSupplies: 776,
+    furnishings: 3336,
+  },
+  'San Diego': {
+    foodAtHome: 7618,
+    foodAway: 4525,
+    gasoline: 3921,
+    vehiclePurchase: 8678,
+    vehicleOther: 5294,
+    apparel: 2290,
+    entertainment: 4111,
+    personalCare: 1347,
+    education: 2660,
+    householdOperations: 3281,
+    housekeepingSupplies: 940,
+    furnishings: 3643,
+  },
+  Seattle: {
+    foodAtHome: 7607,
+    foodAway: 6041,
+    gasoline: 2796,
+    vehiclePurchase: 6578,
+    vehicleOther: 4919,
+    apparel: 2083,
+    entertainment: 5705,
+    personalCare: 1382,
+    education: 2786,
+    householdOperations: 3069,
+    housekeepingSupplies: 972,
+    furnishings: 3859,
+  },
+  Phoenix: {
+    foodAtHome: 5626,
+    foodAway: 4584,
+    gasoline: 2976,
+    vehiclePurchase: 8268,
+    vehicleOther: 5134,
+    apparel: 1849,
+    entertainment: 4379,
+    personalCare: 1259,
+    education: 1275,
+    householdOperations: 2844,
+    housekeepingSupplies: 826,
+    furnishings: 3117,
+  },
+  Denver: {
+    foodAtHome: 6990,
+    foodAway: 4903,
+    gasoline: 2407,
+    vehiclePurchase: 7068,
+    vehicleOther: 5657,
+    apparel: 2090,
+    entertainment: 7021,
+    personalCare: 1463,
+    education: 1670,
+    householdOperations: 2061,
+    housekeepingSupplies: 906,
+    furnishings: 3028,
+  },
+  Honolulu: {
+    foodAtHome: 8502,
+    foodAway: 5668,
+    gasoline: 2821,
+    vehiclePurchase: 4036,
+    vehicleOther: 3276,
+    apparel: 2229,
+    entertainment: 2739,
+    personalCare: 1135,
+    education: 1560,
+    householdOperations: 1855,
+    housekeepingSupplies: 836,
+    furnishings: 2566,
+  },
+  Anchorage: {
+    foodAtHome: 8007,
+    foodAway: 3949,
+    gasoline: 2847,
+    vehiclePurchase: 5342,
+    vehicleOther: 3869,
+    apparel: 2229,
+    entertainment: 4232,
+    personalCare: 996,
+    education: 1217,
+    householdOperations: 1868,
+    housekeepingSupplies: 988,
+    furnishings: 2675,
+  },
+};
+
 // Source for the geographic tables above is `bls-cex-geo-2-year-2023-2024`,
 // surfaced on /sources directly via `Sources.tsx`. Kept out of this module
 // to avoid pulling the full `SOURCES` registry into cex.ts's import graph
@@ -667,38 +1090,65 @@ export const DIVISION_ALLCU_SPENDING: Readonly<Record<BLSDivision, Partial<LineI
 // ─── The synthetic blend ─────────────────────────────────────────────────
 
 /**
+ * Granularity at which the geo factor was computed for a particular
+ * lookup. Useful for surfacing "this came from your MSA / division /
+ * region" provenance in the UI.
+ */
+export type GeoGranularity = 'msa' | 'division' | 'region';
+
+/**
  * Pure helper for the blend math. Takes the data inputs explicitly so it
  * can be tested without wiring through module-level constants. The public
- * `cexLineItemSpending` below is the thin shim that pulls the constants.
+ * `cexLineItemSpending` and `cexLineItemSpendingForCity` below are the
+ * thin shims that pull the constants.
  *
  *     spending = quintileShape × geoFactor
  *     quintileShape = nationalQuintile
  *     geoFactor     = geoAllCU / nationalAllCU
  *
- * `geoAllCU` is the most-specific geographic average available — division
- * if non-zero/non-undefined, else region.
- *
- * Returns 0 when any input is zero or missing (signalling "no data yet").
- * Caller should treat 0 as "fall back to legacy rolled-up field," not as a
- * real $0 line item.
+ * `geoAllCU` is the most-specific geographic average available — MSA if
+ * provided and non-zero, else division if non-zero/non-undefined, else
+ * region. Returns 0 when any input is zero or missing.
  */
 export function blendCexSpending(inputs: {
   nationalAllCU: number;
   nationalQuintile: number;
+  msaAllCU?: number | undefined;
   divisionAllCU: number | undefined;
   regionAllCU: number;
 }): number {
-  const { nationalAllCU, nationalQuintile, divisionAllCU, regionAllCU } = inputs;
+  const { nationalAllCU, nationalQuintile, msaAllCU, divisionAllCU, regionAllCU } = inputs;
   if (nationalAllCU === 0) return 0;
   if (nationalQuintile === 0) return 0;
-  const geoAllCU = divisionAllCU !== undefined && divisionAllCU > 0 ? divisionAllCU : regionAllCU;
+  let geoAllCU: number;
+  if (msaAllCU !== undefined && msaAllCU > 0) geoAllCU = msaAllCU;
+  else if (divisionAllCU !== undefined && divisionAllCU > 0) geoAllCU = divisionAllCU;
+  else geoAllCU = regionAllCU;
   if (geoAllCU === 0) return 0;
   return nationalQuintile * (geoAllCU / nationalAllCU);
 }
 
 /**
- * Compute a single line item's annual spending for a given (geography ×
- * income quintile) cell, via the synthetic blend rule.
+ * Pick the most-specific geographic granularity that contributed to the
+ * blend, given which levels were populated for this line item. Returns
+ * `null` when nothing was populated (i.e. the function would have
+ * returned 0).
+ */
+export function geoGranularityFor(inputs: {
+  msaAllCU?: number | undefined;
+  divisionAllCU: number | undefined;
+  regionAllCU: number;
+}): GeoGranularity | null {
+  if (inputs.msaAllCU !== undefined && inputs.msaAllCU > 0) return 'msa';
+  if (inputs.divisionAllCU !== undefined && inputs.divisionAllCU > 0) return 'division';
+  if (inputs.regionAllCU > 0) return 'region';
+  return null;
+}
+
+/**
+ * Compute a single line item's annual spending for a (state × income
+ * quintile × line item) cell. Uses division → region fallback (no MSA
+ * input — see `cexLineItemSpendingForCity` for the city-aware path).
  *
  * Returns 0 when source data is unpopulated. The caller should treat 0
  * as "no signal yet" and fall back to the rolled-up legacy field rather
@@ -717,6 +1167,39 @@ export function cexLineItemSpending(
     divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
   });
+}
+
+/**
+ * City-aware variant. Resolves a curated city slug (e.g. `'nyc'`,
+ * `'sf'`) into its MSA via `CITY_TO_MSA` and prefers MSA-level data over
+ * division/region. Cities without an MSA mapping (rural placeholders,
+ * non-MSA cities) and statewide-fallback slugs (e.g. `'ca_state'`)
+ * should call `cexLineItemSpending(state, ...)` directly.
+ *
+ * Returns the spending plus the geographic granularity that was used —
+ * useful for surfacing provenance in the UI ("from your MSA" /
+ * "...division" / "...region").
+ */
+export function cexLineItemSpendingForCity(
+  citySlug: string,
+  state: StateCode,
+  quintile: IncomeQuintile,
+  item: BLSCEXLineItem,
+): { spending: number; granularity: GeoGranularity | null } {
+  const region = stateToRegion(state);
+  const division = STATE_TO_DIVISION[state];
+  const msa = CITY_TO_MSA[citySlug];
+  const msaAllCU = msa ? MSA_ALLCU_SPENDING[msa][item] : undefined;
+  const inputs = {
+    nationalAllCU: NATIONAL_ALLCU_SPENDING[item],
+    nationalQuintile: NATIONAL_QUINTILE_SPENDING[quintile][item],
+    msaAllCU,
+    divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
+    regionAllCU: REGION_ALLCU_SPENDING[region][item],
+  };
+  const spending = blendCexSpending(inputs);
+  const granularity = spending === 0 ? null : geoGranularityFor(inputs);
+  return { spending, granularity };
 }
 
 /** Convenience: full per-line-item profile for a (state × income) cell. */

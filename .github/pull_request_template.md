@@ -19,7 +19,7 @@ If you didn't use AI, leave this section blank or delete it.
   Notes:    what AI did well, what it cost time on, anything surprising.
 -->
 
-- **Solo est:** _h
-- **AI time:** _h
-- **Category:** _
-- **Notes:** _
+- **Solo est:** \_h
+- **AI time:** \_h
+- **Category:** \_
+- **Notes:** \_

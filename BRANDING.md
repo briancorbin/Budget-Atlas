@@ -19,11 +19,11 @@ Pages relevant to brand:
 
 ## Brand essentials
 
-| Use | HEX | Pantone (closest) |
-|---|---|---|
-| Accent red | `#A6261C` | **1805 C** |
-| Cream | `#F4EFE3` | 9224 C / Warm Gray 1 C |
-| Ink | `#1B1815` | Black 6 C |
+| Use        | HEX       | Pantone (closest)      |
+| ---------- | --------- | ---------------------- |
+| Accent red | `#A6261C` | **1805 C**             |
+| Cream      | `#F4EFE3` | 9224 C / Warm Gray 1 C |
+| Ink        | `#1B1815` | Black 6 C              |
 
 Always specify Pantone callouts on uncoated stock — CMYK on uncoated paper drifts the red toward orange.
 
@@ -41,13 +41,13 @@ For physical goods (stickers, pins, shirts):
 
 Recommended vendors:
 
-| Type | Vendor | Notes |
-|---|---|---|
-| Stickers | StickerMule, Sticker Ninja | StickerMule for speed; Sticker Ninja for hand-cut feel. |
-| Enamel pins | PinGame USA, PinDesign, Vivipins | Use the **Black Italic A** variant — heavier strokes survive enamel. Outline all text to paths before sending. |
-| Shirts (DTG, no-min) | Bonfire, Cotton Bureau | Bonfire for fundraising; Cotton Bureau for one-off small drops. |
-| Shirts (screen, bulk) | Real Thread, Allmade | Best for >24-shirt orders. Provide single-color separations from the mono mark variants. |
-| Embroidery | Stitch Logo, ThreadBird | They digitize from the vector file. Send the mono mark. |
+| Type                  | Vendor                           | Notes                                                                                                          |
+| --------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Stickers              | StickerMule, Sticker Ninja       | StickerMule for speed; Sticker Ninja for hand-cut feel.                                                        |
+| Enamel pins           | PinGame USA, PinDesign, Vivipins | Use the **Black Italic A** variant — heavier strokes survive enamel. Outline all text to paths before sending. |
+| Shirts (DTG, no-min)  | Bonfire, Cotton Bureau           | Bonfire for fundraising; Cotton Bureau for one-off small drops.                                                |
+| Shirts (screen, bulk) | Real Thread, Allmade             | Best for >24-shirt orders. Provide single-color separations from the mono mark variants.                       |
+| Embroidery            | Stitch Logo, ThreadBird          | They digitize from the vector file. Send the mono mark.                                                        |
 
 ## Web assets
 

@@ -185,7 +185,7 @@ export interface BudgetResult {
   // drill-down UI so readers can see "this came from your MSA" vs
   // "...your division." Unpopulated for transit-mode transportation
   // (not CEX) and for line items where MSA data isn't broken out.
-  cexProvenance: Readonly<Record<string, 'msa' | 'division' | 'region'>>;
+  cexProvenance: Readonly<Partial<Record<string, 'msa' | 'division' | 'region'>>>;
   // Income quintile the household landed in, per BLS Table 1101 thresholds.
   incomeQuintile: 'q1' | 'q2' | 'q3' | 'q4' | 'q5';
 }

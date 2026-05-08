@@ -59,11 +59,19 @@ export interface BenefitInputs {
   /** Number of children in the household (0–4+). Drives parent vs. childless
    *  adult logic for non-expansion Medicaid, and CHIP applicability. */
   kids: number;
-  /** Current modeled healthcare expense, monthly. Used to estimate Medicaid
-   *  / CHIP benefit value (the dollars eliminated when the program covers). */
+  /** Current modeled healthcare expense, monthly (premium + OOP). Used to
+   *  estimate Medicaid benefit value (Medicaid covers both premium and
+   *  out-of-pocket, so the total is what gets eliminated). */
   monthlyHealthcareCost: number;
-  /** Adult-only (single-coverage) baseline healthcare cost, monthly. Used to
-   *  isolate the kids' share of family healthcare for CHIP estimates. */
+  /** Premium-only portion of the family healthcare cost. CHIP covers the
+   *  kids' marginal premium share — using `monthlyHealthcareCost` for
+   *  that math would inflate CHIP's value by the OOP component, which
+   *  CHIP doesn't actually replace. Falls back to `monthlyHealthcareCost`
+   *  when not provided (preserves the pre-OOP-split behavior for legacy
+   *  callers and tests). */
+  monthlyHealthcarePremium?: number;
+  /** Adult-only (single-coverage) baseline healthcare premium, monthly.
+   *  Used to isolate the kids' share for CHIP estimates. */
   monthlyHealthcareSingle: number;
 }
 
@@ -248,6 +256,7 @@ export function checkChip({
   adults,
   kids,
   monthlyHealthcareCost,
+  monthlyHealthcarePremium,
   monthlyHealthcareSingle,
 }: BenefitInputs): BenefitEligibility {
   const limit = STATE_CHIP_LIMIT_FPL[state];
@@ -275,7 +284,11 @@ export function checkChip({
   }
 
   const adultBaseline = adults === 2 ? 2 * monthlyHealthcareSingle : monthlyHealthcareSingle;
-  const kidsShare = Math.max(0, monthlyHealthcareCost - adultBaseline);
+  // CHIP replaces the kids' marginal premium share, not their OOP. Use the
+  // premium-only field when callers provide it; fall back to monthlyHealthcareCost
+  // for legacy callers (the old healthFamily was approximately premium-only).
+  const familyPremium = monthlyHealthcarePremium ?? monthlyHealthcareCost;
+  const kidsShare = Math.max(0, familyPremium - adultBaseline);
   return {
     eligible: true,
     monthlyBenefit: Math.round(kidsShare),

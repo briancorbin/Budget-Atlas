@@ -129,12 +129,12 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // per city. They get superseded by CEX where the mapping is clean:
   //
   //   cityData.groceries        → cex.foodAtHome + cex.foodAway
-  //   cityData.utilities        → cex.utilitiesElectricGas + utilitiesWaterPublic
-  //   cityData.carCost          → cex.gasoline + vehiclePurchase + vehicleOther
+  //   cityData.utilities        → cex.utilitiesElectricGas + cex.utilitiesWaterPublic
+  //   cityData.carCost          → cex.gasoline + cex.vehiclePurchase + cex.vehicleOther
   //   cityData.healthFamily/Single → KFF premium (still cityData) + cex.healthcareOOP
-  //   cityData (none)           → cex.apparel / entertainment / personalCare /
-  //                                education / householdOperations /
-  //                                housekeepingSupplies / furnishings (NEW)
+  //   cityData (none)           → cex.apparel / cex.entertainment / cex.personalCare /
+  //                                cex.education / cex.householdOperations /
+  //                                cex.housekeepingSupplies / cex.furnishings (NEW)
   //
   // Rent (HUD/Zillow), childcare (Care.com), phone/internet flat,
   // insurance flat — these stay non-CEX with their existing sources.
@@ -227,7 +227,11 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     state: cityData.state,
     adults,
     kids,
+    // Total healthcare cost (premium + OOP) — Medicaid covers both.
     monthlyHealthcareCost: healthcare,
+    // Premium-only — CHIP covers the kids' premium share, not OOP. Without
+    // this split CHIP value would be inflated by the OOP component.
+    monthlyHealthcarePremium: healthcarePremium,
     monthlyHealthcareSingle: cityData.healthSingle,
   };
 
@@ -335,7 +339,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     suggestedEmergency,
     cityData,
     stateData,
-    cexProvenance: cexGranularity as Readonly<Record<string, 'msa' | 'division' | 'region'>>,
+    cexProvenance: cexGranularity,
     incomeQuintile: quintile,
   };
 }

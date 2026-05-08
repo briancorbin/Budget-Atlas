@@ -2,7 +2,12 @@ import type { BudgetResult } from '@/types';
 import { theme as T, fonts, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { SectionTitle, Cite } from '@/components/ui';
-import { QUINTILE_MEANS_2024_BEFORE_TAX, QUINTILE_THRESHOLDS_2024 } from '@/data/cex';
+import {
+  QUINTILE_MEANS_2024_BEFORE_TAX,
+  QUINTILE_THRESHOLDS_2024,
+  REGION_MEAN_HHI_2024_BEFORE_TAX,
+  stateToRegion,
+} from '@/data/cex';
 import { SOURCES } from '@/data/sources';
 
 /**
@@ -55,6 +60,15 @@ export function IncomePosition({ result }: { result: BudgetResult }) {
   const meanForQ = m[quintile];
   const aboveOrBelow = income >= meanForQ ? 'above' : 'below';
   const meanDelta = Math.abs(income - meanForQ);
+
+  // Regional comparison: BLS publishes mean income by Census region but
+  // not by state in this table — state-level median HHI lives in Census
+  // ACS, which we don't host yet (roadmap follow-up). Use the region
+  // average as the closest currently-available comparison.
+  const region = stateToRegion(result.cityData.state);
+  const regionalMean = REGION_MEAN_HHI_2024_BEFORE_TAX[region];
+  const regionAboveOrBelow = income >= regionalMean ? 'above' : 'below';
+  const regionDelta = Math.abs(income - regionalMean);
 
   return (
     <div style={{ marginBottom: 40 }}>
@@ -133,6 +147,43 @@ export function IncomePosition({ result }: { result: BudgetResult }) {
             </div>
           ))}
 
+          {/* Regional mean marker (drawn behind the user's marker so the
+              user's pin reads on top when they collide). */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 12,
+              left: `${pos(regionalMean)}%`,
+              transform: 'translateX(-50%)',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                width: 2,
+                height: 32,
+                background: T.ink,
+                opacity: 0.55,
+                margin: '0 auto',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: 36,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: rem(10),
+                color: T.inkSoft,
+                fontFamily: fonts.body,
+                whiteSpace: 'nowrap',
+                fontStyle: 'italic',
+              }}
+            >
+              {region} avg
+            </div>
+          </div>
+
           {/* User's income marker */}
           <div
             style={{
@@ -189,7 +240,8 @@ export function IncomePosition({ result }: { result: BudgetResult }) {
         >
           {fmt(income)}/yr puts this household in the <strong>{qLabel[quintile]}</strong> of US
           households — {fmt(meanDelta)} {aboveOrBelow} the {quintile.toUpperCase()} mean of{' '}
-          {fmt(meanForQ)}.
+          {fmt(meanForQ)}. The average {region} household earns {fmt(regionalMean)}; this household
+          is {fmt(regionDelta)} {regionAboveOrBelow}.
         </div>
 
         <div
@@ -203,7 +255,9 @@ export function IncomePosition({ result }: { result: BudgetResult }) {
         >
           Bands shown on a log scale so the bottom four quintiles don't crush against the long
           top-quintile tail. Quintile floors and means from{' '}
-          <Cite source={SOURCES['bls-cex-income-quintiles-2024']!} />.
+          <Cite source={SOURCES['bls-cex-income-quintiles-2024']!} />; regional mean from BLS CEX
+          Table 1800 (same source family). State-level median household income (Census ACS) would be
+          a finer comparison and is on the roadmap.
         </div>
       </div>
     </div>

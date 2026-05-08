@@ -124,8 +124,7 @@ function PlannedList() {
   // strip below renders both as a single list, so the kicker count
   // here matches what the user sees in that strip — avoids reading
   // as inconsistent with the strip's "X milestones" header.
-  const shippedTotal =
-    ROADMAP.filter((i) => i.status === 'shipped').length + SHIPPED.length;
+  const shippedTotal = ROADMAP.filter((i) => i.status === 'shipped').length + SHIPPED.length;
   const parts: string[] = [];
   if (inProgress > 0) parts.push(`${inProgress} in progress`);
   parts.push(`${planned} planned`);

@@ -4,6 +4,12 @@ import { STATES } from '@/data/states';
 import { FEDERAL_BRACKETS_2026, STD_DEDUCTION_2026 } from '@/data/federalTax';
 import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/tax';
 import { checkChip, checkMedicaid, checkSnap } from '@/lib/benefits';
+import {
+  cexLineItemSpendingForCity,
+  quintileFromIncome,
+  type BLSCEXLineItem,
+  type GeoGranularity,
+} from '@/data/cex';
 
 /**
  * Given household inputs, compute taxes, expenses, and discretionary income.
@@ -109,6 +115,42 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const lifestyleMult = lifestyle === 'modest' ? 0.85 : lifestyle === 'comfortable' ? 1.2 : 1.0;
   const householdSize = adults + kids;
 
+  // ── BLS CEX wire-up ─────────────────────────────────────────────────
+  // For every line item BLS CEX publishes, derive the household's monthly
+  // spend from the (city/MSA × division × region × income-quintile) blend.
+  // The lifestyle lever stays as a ±15% / ±20% modulator on top — gives
+  // users a knob inside their quintile without throwing out the BLS
+  // shape. CEX values are per consumer-unit (CU) per year; we /12 for
+  // monthly and don't multiply by householdSize (the average CU in BLS's
+  // sample is ~2.5 people; finer per-CU-size scaling is roadmap #128).
+  //
+  // The rolled-up legacy fields on `cityData` (groceries, utilities,
+  // carCost, healthSingle/Family) were "approximate medians" hand-set
+  // per city. They get superseded by CEX where the mapping is clean:
+  //
+  //   cityData.groceries        → cex.foodAtHome + cex.foodAway
+  //   cityData.utilities        → cex.utilitiesElectricGas + utilitiesWaterPublic
+  //   cityData.carCost          → cex.gasoline + vehiclePurchase + vehicleOther
+  //   cityData.healthFamily/Single → KFF premium (still cityData) + cex.healthcareOOP
+  //   cityData (none)           → cex.apparel / entertainment / personalCare /
+  //                                education / householdOperations /
+  //                                housekeepingSupplies / furnishings (NEW)
+  //
+  // Rent (HUD/Zillow), childcare (Care.com), phone/internet flat,
+  // insurance flat — these stay non-CEX with their existing sources.
+  const quintile = quintileFromIncome(totalIncome);
+  const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
+  const cexMonthly = (item: BLSCEXLineItem): number => {
+    const { spending, granularity } = cexLineItemSpendingForCity(
+      city,
+      cityData.state,
+      quintile,
+      item,
+    );
+    if (granularity) cexGranularity[item] = granularity;
+    return (spending / 12) * lifestyleMult;
+  };
+
   // Housing footprint — sourced and editorial parts both flagged:
   //   solo, no kids        → 1BR  (HUD occupancy: 1 person fits a 1BR)
   //   couple, no kids      → 1BR × 1.2  (HUD says 2 people are within 1BR
@@ -129,28 +171,47 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const housing =
     baseRent * (lifestyle === 'modest' ? 0.9 : lifestyle === 'comfortable' ? 1.15 : 1.0);
 
-  const utilities = cityData.utilities * (kids >= 2 ? 1.2 : 1.0);
-  const groceries =
-    cityData.groceries *
-    householdSize *
-    (lifestyle === 'modest' ? 0.85 : lifestyle === 'comfortable' ? 1.15 : 1.0);
+  // Utilities = electric + gas + fuel oil + water/public. Phone/internet
+  // stays as a separate line (CEX rolls "Telephone services" into the
+  // same parent label, but our model keeps it broken out).
+  const utilities = cexMonthly('utilitiesElectricGas') + cexMonthly('utilitiesWaterPublic');
 
-  // Big transit cities: childless workers use transit; families need cars
+  // Groceries = food at home + food away. CEX splits these; we sum to a
+  // single line. The SNAP benefit subsequently offsets grocery spending,
+  // so keeping the line unified preserves the existing benefits flow.
+  const groceries = cexMonthly('foodAtHome') + cexMonthly('foodAway');
+
+  // Transportation: big transit cities + childless → transit pass per
+  // adult (transit isn't in CEX; keep cityData.transit). Otherwise use
+  // CEX vehicle line items (gasoline + vehicle purchase + other).
   const isTransitCity = ['nyc', 'sf', 'bos', 'dc', 'chi'].includes(city);
   const transportation =
     isTransitCity && kids === 0
       ? cityData.transit * adults
-      : cityData.carCost * (adults === 2 && kids > 0 ? 1.4 : 1.0);
+      : cexMonthly('gasoline') + cexMonthly('vehiclePurchase') + cexMonthly('vehicleOther');
 
+  // Healthcare = KFF employer-plan premium (still cityData) + CEX OOP.
+  // Both zero out under Medicaid; CHIP offsets the out-of-pocket portion.
   const hasFamilyPlan = adults === 2 || kids > 0;
-  const healthcare = hasFamilyPlan ? cityData.healthFamily : cityData.healthSingle;
+  const healthcarePremium = hasFamilyPlan ? cityData.healthFamily : cityData.healthSingle;
+  const healthcareOOP = cexMonthly('healthcareOOP');
+  const healthcare = healthcarePremium + healthcareOOP;
 
   // Childcare lite: kids × preschool average × 0.85 (mix of ages, after-school discount)
   const childcare = kids > 0 ? cityData.childcarePreschool * kids * 0.85 : 0;
 
   const phoneInternet = 130 + (adults === 2 ? 50 : 0) + kids * 25;
   const insuranceOther = 90 + kids * 15 + (kids >= 1 || adults === 2 ? 40 : 0);
-  const personalEssentials = 120 * householdSize * lifestyleMult;
+
+  // CEX-derived line items the model previously omitted entirely.
+  // Each is per-CU monthly × lifestyle.
+  const apparel = cexMonthly('apparel');
+  const entertainment = cexMonthly('entertainment');
+  const personalCare = cexMonthly('personalCare');
+  const education = cexMonthly('education');
+  const householdOperations = cexMonthly('householdOperations');
+  const housekeepingSupplies = cexMonthly('housekeepingSupplies');
+  const furnishings = cexMonthly('furnishings');
 
   // ── Benefits ──
   // For each claimed program, compute eligibility from inputs (re-checked
@@ -181,6 +242,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
 
   // Medicaid takes priority over CHIP — if Medicaid covers the household,
   // CHIP isn't separately needed (Medicaid covers kids too in this case).
+  // Medicaid zeros BOTH the premium and the OOP — CHIP only the OOP.
   let medicaidApplied = false;
   if (claimedBenefits?.has('medicaid')) {
     const med = checkMedicaid(benefitInputs);
@@ -211,7 +273,13 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     childcare +
     phoneInternet +
     insuranceOther +
-    personalEssentials;
+    apparel +
+    entertainment +
+    personalCare +
+    education +
+    householdOperations +
+    housekeepingSupplies +
+    furnishings;
 
   const discretionary = monthlyNet - totalExpenses;
   const annualDiscretionary = discretionary * 12;
@@ -248,7 +316,13 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       Childcare: childcare,
       'Phone & Internet': phoneInternet,
       Insurance: insuranceOther,
-      'Personal Essentials': personalEssentials,
+      Apparel: apparel,
+      Entertainment: entertainment,
+      'Personal Care': personalCare,
+      Education: education,
+      'Household Operations': householdOperations,
+      'Housekeeping Supplies': housekeepingSupplies,
+      Furnishings: furnishings,
     },
     totalExpenses,
     discretionary,
@@ -261,5 +335,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     suggestedEmergency,
     cityData,
     stateData,
+    cexProvenance: cexGranularity as Readonly<Record<string, 'msa' | 'division' | 'region'>>,
+    incomeQuintile: quintile,
   };
 }

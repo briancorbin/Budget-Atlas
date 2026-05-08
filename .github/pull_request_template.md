@@ -23,3 +23,9 @@ If you didn't use AI, leave this section blank or delete it.
 - **AI time:** \_h
 - **Category:** \_
 - **Notes:** \_
+
+## AI learnings
+
+<!--
+Anything notable about working with AI on this PR — patterns that worked, traps to avoid, instincts that shifted? If yes, add an entry to AI_LEARNINGS.md and link it here. Skip if nothing felt new.
+-->

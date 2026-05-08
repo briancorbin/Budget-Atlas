@@ -371,7 +371,19 @@ export function CliffCurve({
                 tickFormatter={(v) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`)}
                 stroke={T.inkMuted}
                 tick={{ fontSize: 11, fontFamily: fonts.mono, fill: T.inkSoft }}
-                width={56}
+                width={68}
+                label={{
+                  value: 'Annual take-home + benefit value',
+                  angle: -90,
+                  position: 'insideLeft',
+                  offset: 14,
+                  style: {
+                    fontSize: 11,
+                    fontFamily: fonts.body,
+                    fill: T.inkSoft,
+                    textAnchor: 'middle',
+                  },
+                }}
               />
               <Tooltip
                 content={(props) => <CliffTooltip {...props} cliffs={cliffs} metric={metricMeta} />}

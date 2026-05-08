@@ -77,6 +77,16 @@ export const SCENARIOS: Scenario[] = [
     takeaway: 'Two near-equal incomes, MFJ — almost no marriage bonus or penalty',
   },
   {
+    id: 'median_cmh',
+    label: 'Median single · Columbus',
+    income: 75000,
+    filing: 'single',
+    city: 'cmh',
+    kids: 0,
+    lifestyle: 'moderate',
+    takeaway: 'Q3 baseline — middle-class income meets BLS Q3 spending; little discretionary left',
+  },
+  {
     id: 'nurse_den',
     label: 'Nurse · single · Denver',
     income: 88000,

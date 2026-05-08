@@ -9,7 +9,7 @@
 ## AI time log
 
 <!--
-Maintainer-tracked. If you used AI assistance on this PR, fill these in before merging — they feed AI_TIME_LOG.md. Calibration over time is the goal; precision isn't.
+Maintainer-tracked. Update this section as you work on the PR — it's a running estimate, not a one-time fill. Bump the numbers when review feedback adds another round of work, when scope grows, when you realize the original estimate was off. The final state at merge is what feeds AI_TIME_LOG.md. Calibration over time is the goal; precision isn't.
 
 If you didn't use AI, leave this section blank or delete it.
 
@@ -28,4 +28,6 @@ If you didn't use AI, leave this section blank or delete it.
 
 <!--
 Anything notable about working with AI on this PR — patterns that worked, traps to avoid, instincts that shifted? If yes, add an entry to AI_LEARNINGS.md and link it here. Skip if nothing felt new.
+
+Author-only section. Don't pre-fill this on the author's behalf — even drafts should originate from the author's own observations. AI assistants should leave this blank for the author to fill (or transcribe verbatim what the author dictates).
 -->

@@ -9,6 +9,7 @@ The point isn't precision — it's a calibrated record over time. Backfill rows 
 ## Conventions
 
 - **One row per PR**, ideally. Use the PR number from `gh` so the row is easy to cross-reference. Two placeholder forms are allowed: `(TBD)` for work that hasn't been opened as a PR yet (update once it lands), and `—` for non-PR meta rows (this file itself, retros, etc.).
+- **The PR's `## AI time log` section is a _running_ estimate** while the PR is open — bump the numbers when review feedback adds another round, when scope grows, when the original guess turns out off. The final state at merge is what feeds the row in this file.
 - **Solo est.** in hours of focused work, including the research/learning curve you'd hit cold.
 - **With AI** in hours of actual elapsed time you spent driving the work (not wall-clock).
 - **Saved** is the difference. Negative is OK and worth recording when AI cost more than it gave.

@@ -279,9 +279,9 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Cost of living',
     status: 'in-progress',
     startedAt: '2026-05-08',
-    progress: 5,
+    progress: 15,
     summary:
-      'Expand cost-of-living from 6 rolled-up fields to ~17 BLS Consumer Expenditure Survey line items with a city → state → division → region inheritance chain, so every dollar in the breakdown traces to a specific CEX row at the most-specific available granularity.',
+      'Expand cost-of-living to ~15 BLS CEX line items with two axes: geographic (city → state → division → region fallback) and income (national quintile shape blended via geo factor). Foundation landed (types, mappings, blend math, tests); BLS data fill in follow-up PRs.',
   },
 ];
 

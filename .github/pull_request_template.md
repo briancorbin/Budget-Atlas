@@ -18,12 +18,16 @@ If you didn't use AI, fill in the section honestly (zero AI time is a valid datu
   Solo est: hours you'd have spent on this alone, including research/debug.
   AI time:  hours of actual driving with the AI in the loop.
   Category: impl | infra | design | data | docs | refactor | bugfix | meta
+  Model:    short id like `opus-4.7-1m`, `sonnet-4.6`, etc. Append the
+            reasoning-effort knob if you know it: `opus-4.7-1m / medium`.
+            Use `—` if no AI was involved.
   Notes:    what AI did well, what it cost time on, anything surprising.
 -->
 
 - **Solo est:** \_h
 - **AI time:** \_h
 - **Category:** \_
+- **Model:** \_
 - **Notes:** \_
 
 ## AI learnings

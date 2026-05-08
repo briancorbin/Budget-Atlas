@@ -149,6 +149,36 @@ describe('computeBudget — pinned regressions', () => {
     expect(Math.round(r.netIncome)).toBe(58_371);
   });
 
+  it('exposes CEX-derived line items in the expenses dict', () => {
+    const r = computeBudget(input());
+    expect(r.expenses['Apparel']).toBeGreaterThan(0);
+    expect(r.expenses['Entertainment']).toBeGreaterThan(0);
+    expect(r.expenses['Personal Care']).toBeGreaterThan(0);
+    expect(r.expenses['Education']).toBeGreaterThan(0);
+    expect(r.expenses['Household Operations']).toBeGreaterThan(0);
+    expect(r.expenses['Housekeeping Supplies']).toBeGreaterThan(0);
+    expect(r.expenses['Furnishings']).toBeGreaterThan(0);
+  });
+
+  it('exposes income quintile and CEX geo provenance in the result', () => {
+    // NYC has an MSA mapping; foodAway should source from MSA.
+    const r = computeBudget(input({ city: 'nyc' }));
+    expect(r.incomeQuintile).toBe('q3'); // $75K → q3 per Table 1101 thresholds
+    expect(r.cexProvenance['foodAway']).toBe('msa');
+    // Columbus has no MSA mapping; foodAway falls through to division.
+    const r2 = computeBudget(input());
+    expect(r2.cexProvenance['foodAway']).toBe('division');
+  });
+
+  it('higher-quintile households spend more on income-elastic categories', () => {
+    // Same city, same household; only income changes the quintile bucket.
+    const q3 = computeBudget(input({ incomeA: 75_000 })); // q3
+    const q5 = computeBudget(input({ incomeA: 200_000 })); // q5
+    expect(q5.incomeQuintile).toBe('q5');
+    expect(q5.expenses['Entertainment']).toBeGreaterThan(q3.expenses['Entertainment']);
+    expect(q5.expenses['Apparel']).toBeGreaterThan(q3.expenses['Apparel']);
+  });
+
   it('dual-earner $200K+$200K married in NYC with 2 kids: per-person FICA + city tax', () => {
     const r = computeBudget(
       input({

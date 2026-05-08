@@ -1,3 +1,5 @@
+import type { BLSCEXLineItem, GeoGranularity } from '@/data/cex';
+
 export type FilingStatus = 'single' | 'married' | 'head';
 export type Lifestyle = 'modest' | 'moderate' | 'comfortable';
 
@@ -167,6 +169,11 @@ export interface BudgetResult {
   // Expenses
   expenses: Record<string, number>;
   totalExpenses: number;
+  // Premium-only portion of the healthcare expense (KFF employer-share,
+  // monthly). The rest of the Healthcare line is CEX out-of-pocket.
+  // Surfaced so benefit checks can isolate the premium — CHIP value is
+  // the kids' premium share specifically, not premium + OOP.
+  healthcarePremium: number;
   discretionary: number;
   annualDiscretionary: number;
   // Benefits applied (per-program monthly benefit actually used in this calc)
@@ -180,6 +187,15 @@ export interface BudgetResult {
   // References
   cityData: CityInfo;
   stateData: StateInfo;
+  // BLS CEX provenance: which geographic granularity (msa / division /
+  // region) sourced each CEX-derived expense line. Surfaced in the
+  // drill-down UI so readers can see "this came from your MSA" vs
+  // "...your division." When MSA data isn't broken out for an item, the
+  // blend falls through to division (or region) and records that level.
+  // Unpopulated only for non-CEX paths (e.g. transit-mode transportation).
+  cexProvenance: Readonly<Partial<Record<BLSCEXLineItem, GeoGranularity>>>;
+  // Income quintile the household landed in, per BLS Table 1101 thresholds.
+  incomeQuintile: 'q1' | 'q2' | 'q3' | 'q4' | 'q5';
 }
 
 export type TaxBracket = readonly [number, number]; // [cap, rate]

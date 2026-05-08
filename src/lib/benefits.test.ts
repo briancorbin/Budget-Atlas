@@ -15,6 +15,9 @@ function inputs(overrides: Partial<BenefitInputs> = {}): BenefitInputs {
     adults: 1,
     kids: 2,
     monthlyHealthcareCost: 800,
+    // Default premium == cost (no OOP component) so legacy test math
+    // (kidsShare = cost − single) still matches without per-test overrides.
+    monthlyHealthcarePremium: 800,
     monthlyHealthcareSingle: 350,
     ...overrides,
   };
@@ -96,9 +99,9 @@ describe('checkChip', () => {
   });
 
   it("monthly benefit isolates the kids' share of the family premium", () => {
-    // 1 adult + kids: kidsShare = family − single = 800 − 350 = 450.
+    // 1 adult + kids: kidsShare = family premium − single = 800 − 350 = 450.
     const r = checkChip(
-      inputs({ adults: 1, monthlyHealthcareCost: 800, monthlyHealthcareSingle: 350 }),
+      inputs({ adults: 1, monthlyHealthcarePremium: 800, monthlyHealthcareSingle: 350 }),
     );
     expect(r.eligible).toBe(true);
     expect(r.monthlyBenefit).toBe(450);
@@ -107,16 +110,35 @@ describe('checkChip', () => {
   it('uses 2× single-coverage as the adult baseline for two-adult households', () => {
     // 2 adults: kidsShare = 1200 − 2*400 = 400.
     const r = checkChip(
-      inputs({ adults: 2, monthlyHealthcareCost: 1200, monthlyHealthcareSingle: 400 }),
+      inputs({ adults: 2, monthlyHealthcarePremium: 1200, monthlyHealthcareSingle: 400 }),
     );
     expect(r.monthlyBenefit).toBe(400);
   });
 
   it('floors the benefit at zero if family premium is below the adult baseline', () => {
     const r = checkChip(
-      inputs({ adults: 2, monthlyHealthcareCost: 500, monthlyHealthcareSingle: 400 }),
+      inputs({ adults: 2, monthlyHealthcarePremium: 500, monthlyHealthcareSingle: 400 }),
     );
     expect(r.monthlyBenefit).toBe(0);
+  });
+
+  it('CHIP value uses premium-only — OOP must not inflate it', () => {
+    // Regression guard: post-#181, callers pass the total (premium + OOP)
+    // as `monthlyHealthcareCost` for Medicaid's value (Medicaid covers
+    // both). For CHIP — which only replaces the kids' premium share —
+    // the OOP component would inflate the benefit. checkChip keys off
+    // monthlyHealthcarePremium specifically.
+    const r = checkChip(
+      inputs({
+        adults: 1,
+        monthlyHealthcareCost: 1400, // premium + OOP
+        monthlyHealthcarePremium: 1200, // premium only
+        monthlyHealthcareSingle: 400,
+      }),
+    );
+    // Correct: 1200 (premium) − 400 (single) = 800.
+    // Buggy hypothesis: 1400 (total) − 400 = 1000 ($200 inflation from OOP).
+    expect(r.monthlyBenefit).toBe(800);
   });
 });
 

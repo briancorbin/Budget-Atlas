@@ -112,14 +112,21 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
   // "TOTAL / MO" text.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Build rollup rows from result.expenses.
-  const rows: RollupRow[] = ROLLUPS.map((def, i) => {
-    const lines = def.lines
-      .map((label) => ({ label, value: result.expenses[label] ?? 0 }))
-      .filter((l) => l.value > 0);
+  // Build rollup rows from result.expenses. The detailed breakdown
+  // shows EVERY line — including ones that came back as $0 for this
+  // household (e.g. Childcare with no kids, Education when not modeled).
+  // Per Brian: "$0 is useful info — it tells me we considered this
+  // category and the household has nothing there." The summary pie +
+  // top list still filter to non-zero so the chart doesn't render
+  // empty slices and the visual rollup list stays clean.
+  const allRows: RollupRow[] = ROLLUPS.map((def, i) => {
+    const lines = def.lines.map((label) => ({ label, value: result.expenses[label] ?? 0 }));
     const total = lines.reduce((s, l) => s + l.value, 0);
     return { def, total, lines, color: PIE_COLORS[i % PIE_COLORS.length]! };
-  }).filter((r) => r.total > 0);
+  });
+  const rows: RollupRow[] = allRows
+    .map((r) => ({ ...r, lines: r.lines.filter((l) => l.value > 0) }))
+    .filter((r) => r.total > 0);
 
   return (
     <div style={{ marginBottom: 48 }}>
@@ -425,11 +432,12 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
               }}
             >
               Every BLS CEX line item that flows into the seven rollups above, sorted by value
-              within each rollup. Items that come back as $0 for this household (e.g. Childcare with
-              no kids, Vehicle (purchase) for a transit-city resident) drop out.
+              within each rollup. Lines that come back as $0 for this household (e.g. Childcare with
+              no kids, Vehicle (purchase) for a transit-city resident) are still listed with $0 —
+              useful for seeing what categories the model considered.
             </div>
             {SECTION_ORDER.map((kind) => {
-              const sectionRows = rows.filter((r) => r.def.kind === kind);
+              const sectionRows = allRows.filter((r) => r.def.kind === kind);
               if (sectionRows.length === 0) return null;
               return (
                 <div key={kind} style={{ marginBottom: 24 }}>

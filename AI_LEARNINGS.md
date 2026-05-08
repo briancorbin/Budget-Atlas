@@ -16,6 +16,10 @@ The point is calibration over time. After 50+ entries the patterns become visibl
 
 <!-- Newest entries at the top. -->
 
+### 2026-05-08 — Take notes after every day of work, don't wait until morning
+
+Lesson learned. My memory is fuzzy now. Maybe I'm just tired though.
+
 ### 2026-05-07 — Figma is where AI made the impossible possible `[skill] [tooling]`
 
 I am not a professional designer. I know basics, but I'm slow, I make mistakes, and I don't organize well because I don't live in Figma every day. Claude made the impossible possible here. The Figma file — Atlas Tokens, text styles, component variants, the swag explorations, the brand mark and lockups — would not exist in this shape without AI. The plugin API is gnarly (variable axes can't be set, skew decomposes to scale+rotation, text sizing has to be set on both axes), but Claude knows the patterns and the iteration loop is fast: screenshot → eval → tweak. This is the single biggest "would not have existed at all solo" line item in the project, bigger even than the audit pipeline.

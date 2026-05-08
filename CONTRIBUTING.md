@@ -4,12 +4,13 @@ Thanks for considering a contribution. The Budget Atlas is a free, donation-supp
 
 ## Ground rules
 
-1. **Every numeric value must be cited.** This is the single most important convention in the project. Tax brackets, rent medians, grocery indices, minimum wages, contribution limits, benefit thresholds — anything the model displays must trace back to a `Source` constant in the central registry at [`src/data/sources.ts`](./src/data/sources.ts). Use the `<Cite>` component for inline indicators. The [`/sources`](https://thebudgetatlas.com/sources) page is the public bibliography. Don't ship "round numbers I made up." If a value is genuinely an approximation, label it as such honestly rather than fake-citing — and tag the source with `tier: 'estimate'`.
+1. **Every numeric value must be cited.** This is the single most important convention in the project. Tax brackets, rent medians, grocery indices, minimum wages, contribution limits, benefit thresholds — anything the model displays must trace back to a `Source` constant in the central registry at [`src/data/sources.ts`](./src/data/sources.ts). Use the `<Cite>` component for inline indicators. The [`/sources`](https://thebudgetatlas.com/sources) page is the public bibliography. Don't ship "round numbers I made up." If a value is genuinely an approximation, say so honestly in the source's `label` and in the surrounding UI copy rather than fake-citing it as a hard datum. (The `Source.tier` field is `'primary' | 'reference' | 'commercial'` — there's no "estimate" tier; honesty about approximation lives in prose, not a tier flag.)
 2. **Be careful with tax math.** Progressive brackets only tax dollars _within_ each bracket at that bracket's rate — never compute "marginal rate × full income." FICA Social Security has a per-person wage base, so dual-earner households need `calcFICA(incomeA) + calcFICA(incomeB)`, not `calcFICA(total)`. The `progressiveTax` helper in `lib/tax.ts` and `computeBudget` in `lib/budget.ts` handle these correctly — extend them rather than reimplementing.
 3. **Respect the layer split.** Data, calculation, and presentation each live separately:
-   - `src/data/` — reference data only, no logic
-   - `src/lib/` — pure functions, no React
-   - `src/components/` — React UI; takes a `BudgetResult` and renders
+   - `src/data/` — reference data only, no logic. The citation registry lives at `src/data/sources.ts`.
+   - `src/lib/` — pure functions, no React. Subfolders (e.g. `lib/audit/`) are reserved for domains dense enough to justify the split.
+   - `src/pages/<route>/` — page-specific UI, one folder per route. The largest is `pages/atlas/` (the BudgetExplorer + its sections).
+   - `src/components/` — cross-page UI primitives only. If a component is used by exactly one page, it belongs under that page's folder, not here.
 4. **No Tailwind, no CSS framework.** Inline styles using tokens from `src/theme.ts`. Don't hard-code colors. Money goes through `fmt` / `fmtSigned` — never `toString()` a dollar amount and prepend `$`.
 5. **TypeScript strict mode is on.** No `any` without a comment explaining why. Functions over classes. Use the `@/` path alias instead of long relative imports.
 
@@ -21,10 +22,19 @@ yarn dev            # Vite dev server, usually http://localhost:5173 (alias: yar
 yarn typecheck
 yarn lint
 yarn format         # auto-format with Prettier
-yarn verify         # typecheck + lint + format check (the gate before opening a PR)
+yarn test           # Vitest unit tests for src/lib
+yarn verify         # typecheck + lint + format check + tests (the gate before opening a PR)
 ```
 
-Requires Node 20+. Yarn classic (1.x) is the package manager — install via `brew install yarn` or `corepack enable`.
+For local audit-API work (D1-backed link audit, see `worker/`):
+
+```bash
+yarn dev:local      # Wrangler worker (localhost:8787) + Vite dev (proxied), concurrently
+yarn dev:local:fresh # same, but first applies schema and pulls a fresh prod D1 snapshot
+yarn db:sync        # pull prod D1 snapshot into local db
+```
+
+Requires **Node 22** (pinned via `.nvmrc`). The package manager is **Yarn 4** (`packageManager: yarn@4.9.1`), provisioned via Corepack — run `corepack enable` once and the right Yarn version is resolved automatically. CI uses `yarn install --immutable`.
 
 ## Common contribution recipes
 

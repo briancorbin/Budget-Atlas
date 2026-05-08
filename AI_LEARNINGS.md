@@ -6,6 +6,7 @@ The point is calibration over time. After 50+ entries the patterns become visibl
 
 ## Conventions
 
+- **Human-driven content.** Findings here are exclusively the maintainer's own observations. AI assistants must never propose, draft, or pre-fill entries — even on the maintainer's behalf. Light copy-editing of what the maintainer says (tightening grammar, breaking a long sentence, matching the file's prose style) is fine; substantive changes are not. The substance — what the observation _is_, what it concludes, what tags it picks up — must come from the human. AI-laundered observations defeat the file's purpose.
 - **Append, don't curate.** Date each entry; let contradictions stand. Reading "I thought X in May, then I thought ¬X in July" is the actual learning.
 - **One observation per entry.** Short is fine. A sentence is fine.
 - **Be honest about misses too.** Times AI made things worse, times I should have just done it solo, times I over-trusted output.
@@ -14,6 +15,10 @@ The point is calibration over time. After 50+ entries the patterns become visibl
 ## Log
 
 <!-- Newest entries at the top. -->
+
+### 2026-05-08 — Take notes after every day of work, don't wait until morning
+
+Lesson learned. My memory is fuzzy now. Maybe I'm just tired though.
 
 ### 2026-05-07 — Figma is where AI made the impossible possible `[skill] [tooling]`
 

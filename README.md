@@ -10,50 +10,64 @@ Built on 2026 IRS brackets, state tax data, BLS price indices, and median rents.
 ## Quick start
 
 ```bash
-npm install
-npm run dev      # vite dev server, usually http://localhost:5173
-npm run build    # production build to dist/
-npm run preview  # preview the production build
-npm run typecheck
+yarn install
+yarn dev          # Vite dev server, usually http://localhost:5173
+yarn build        # production build to dist/
+yarn preview      # preview the production build
+yarn typecheck
+yarn test         # Vitest unit tests
+yarn verify       # typecheck + lint + format check + tests (the gate before opening a PR)
 ```
 
-Requires Node 20+.
+Requires **Node 22** (pinned via `.nvmrc` and CI). The package manager is **Yarn 4** (`packageManager: yarn@4.9.1` in `package.json`), provisioned via Corepack — run `corepack enable` once and `yarn` will resolve to the pinned version. CI uses `yarn install --immutable`. Don't use `npm` (it'll create a conflicting `package-lock.json`).
 
 ## Project structure
 
 ```
 src/
 ├── main.tsx                  React entry
-├── App.tsx                   Renders BudgetExplorer
+├── App.tsx                   Top-level router; renders the right page per route
 ├── index.css                 Reset + body font
 ├── theme.ts                  Color tokens, fonts, chart palette
 ├── types.ts                  Shared TS types
 │
 ├── data/                     Reference data — edit these to update for a new tax year
-│   ├── federalTax.ts         2026 federal brackets, std deduction, SS wage base, sources
-│   ├── states.ts             State graduated brackets, std deductions, min wage, sources
-│   ├── cities.ts             ~20 curated city profiles + 51 statewide-default fallbacks + sources
-│   └── scenarios.ts          Pre-built archetype households
+│   ├── sources.ts            Central registry of every cited Source (single source of truth)
+│   ├── federalTax.ts         2026 federal brackets, std deduction, SS wage base
+│   ├── states.ts             State graduated brackets, std deductions, min wage
+│   ├── cities.ts             ~20 curated city profiles + 51 statewide-default fallbacks
+│   ├── scenarios.ts          Pre-built archetype households
+│   ├── benefits.ts           SNAP, EITC, CTC, poverty thresholds for benefit eligibility
+│   ├── poverty.ts            HHS poverty guidelines (48-state + AK + HI)
+│   └── roadmap.ts            Roadmap entries surfaced on /roadmap
 │
 ├── lib/                      Pure functions — no React, easy to test
 │   ├── format.ts             fmt, fmtSigned, fmtPct
 │   ├── tax.ts                progressiveTax, FICA, CTC, EITC
-│   └── budget.ts             computeBudget — the main calculation
+│   ├── budget.ts             computeBudget — the main calculation
+│   ├── benefits.ts           SNAP / EITC / CTC eligibility + amounts
+│   ├── cliffs.ts             Income-sweep generation for the cliff-curve chart
+│   ├── configShare.ts        URL-encoded shareable view config
+│   ├── nav.ts                In-page section nav helpers
+│   └── audit/                D1-backed audit API client + status store + status logic
 │
-└── components/               Each major UI section in its own file
-    ├── BudgetExplorer.tsx    Top-level: holds state, renders sections
-    ├── Masthead.tsx          Title block
-    ├── Inputs.tsx            ScenarioPicker + CustomizePanel
-    ├── Summary.tsx           StatRow + StatusBanner
-    ├── IncomeFlow.tsx        Waterfall chart: paycheck → take-home
-    ├── ExpenseBreakdown.tsx  Pie + itemized list
-    ├── DiscretionaryPlan.tsx 50/20/20/10 split of surplus
-    ├── CityComparison.tsx    Side-by-side same-income comparison
-    ├── Notes.tsx             Footer notes / commentary
-    └── ui.tsx                Stat, SectionTitle, CustomTooltip primitives
+├── pages/                    One folder per route — page-specific UI lives here
+│   ├── atlas/                The main BudgetExplorer + its sections (Masthead, Inputs,
+│   │                         Summary, IncomeFlow, ExpenseBreakdown, DiscretionaryPlan,
+│   │                         Benefits, CityComparison, CliffCurve, BracketWalkthrough,
+│   │                         PageNav, ShareLink, Notes, PitWarning)
+│   ├── sources/              Public bibliography (renders the sources.ts registry)
+│   ├── privacy/              /privacy transparency note
+│   ├── roadmap/              /roadmap (reads roadmap.ts)
+│   ├── about/                /about
+│   └── design-lab/           Internal design exploration playground
+│
+└── components/               Cross-page UI primitives only
+    ├── ui.tsx                Stat, SectionTitle, Cite, CustomTooltip, etc.
+    └── audit/                StatusDot + ReportFlag (used by Sources and citation popovers)
 ```
 
-The split is deliberate: data, calculation, and presentation each live separately, so updating one (e.g. swapping in 2027 tax brackets) doesn't ripple through the others.
+The split is deliberate: data, calculation, and presentation each live separately, so updating one (e.g. swapping in 2027 tax brackets) doesn't ripple through the others. Page-specific UI lives under `src/pages/<route>/`; only put something in `src/components/` if it's actually used across multiple pages.
 
 ## How the math works
 
@@ -61,7 +75,7 @@ The split is deliberate: data, calculation, and presentation each live separatel
 
 **State tax**: real graduated brackets per filing status, with state-specific standard deductions. Same `progressiveTax` machinery as federal. Flat-tax states (CO, IL, PA, etc.) use a single positive bracket; no-tax states (TX, FL, WA, etc.) use a single 0% bracket; high-tax states with detailed schedules (CA, NY, NJ, OR, HI, MN, MA's millionaire surtax, MD, CT, VT, ME, NM, RI, WI, DC) carry their full bracket structure.
 
-**FICA**: per-person calculation. 6.2% Social Security up to $181K wage base, plus 1.45% Medicare on all wages, plus 0.9% Additional Medicare over $200K. Two earners at $200K each pay more SS than one earner at $400K — the per-person cap is preserved.
+**FICA**: per-person calculation. 6.2% Social Security up to the $184,500 wage base (TY2026), plus 1.45% Medicare on all wages, plus 0.9% Additional Medicare over $200K. Two earners at $200K each pay more SS than one earner at $400K — the per-person cap is preserved.
 
 **Filing status × dual-earner combinations**:
 
@@ -87,38 +101,19 @@ The build is fully static and works on any static host. Alternatives that need z
 
 ## Sources
 
-This is an editorial reference tool. Every numeric value the model displays is traceable to a published source — see the inline `ⁱ` indicators in the app and the consolidated list in the page footer. Source constants live alongside the data they cite (`src/data/federalTax.ts`, `src/data/states.ts`, `src/data/cities.ts`).
+This is an editorial reference tool. Every numeric value the model displays is traceable to a published source — see the inline `ⁱ` indicators in the app, the consolidated list in each page's footer, and the full bibliography at [thebudgetatlas.com/sources](https://thebudgetatlas.com/sources). The single source-of-truth for citations is [`src/data/sources.ts`](./src/data/sources.ts) (the registry); the `/sources` page renders directly from it. To avoid drift, this README doesn't enumerate URLs — read them from the registry or the `/sources` page.
 
-### Federal taxes
+The model's citations group into:
 
-- **IRS Rev. Proc. 2025-32** ([link](https://www.irs.gov/pub/irs-drop/rp-25-32.pdf)) — 2026 income tax brackets, standard deductions, OBBBA-adjusted CTC parameters
-- **SSA Contribution and Benefit Base** ([link](https://www.ssa.gov/oact/cola/cbb.html)) — Social Security wage base
+- **Federal taxes** — IRS Rev. Proc. (brackets, std deduction, OBBBA-adjusted CTC), SSA wage base
+- **State taxes** — state revenue department pages (`state-dor-*` ids) cross-checked against Tax Foundation; NCSL + DOL for minimum wage
+- **Cost of living, per-city** — RentCafe, Zillow, BLS CES, Care.com, KFF, Numbeo
+- **Cost of living, statewide fallbacks** — HUD FMR, BLS CES regional, EIA residential energy, Child Care Aware, KFF state averages, AAA Your Driving Costs
+- **Benefits** — SNAP (USDA FNS + state agencies), EITC + CTC (IRS), HHS poverty guidelines
 
-### State taxes
+### Auditing
 
-- **Tax Foundation: 2026 State Income Tax Rates and Brackets** ([link](https://taxfoundation.org/data/all/state/state-income-tax-rates/)) — consolidated brackets and flat rates by state. State revenue department pages are more authoritative for any single state; we use Tax Foundation as the cross-state aggregator.
-- **NCSL State Minimum Wage Chart** ([link](https://www.ncsl.org/labor-and-employment/state-minimum-wages)) — 2026 effective minimum wages
-- **U.S. Dept. of Labor State Minimum Wage Rates** — federal floor reference
-
-### Cost of living (per city)
-
-- **RentCafe National Apartment List** ([link](https://www.rentcafe.com/average-rent-market-trends/us/)) — 1BR / 3BR median rents
-- **Zillow Observed Rent Index** ([link](https://www.zillow.com/research/data/)) — cross-check on rent medians
-- **BLS Consumer Expenditure Survey** ([link](https://www.bls.gov/cex/)) — groceries, utilities, transportation
-- **Care.com Cost of Care Report** ([link](https://www.care.com/c/cost-of-childcare/)) — childcare cost by metro
-- **KFF Employer Health Benefits Survey** ([link](https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/)) — employer-sponsored health insurance premiums
-- **Numbeo cost-of-living indices** ([link](https://www.numbeo.com/cost-of-living/)) — third-party cross-check
-
-### Cost of living (statewide fallbacks)
-
-When the user picks a state without a curated city, the model falls back to a **statewide-average** profile derived from these aggregators. Values are deliberately rounded approximations (rent to nearest $50, others to $10) and labeled "approx." in the UI.
-
-- **HUD Fair Market Rents (FY2026)** ([link](https://www.huduser.gov/portal/datasets/fmr.html)) — state-area weighted 1BR / 3BR rents
-- **BLS Consumer Expenditure Survey — regional** ([link](https://www.bls.gov/cex/tables.htm)) — groceries + transportation by Census region
-- **EIA Residential Energy Consumption** ([link](https://www.eia.gov/consumption/residential/)) — state utility averages
-- **Child Care Aware — Price of Care** ([link](https://www.childcareaware.org/state-fact-sheets/)) — state infant + preschool monthly cost
-- **KFF Employer Health Benefits — state averages** ([link](https://www.kff.org/health-costs/report/employer-health-benefits-annual-survey/)) — state premium averages
-- **AAA Your Driving Costs** ([link](https://newsroom.aaa.com/auto/your-driving-costs/)) — state-adjusted vehicle ownership cost
+A nightly link audit probes every URL in the registry, persists results to a Cloudflare D1 database, and surfaces broken / bot-blocked / drift-flagged citations on the `/sources` page. Anyone can re-run it with `yarn check-links` (results POST to `/api/audit/runs` with a write token; reads at `/api/audit/latest` and `/api/audit/history` are public). Full philosophy + status code reference in [`audit/links/README.md`](./audit/links/README.md).
 
 ### Rent calculation logic
 

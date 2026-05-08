@@ -28,45 +28,23 @@ import { getCityData } from '@/data/cities';
 import { computePitZones } from '@/lib/cliffs';
 import { SectionTitle } from '@/components/ui';
 
-type MetricId = 'discretionary' | 'takeHome' | 'takeHomePlusBenefits';
-
 interface SweepPoint {
   gross: number;
-  discretionary: number;
-  takeHome: number;
   takeHomePlusBenefits: number;
   benefits: number;
 }
 
-const METRICS: Record<
-  MetricId,
-  { label: string; longLabel: string; key: keyof SweepPoint; unitNoun: string; description: string }
-> = {
-  discretionary: {
-    label: 'Discretionary',
-    longLabel: 'Annual discretionary income',
-    key: 'discretionary',
-    unitNoun: 'discretionary',
-    description:
-      'What\'s actually left over each year after taxes and modeled household expenses (rent, groceries, healthcare, childcare, etc.). The most editorial measure — answers "how much can the household actually spend after the bills are paid?"',
-  },
-  takeHome: {
-    label: 'Take-home',
-    longLabel: 'Annual take-home pay (net of taxes)',
-    key: 'takeHome',
-    unitNoun: 'take-home',
-    description:
-      'Gross income minus federal, state, local, and FICA taxes. Ignores expenses and benefits entirely. Benefit cliffs are invisible on this line — only tax-bracket transitions and EITC/CTC phaseouts bend the curve. Useful for separating what the tax code does from what the safety net does.',
-  },
-  takeHomePlusBenefits: {
-    label: 'Take-home + benefits',
-    longLabel: 'Annual take-home pay + benefit value',
-    key: 'takeHomePlusBenefits',
-    unitNoun: 'total resources',
-    description:
-      'Take-home pay plus the dollar value of every safety-net benefit the household qualifies for (Medicaid, CHIP, SNAP). The total cash + in-kind resources reaching the household. Cliffs here are the same size as on Discretionary — both just drop by the value of the lost program — but the baseline runs higher because benefits stack onto take-home instead of getting netted out against expenses.',
-  },
-};
+// Only one view now: take-home pay plus the dollar value of every safety-net
+// benefit the household qualifies for (Medicaid, CHIP, SNAP). The total cash
+// + in-kind resources reaching the household. We previously offered
+// Discretionary and Take-home toggles too, but they cluttered the chrome and
+// the cliff story reads cleanly off this single measure: drops are the
+// dollar value of programs the household just lost.
+const METRIC = {
+  longLabel: 'Annual take-home pay + benefit value',
+  key: 'takeHomePlusBenefits' as const,
+  unitNoun: 'total resources',
+} satisfies { longLabel: string; key: keyof SweepPoint; unitNoun: string };
 
 /**
  * Income-sweep view that exposes the discontinuities baked into the safety
@@ -118,14 +96,8 @@ export function CliffCurve({
 
   const allBenefits = useMemo<ReadonlySet<string>>(() => new Set(BENEFIT_IDS), []);
 
-  // Which financial measure to plot on the Y axis. Discretionary is the most
-  // editorial (what's actually left over after expenses), but it muddies
-  // the cliff visually because some lost benefits — Medicaid in particular
-  // — also raise the household's healthcare expense, partially offsetting
-  // the take-home drop. Take-home and total-resources views isolate the
-  // pure cash impact.
-  const [metric, setMetric] = useState<MetricId>('discretionary');
-  const metricMeta = METRICS[metric];
+  // Single fixed measure: take-home + benefits. See METRIC's docstring above.
+  const metricMeta = METRIC;
 
   const currentGross = incomeA + incomeB;
   // Sweep up to $200K or 1.5× current income, whichever is higher, so the
@@ -220,8 +192,6 @@ export function CliffCurve({
       const annualBenefits = r.totalBenefits * 12;
       out.push({
         gross: g,
-        discretionary: Math.round(r.annualDiscretionary),
-        takeHome: Math.round(r.netIncome),
         takeHomePlusBenefits: Math.round(r.netIncome + annualBenefits),
         benefits: Math.round(annualBenefits),
       });
@@ -358,7 +328,6 @@ export function CliffCurve({
             vertical drops are <em>cliffs</em>: a single dollar of additional income disqualifies
             the household from a program entirely.
           </div>
-          <MetricToggle metric={metric} onChange={setMetric} />
         </div>
 
         <div ref={chartWrapperRef}>
@@ -616,76 +585,6 @@ export function CliffCurve({
   );
 }
 
-function MetricToggle({ metric, onChange }: { metric: MetricId; onChange: (m: MetricId) => void }) {
-  // Track which button is currently hovered/focused so the popover below
-  // shows that button's description; null = no popover.
-  const [previewing, setPreviewing] = useState<MetricId | null>(null);
-
-  return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <div role="group" aria-label="Metric to plot" style={{ display: 'inline-flex', gap: 0 }}>
-        {(Object.keys(METRICS) as MetricId[]).map((id, i) => {
-          const isActive = metric === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onChange(id)}
-              onMouseEnter={() => setPreviewing(id)}
-              onMouseLeave={() => setPreviewing(null)}
-              onFocus={() => setPreviewing(id)}
-              onBlur={() => setPreviewing(null)}
-              aria-pressed={isActive}
-              aria-describedby={previewing === id ? 'metric-popover' : undefined}
-              style={{
-                fontFamily: fonts.body,
-                fontSize: rem(11),
-                letterSpacing: '0.04em',
-                padding: '6px 10px',
-                border: `1px solid ${isActive ? T.ink : T.border}`,
-                borderLeftWidth: i === 0 ? 1 : 0,
-                background: isActive ? T.ink : T.bg,
-                color: isActive ? T.bg : T.inkSoft,
-                cursor: 'pointer',
-                fontWeight: isActive ? 600 : 400,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {METRICS[id].label}
-            </button>
-          );
-        })}
-      </div>
-      {previewing && (
-        <div
-          id="metric-popover"
-          role="tooltip"
-          style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: 6,
-            maxWidth: 320,
-            padding: '8px 12px',
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            boxShadow: '0 6px 16px rgba(27, 24, 21, 0.12)',
-            fontFamily: fonts.body,
-            fontSize: rem(11),
-            color: T.inkSoft,
-            lineHeight: 1.5,
-            fontStyle: 'italic',
-            zIndex: 10,
-            pointerEvents: 'none',
-          }}
-        >
-          {METRICS[previewing].description}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function CliffTooltip({
   active,
   payload,
@@ -694,7 +593,7 @@ function CliffTooltip({
   metric,
 }: TooltipContentProps & {
   cliffs: { id: string; label: string; gross: number }[];
-  metric: (typeof METRICS)[MetricId];
+  metric: typeof METRIC;
 }) {
   if (!active || !payload || !payload.length) return null;
   const gross = typeof label === 'number' ? label : Number(label);

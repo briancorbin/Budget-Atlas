@@ -289,7 +289,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     category: 'Cost of living',
     status: 'planned',
     summary:
-      "Expand the monthly cost-of-living section into a drill-down. Each rolled-up line opens to its BLS CEX sub-categories (food at home vs away, premiums vs OOP, gas vs vehicle purchase vs other vehicle) with the household's income quintile and threshold context surfaced, plus a per-cell indicator of which geographic granularity (city / state / division / region) sourced the value. Companion to the BLS CEX line-item schema (#131) — once the data is wired into the model, this is what makes the depth visible to the reader.",
+      "Condense the 15-line monthly cost-of-living view back to a scannable few rolled-up categories by default; let users expand any line to drill into its BLS CEX sub-categories (food at home vs away, premiums vs OOP, gas vs vehicle purchase vs other vehicle), with the household's income quintile and threshold context surfaced and a per-cell indicator of which geographic granularity (MSA / division / region) sourced the value. Companion to the BLS CEX line-item schema (#131) — the schema gave us the depth; this is what keeps the surface clean while still letting curious readers go deep.",
   },
 ];
 

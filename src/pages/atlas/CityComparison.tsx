@@ -228,6 +228,54 @@ export function CityComparison({
             : `Difference: ${fmt(compare.discretionary - result.discretionary)}/mo more breathing room in ${compare.cityData.name}.`}{' '}
           Geography is destiny — but only after you net out housing, taxes, and childcare.
         </div>
+
+        {(() => {
+          // Editorial footnote — surface the "graduated beats flat at moderate income"
+          // surprise when one state is single-bracket (flat) and the other is multi-
+          // bracket (graduated), AND the flat-rate state owes MORE state tax. Top
+          // marginal rates lie: graduated states tax their bottom dollars gently, so
+          // a 12.3%-top-rate state can owe less than a 5.4%-flat state at moderate
+          // incomes.
+          const isFlat = (s: BudgetResult) =>
+            s.stateData.brackets[filing].length === 1 && s.stateData.brackets[filing][0]![1] > 0;
+          const isGraduated = (s: BudgetResult) => s.stateData.brackets[filing].length > 1;
+          const a = result;
+          const b = compare;
+          const surprise =
+            isFlat(a) && isGraduated(b) && a.stateTax > b.stateTax
+              ? { flat: a, grad: b }
+              : isFlat(b) && isGraduated(a) && b.stateTax > a.stateTax
+                ? { flat: b, grad: a }
+                : null;
+          if (!surprise) return null;
+          const flatBrackets = surprise.flat.stateData.brackets[filing];
+          const gradBrackets = surprise.grad.stateData.brackets[filing];
+          const flatRate = (flatBrackets[0]![1] * 100).toFixed(2).replace(/\.?0+$/, '');
+          const gradTopRate = (gradBrackets[gradBrackets.length - 1]![1] * 100)
+            .toFixed(2)
+            .replace(/\.?0+$/, '');
+          return (
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: `1px dashed ${T.border}`,
+                fontFamily: fonts.body,
+                fontSize: rem(13),
+                color: T.inkSoft,
+                lineHeight: 1.6,
+                fontStyle: 'italic',
+              }}
+            >
+              <strong style={{ fontStyle: 'normal', color: T.ink }}>Top marginal rates lie:</strong>{' '}
+              {surprise.flat.cityData.state} owes more state income tax here (
+              {fmt(surprise.flat.stateTax)}/yr) on a flat {flatRate}% rate than{' '}
+              {surprise.grad.cityData.state} owes ({fmt(surprise.grad.stateTax)}/yr) on graduated
+              brackets that top out at {gradTopRate}%. The graduated structure taxes bottom dollars
+              gently — the headline top rate isn't what most middle-income households actually pay.
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

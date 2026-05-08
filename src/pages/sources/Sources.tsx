@@ -95,7 +95,7 @@ const GROUPS: readonly Group[] = [
     kicker: 'BLS CEX (issue #131)',
     title: 'BLS Consumer Expenditure Survey — line-item schema',
     description:
-      'Backs the two-axis cost-of-living schema. Geographic axis: 2023–2024 two-year-average region and division all-CU spending. Income axis: 2024 single-year national-quintile spending plus the quintile income thresholds.',
+      'Backs the two-axis cost-of-living schema. Geographic axis: 2023–2024 two-year-average all-CU spending at region, division, and 22 selected MSAs. Income axis: 2024 single-year national-quintile spending plus the quintile income thresholds.',
     sources: [SOURCES['bls-cex-geo-2-year-2023-2024'], SOURCES['bls-cex-income-quintiles-2024']],
   },
   {

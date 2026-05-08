@@ -4,14 +4,100 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
 import { SectionTitle } from '@/components/ui';
-import { EXPENSE_SOURCE } from '@/lib/budget';
+import { EXPENSE_SOURCE, type ExpenseSource } from '@/lib/budget';
 
-const TIER_COLOR: Record<'primary' | 'reference' | 'commercial' | 'none', string> = {
+const TIER_COLOR: Record<ExpenseSource['tier'], string> = {
   primary: '#5B7C3F', // muted green — primary BLS / agency
   reference: '#A88A40', // muted gold — reference (KFF, EPI, etc.)
   commercial: '#7A6B5A', // muted brown — commercial / proprietary
   none: '#B85C5C', // muted red — audit gap, no formal source
 };
+
+const TIER_NAME: Record<ExpenseSource['tier'], string> = {
+  primary: 'Primary',
+  reference: 'Reference',
+  commercial: 'Commercial',
+  none: 'No formal source',
+};
+
+/**
+ * Hover-popover source badge. The badge itself (small uppercase pill,
+ * tier-colored) is the trigger — no dotted underline like HoverGloss
+ * because the badge has its own visual signal. On hover/focus the
+ * popover shows the tier name + the full source description.
+ */
+function SourceBadge({ src }: { src: ExpenseSource }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      tabIndex={0}
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        outline: 'none',
+        cursor: 'help',
+      }}
+    >
+      <span
+        style={{
+          fontSize: rem(9),
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: TIER_COLOR[src.tier],
+          border: `1px solid ${TIER_COLOR[src.tier]}`,
+          padding: '0 5px',
+          borderRadius: 2,
+          opacity: 0.85,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {src.label}
+      </span>
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 10,
+            width: 320,
+            maxWidth: '90vw',
+            padding: '10px 12px',
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+            fontFamily: fonts.body,
+            fontSize: rem(12),
+            lineHeight: 1.5,
+            color: T.ink,
+            whiteSpace: 'normal',
+            textTransform: 'none',
+            letterSpacing: 0,
+          }}
+        >
+          <div
+            style={{
+              fontSize: rem(10),
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: TIER_COLOR[src.tier],
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            {TIER_NAME[src.tier]} · {src.label}
+          </div>
+          <div style={{ color: T.inkSoft }}>{src.description}</div>
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * Rollup definitions. Each rollup is a high-level category visible in
@@ -646,24 +732,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                     <span>{line.label}</span>
                                     {(() => {
                                       const src = EXPENSE_SOURCE[line.label];
-                                      if (!src) return null;
-                                      return (
-                                        <span
-                                          title={`Source: ${src.label}`}
-                                          style={{
-                                            fontSize: rem(9),
-                                            letterSpacing: '0.08em',
-                                            textTransform: 'uppercase',
-                                            color: TIER_COLOR[src.tier],
-                                            border: `1px solid ${TIER_COLOR[src.tier]}`,
-                                            padding: '0 5px',
-                                            borderRadius: 2,
-                                            opacity: 0.85,
-                                          }}
-                                        >
-                                          {src.label}
-                                        </span>
-                                      );
+                                      return src ? <SourceBadge src={src} /> : null;
                                     })()}
                                   </span>
                                   <span

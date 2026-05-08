@@ -41,29 +41,70 @@ import {
  * `tier: 'none'` so the UI can render them honestly rather than
  * pretending they're cited.
  */
-export const EXPENSE_SOURCE: Record<
-  string,
-  { label: string; tier: 'primary' | 'reference' | 'commercial' | 'none' }
-> = {
-  Housing: { label: 'RentCafe / Zillow', tier: 'commercial' },
-  Utilities: { label: 'BLS CEX', tier: 'primary' },
-  'Food at home': { label: 'BLS CEX', tier: 'primary' },
-  'Food away': { label: 'BLS CEX', tier: 'primary' },
-  Transit: { label: 'Transit-agency rates (uncited)', tier: 'none' },
-  Gasoline: { label: 'BLS CEX', tier: 'primary' },
-  'Vehicle (insurance & maint.)': { label: 'BLS CEX', tier: 'primary' },
-  'Vehicle (purchase)': { label: 'BLS CEX', tier: 'primary' },
-  Healthcare: { label: 'KFF (premium) + BLS CEX (OOP)', tier: 'reference' },
-  Childcare: { label: 'Care.com', tier: 'commercial' },
-  'Phone & Internet': { label: 'Hand formula (uncited)', tier: 'none' },
-  Insurance: { label: 'Hand formula (uncited)', tier: 'none' },
-  Apparel: { label: 'BLS CEX', tier: 'primary' },
-  Entertainment: { label: 'BLS CEX', tier: 'primary' },
-  'Personal Care': { label: 'BLS CEX', tier: 'primary' },
-  Education: { label: 'BLS CEX', tier: 'primary' },
-  'Household Operations': { label: 'BLS CEX', tier: 'primary' },
-  'Housekeeping Supplies': { label: 'BLS CEX', tier: 'primary' },
-  Furnishings: { label: 'BLS CEX', tier: 'primary' },
+export interface ExpenseSource {
+  label: string;
+  tier: 'primary' | 'reference' | 'commercial' | 'none';
+  /** Short description shown in the hover popover. */
+  description: string;
+}
+
+const BLS_CEX: ExpenseSource = {
+  label: 'BLS CEX',
+  tier: 'primary',
+  description:
+    'Bureau of Labor Statistics Consumer Expenditure Survey — the primary US-government dataset on household spending. We use Table 1101 (income quintiles) for the income axis and the region / division / MSA cross-tabs for the geographic axis, blended via the synthetic factor (nationalQuintile × geoAllCU/nationalAllCU).',
+};
+
+export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
+  Housing: {
+    label: 'RentCafe / Zillow',
+    tier: 'commercial',
+    description:
+      "City-specific median rents, hand-curated per city in src/data/cities.ts. RentCafe and Zillow publish monthly market data; values are rounded to the nearest $50–100. 1BR for solo / couple-no-kids, 3BR for any household with kids. Replaces BLS's 'Shelter' line, which is averaged across owners and renters and isn't useful as a renter-specific number.",
+  },
+  Utilities: BLS_CEX,
+  'Food at home': BLS_CEX,
+  'Food away': BLS_CEX,
+  Transit: {
+    label: 'Transit-agency rates',
+    tier: 'none',
+    description:
+      "Hand-curated monthly transit-pass costs per city in src/data/cities.ts (e.g. NYC OMNY $132, SF Muni $81). Sourced from each city's transit agency website but not formally cited in our sources registry — known audit gap.",
+  },
+  Gasoline: BLS_CEX,
+  'Vehicle (insurance & maint.)': BLS_CEX,
+  'Vehicle (purchase)': BLS_CEX,
+  Healthcare: {
+    label: 'KFF (premium) + BLS CEX (OOP)',
+    tier: 'reference',
+    description:
+      'Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting.',
+  },
+  Childcare: {
+    label: 'Care.com',
+    tier: 'commercial',
+    description:
+      "Care.com Cost of Care Report — annual commercial survey of US childcare costs. We use the preschool monthly value × kids × 0.85 (mix-of-ages discount for after-school / part-time). Note: BLS's Education line includes a small daycare share that overlaps slightly with this — see issue #190.",
+  },
+  'Phone & Internet': {
+    label: 'Hand formula (uncited)',
+    tier: 'none',
+    description:
+      'Hand-tuned formula in lib/budget.ts: $130 baseline + $50 per second adult + $25 per kid. No published source; the values are rough averages of typical phone+internet bundles. Known audit gap — should be replaced with a cited source.',
+  },
+  Insurance: {
+    label: 'Hand formula (uncited)',
+    tier: 'none',
+    description:
+      "Hand-tuned formula for renters' / life / other personal insurance: $90 baseline + $15/kid + $40 if family. No published source. Distinct from healthcare premiums (KFF) and from BLS's 'Personal insurance and pensions' which we don't pull. Known audit gap.",
+  },
+  Apparel: BLS_CEX,
+  Entertainment: BLS_CEX,
+  'Personal Care': BLS_CEX,
+  Education: BLS_CEX,
+  'Household Operations': BLS_CEX,
+  'Housekeeping Supplies': BLS_CEX,
+  Furnishings: BLS_CEX,
 };
 
 export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {

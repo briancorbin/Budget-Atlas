@@ -50,14 +50,14 @@ const METRIC = {
  * Income-sweep view that exposes the discontinuities baked into the safety
  * net. Holds the household configuration constant (city, kids, filing,
  * lifestyle) and varies gross income from $0 to $200K, plotting annual
- * discretionary income at each step. SNAP / Medicaid / CHIP are auto-claimed
- * during the sweep so the eligibility cliffs are visible — at the threshold
- * dollar, eligibility flips from yes to no and the curve drops vertically by
- * the program's annual benefit value.
+ * take-home + benefit value at each step. SNAP / Medicaid / CHIP are
+ * auto-claimed during the sweep so the eligibility cliffs are visible —
+ * at the threshold dollar, eligibility flips from yes to no and the
+ * curve drops vertically by the program's annual benefit value.
  *
- * For dual-earner households, the sweep varies incomeA only and holds incomeB
- * fixed. That keeps the X-axis a single household-gross figure that the eye
- * can map back to the existing inputs.
+ * For dual-earner households, the sweep allocates household gross
+ * proportionally between the two earners at their current ratio so both
+ * scale together from $0 — see the `points` useMemo for the math.
  */
 export function CliffCurve({
   city,
@@ -618,7 +618,7 @@ function CliffTooltip({
   const gross = typeof label === 'number' ? label : Number(label);
   const point = payload[0]?.payload as SweepPoint | undefined;
   if (!point) return null;
-  const value = point[metric.key] as number;
+  const value = point.takeHomePlusBenefits;
   const activePrograms = cliffs.filter((c) => gross <= c.gross);
   return (
     <div
@@ -634,11 +634,6 @@ function CliffTooltip({
       <div style={{ fontFamily: fonts.mono, color: value >= 0 ? T.positive : T.accent }}>
         {fmt(value)}/yr {metric.unitNoun}
       </div>
-      {point.benefits > 0 && metric.key !== 'takeHomePlusBenefits' && (
-        <div style={{ fontFamily: fonts.mono, color: T.inkSoft, marginTop: 2 }}>
-          + {fmt(point.benefits)}/yr in benefits
-        </div>
-      )}
       {activePrograms.length > 0 && (
         <div style={{ color: T.inkMuted, marginTop: 4 }}>
           Eligible: {activePrograms.map((c) => c.id.toUpperCase()).join(', ')}

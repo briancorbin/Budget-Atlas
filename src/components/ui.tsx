@@ -515,7 +515,16 @@ export function SearchableSelect<T extends string>({
         role="combobox"
         aria-expanded={open}
         aria-label={ariaLabel}
+        // Defensive autofill suppression — without these, password
+        // managers (1Password / LastPass / Chrome's built-in) offer
+        // to autofill name/email/password into a plain text input,
+        // which is wildly wrong for "pick a state" or "pick a filing
+        // status." `autoComplete="off"` alone is not enough; modern
+        // password managers ignore it. `data-1p-ignore` and
+        // `data-lpignore` are the explicit opt-outs they honor.
         autoComplete="off"
+        data-1p-ignore="true"
+        data-lpignore="true"
         spellCheck={false}
         value={displayValue}
         placeholder={placeholder}

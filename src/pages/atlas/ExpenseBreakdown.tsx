@@ -11,6 +11,7 @@ import {
   compositionBucket,
   blendCexSpendingTrace,
   type BLSCEXLineItem,
+  type CompositionType,
 } from '@/data/cex';
 
 // Per-axis cell labels are inlined into each trace row directly (see
@@ -66,12 +67,13 @@ const LEAF_TO_CEX_ITEM: Readonly<Record<string, BLSCEXLineItem>> = {
  * currency-formatted way as the inline budget.
  */
 /**
- * Per-composition Childcare BLS-derived monthly value (mirrors the
- * lookup in `budget.ts`). Used by `calcExplanation` to describe how
- * the Childcare leaf was computed — Table 1502 "Personal services"
- * subline delta vs. married-no-kids per composition.
+ * Per-composition human-readable label for the Childcare tooltip.
+ * Renders the household's CEX Table 1502 composition column in plain
+ * English ("married couple, oldest child <6") rather than the internal
+ * `CompositionType` key. Typed against `CompositionType` so adding a
+ * new composition bucket in cex.ts is caught by the compiler here.
  */
-const CHILDCARE_BLS_DESCRIPTION: Record<string, string> = {
+const CHILDCARE_BLS_DESCRIPTION: Readonly<Record<CompositionType, string>> = {
   marriedKidsU6: 'married couple, oldest child <6',
   marriedKids617: 'married couple, oldest child 6–17',
   marriedKids18p: 'married couple, adult kids',
@@ -134,7 +136,7 @@ function calcExplanation(
         <Header>How this is calculated</Header>
         <div style={{ color: T.inkSoft }}>
           Childcare uses BLS CEX Table 1502 "Personal services" subline, computed as the spending
-          delta between your composition (<strong>{compDesc}</strong>) and married-no- kids
+          delta between your composition (<strong>{compDesc}</strong>) and married-no-kids
           households. This represents what households like yours actually spend on childcare on
           average — net of free / family / community / CCDF-subsidized care, not private-market
           full-time center prices.

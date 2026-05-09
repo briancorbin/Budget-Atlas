@@ -18,10 +18,12 @@ import {
  * Keys are the labels used in `BudgetResult.expenses` — granular sub-
  * lines, not rolled-up parents. Food and transportation get split into
  * their constituent lines so each one lands cleanly in 'essential' or
- * 'lifestyle': 'Food at home' is essential, 'Food away' is lifestyle;
- * 'Transit' / 'Gasoline' / 'Vehicle (insurance & maint.)' are essential,
- * 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown component
- * groups these under "Mixed" rollups in the UI when both kinds appear.
+ * 'lifestyle': 'Food at home' is essential, 'Food away' / 'Alcohol'
+ * are lifestyle; 'Transit' / 'Gasoline' / 'Vehicle insurance' /
+ * 'Vehicle maintenance & repair' / 'Vehicle (other expenses)' are
+ * essential, 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown
+ * component groups these under "Mixed" rollups in the UI when both
+ * kinds appear.
  *
  * Apparel and Personal Care are gray-zone (the BLS lines bundle
  * essentials with discretionary), filed as lifestyle because the

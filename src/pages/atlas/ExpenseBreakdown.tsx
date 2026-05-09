@@ -80,6 +80,19 @@ const QUINTILE_LABEL: Record<'q1' | 'q2' | 'q3' | 'q4' | 'q5', string> = {
   q5: 'top fifth',
 };
 
+// Composite leaves: their cexBaseline is reassembled across multiple
+// CEX sublines in budget.ts (Utilities = electric/gas + water/public,
+// Vehicle (other expenses) = residual minus insurance/maint,
+// Entertainment = entertainment minus pets). Tracing a single subline
+// for these would render a factor breakdown that doesn't multiply to
+// the displayed BLS baseline — we suppress the per-axis trace block
+// for these leaves and let the summary line stand on its own.
+const COMPOSITE_LEAVES: ReadonlySet<string> = new Set([
+  'Utilities',
+  'Vehicle (other expenses)',
+  'Entertainment',
+]);
+
 const LEAF_TO_CEX_ITEM: Readonly<Partial<Record<string, BLSCEXLineItem>>> = {
   Utilities: 'utilitiesElectricGas', // composite — pick electric/gas as the headline subline
   'Cell service': 'cellularService',
@@ -311,7 +324,9 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
     // that doesn't multiply to the displayed `baseline`, so suppress
     // the trace for those leaves and let the summary line stand on
     // its own.
-    const COMPOSITE_LEAVES = new Set(['Utilities', 'Vehicle (other expenses)', 'Entertainment']);
+    // Hoisted to module scope below so we don't allocate a fresh Set
+    // on every tooltip render.
+    // (See COMPOSITE_LEAVES const near LEAF_TO_CEX_ITEM.)
     const trace =
       cexItem && !COMPOSITE_LEAVES.has(label)
         ? blendCexSpendingTrace(
@@ -343,7 +358,7 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
           <span style={{ color: T.ink }}>{fmt(trace.nationalQuintile / 12)}/mo</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>× geo factor ({trace.geoCut})</span>
+          <span>× geo factor ({trace.geoCut === 'msa' ? 'MSA' : trace.geoCut})</span>
           <span>{trace.geoFactor.toFixed(2)}×</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>

@@ -351,7 +351,14 @@ function OverrideInput({
       setDraft(override !== undefined ? String(override) : '');
       return;
     }
-    if (Math.round(n) !== override) onChange(label, Math.round(n));
+    const rounded = Math.round(n);
+    // Always normalize the displayed draft to the canonical rounded
+    // form on a successful commit, even when the rounded value matches
+    // the existing override and we'd otherwise skip onChange. Without
+    // this, a user typing "100.4" over an existing 100 would see the
+    // input keep showing "100.4" while the effective value is 100.
+    setDraft(String(rounded));
+    if (rounded !== override) onChange(label, rounded);
   };
 
   return (

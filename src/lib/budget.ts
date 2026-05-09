@@ -713,23 +713,53 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // dial re-runs computeBudget which re-computes the layers below; the
   // override layer just replaces the final value, so non-overridden
   // leaves naturally re-modulate and overridden leaves stick.
-  const expensesAfterOverrides: Record<string, number> = { ...computedExpenses };
+  //
+  // Two safety details:
+  //   - We only consider overrides whose key is an *own* property of
+  //     the computed expenses map (`Object.hasOwn`). A naive `key in
+  //     map` check walks the prototype chain, so a crafted share-link
+  //     payload with `__proto__` / `constructor` / `toString` etc.
+  //     would slip through. Own-property check + null-prototype output
+  //     map closes that.
+  //   - The override loop is a no-op fast path when `overrides` is
+  //     empty / undefined: we keep the computed map as-is and just
+  //     iterate it once for the essential/lifestyle sums. Avoids an
+  //     allocation in the cliff sweep where computeBudget runs
+  //     hundreds of times per render.
+  const overrideEntries = overrides ? Object.entries(overrides) : [];
+  const hasOverrides = overrideEntries.length > 0;
   const appliedOverrides: Record<string, number> = {};
-  if (overrides) {
-    for (const [label, value] of Object.entries(overrides)) {
-      if (label in expensesAfterOverrides) {
+  // Single pass: compute sums while applying overrides, no intermediate
+  // map allocation when there are no overrides.
+  let essentialExpenses = 0;
+  let lifestyleExpenses = 0;
+  // When overrides are present, build a per-leaf override-value lookup
+  // we can consult during the sum loop. Null-prototype map keeps
+  // prototype keys (e.g. `toString`) from acting as live entries.
+  const overrideMap: Record<string, number> = hasOverrides
+    ? Object.create(null)
+    : (null as unknown as Record<string, number>);
+  if (hasOverrides) {
+    for (const [label, value] of overrideEntries) {
+      if (Object.hasOwn(computedExpenses, label)) {
         const clamped = Math.max(0, value);
-        expensesAfterOverrides[label] = clamped;
+        overrideMap[label] = clamped;
         appliedOverrides[label] = clamped;
       }
     }
   }
-
-  // Re-derive sums from the (possibly overridden) expenses map using
-  // EXPENSE_CATEGORY as the essential/lifestyle key.
-  let essentialExpenses = 0;
-  let lifestyleExpenses = 0;
-  for (const [label, value] of Object.entries(expensesAfterOverrides)) {
+  // Materialize the post-override expenses map for downstream consumers
+  // (UI, tests, share-link round-trip). When no overrides apply we can
+  // hand back the computed map directly without copying.
+  const expensesAfterOverrides: Record<string, number> = hasOverrides
+    ? { ...computedExpenses, ...overrideMap }
+    : computedExpenses;
+  // Sum loop. Iterate the keys of the canonical map (`computedExpenses`)
+  // since that's the schema; consult `overrideMap` per key for the
+  // possibly-clamped value.
+  for (const label of Object.keys(computedExpenses)) {
+    const value =
+      hasOverrides && label in overrideMap ? overrideMap[label] : computedExpenses[label];
     if (EXPENSE_CATEGORY[label] === 'lifestyle') {
       lifestyleExpenses += value;
     } else {

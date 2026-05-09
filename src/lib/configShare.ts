@@ -19,7 +19,8 @@ export interface SharedConfig {
    * Per-leaf user overrides — display-label → monthly $. Round-tripped
    * through the share-link as a compact `o=` param: `label1:val1,label2:val2`
    * with labels base64-url-encoded so commas / colons in labels don't
-   * collide with delimiters. Empty / undefined when no overrides set.
+   * collide with delimiters. Empty object (`{}`) when no overrides set;
+   * `DEFAULTS_V1` always provides one. Required, never undefined.
    */
   overrides: Readonly<Record<string, number>>;
 }
@@ -114,18 +115,23 @@ export function encodeConfig(cfg: SharedConfig): string {
 }
 
 function b64UrlEncode(s: string): string {
-  // btoa is browser-only but the build target is browser. Convert to
-  // a UTF-8-safe string first to handle any non-ASCII labels (none
-  // today, but defensive). Strip `=` padding and swap `+/` for `-_`.
-  const utf8 = unescape(encodeURIComponent(s));
-  return btoa(utf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // btoa is browser-only but the build target is browser. UTF-8-encode
+  // through TextEncoder to handle any non-ASCII labels safely (the
+  // older `unescape(encodeURIComponent(...))` trick is deprecated).
+  // Strip `=` padding and swap `+/` for `-_`.
+  const bytes = new TextEncoder().encode(s);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function b64UrlDecode(s: string): string | null {
   try {
     const padded = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4);
-    const utf8 = atob(padded);
-    return decodeURIComponent(escape(utf8));
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
   } catch {
     return null;
   }

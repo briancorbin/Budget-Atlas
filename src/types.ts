@@ -309,6 +309,23 @@ export interface BudgetResult {
    * placeholder).
    */
   appliedOverrides: Readonly<Record<string, number>>;
+  /**
+   * EIA state-level residential electricity context (cents/kWh).
+   * Useful editorial signal for the Utilities leaf — surfaces "your
+   * state pays X% above/below national average" alongside the CEX-
+   * derived dollar amount. NOT yet wired as a multiplicative factor
+   * on the leaf itself (CEX already captures regional variation;
+   * stacking would double-count). Source: EIA Electric Power
+   * Monthly Table 5.6.A.
+   */
+  electricityContext: Readonly<{
+    /** State's residential price, ¢/kWh. */
+    stateCentsPerKwh: number;
+    /** National (51-jurisdiction) simple average, ¢/kWh. */
+    nationalAvgCentsPerKwh: number;
+    /** state / national. >1 = state pays above average, <1 = below. */
+    stateVsNationalFactor: number;
+  }>;
 }
 
 export type TaxBracket = readonly [number, number]; // [cap, rate]

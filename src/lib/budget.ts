@@ -12,6 +12,11 @@ import {
   type BLSCEXLineItem,
   type GeoGranularity,
 } from '@/data/cex';
+import {
+  RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB,
+  NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB,
+  eiaElectricityFactor,
+} from '@/data/eiaElectricity';
 
 /**
  * Per-line categorization for the essentials vs. lifestyle split (#203).
@@ -98,7 +103,12 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
     description:
       "Owner maintenance reserve, conventionally ~1% of home value per year. Currently $0 placeholder; populates with roadmap #13. CEX bundles this with HO insurance under 'Maintenance, repairs, insurance, and other expenses' on owned dwellings — when #13 lands, that bundle gets unbundled (insurance via III, maintenance from CEX residual).",
   },
-  Utilities: BLS_CEX,
+  Utilities: {
+    label: 'BLS CEX (rollup) + EIA state context',
+    tier: 'mixed',
+    description:
+      'Utilities = BLS CEX "Utilities, fuels, and public services" rollup (electric + natural gas + fuel oil + water/public services). The CEX rollup carries the dollar amount through the synthetic blend (region/division/quintile/CU-size/composition). EIA state-level residential electricity prices (¢/kWh) are pulled from `src/data/eiaElectricity.ts` (Table 5.6.A, Feb 2026 vintage) and surfaced as editorial context on the Utilities leaf — readers can see "your state pays X% above/below the national average" without the model double-counting state-level signal that CEX already partially captures via the 4-region cut.',
+  },
   'Cell service': BLS_CEX,
   'Home internet': {
     label: 'FCC Urban Rate Survey (planned)',
@@ -957,6 +967,11 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     stateData,
     cexProvenance: cexGranularity,
     incomeQuintile: quintile,
+    electricityContext: {
+      stateCentsPerKwh: RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB[cityData.state],
+      nationalAvgCentsPerKwh: NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB,
+      stateVsNationalFactor: eiaElectricityFactor(cityData.state),
+    },
     // Per-leaf BLS baseline — sparse map of display-label → monthly $ at
     // the user's CEX cell, no lifestyle elasticity, no specialized-
     // source override. Drives the "BLS baseline" column in the three-

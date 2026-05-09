@@ -5,6 +5,7 @@ export const post1: Post = {
   number: 'Week 1',
   title: 'Now do it and suffer',
   date: '2026-05-09',
+  coversFrom: '2026-05-01',
   dek: 'Why this tool did not already exist, and what changed.',
   editorial: () => (
     <>

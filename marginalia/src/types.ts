@@ -20,6 +20,17 @@ export type Post = {
   number: string;
   /** ISO date (YYYY-MM-DD) the post was published. */
   date: string;
+  /**
+   * ISO date the post's coverage window starts on. Used by TimeLogStrip
+   * to scope the AI-time-log stats shown at the bottom of the post to
+   * the work this post is actually about.
+   */
+  coversFrom: string;
+  /**
+   * ISO date the post's coverage window ends on. Defaults to `date`
+   * (publication day) when omitted.
+   */
+  coversTo?: string;
   /** One-line teaser for index list and RSS feed. */
   dek: string;
   editorial: () => ReactNode;

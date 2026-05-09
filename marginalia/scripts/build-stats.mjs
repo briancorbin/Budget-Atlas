@@ -111,6 +111,16 @@ const stats = {
     saved: round(allTime.saved),
     rowCount: allTime.count,
   },
+  // Per-row data is exported so post pages can window arbitrary ranges
+  // (each post defines its own coversFrom/coversTo). Undated rows
+  // (e.g., possible future meta rows) are dropped — they can't be
+  // attributed to a window anyway.
+  rows: datedRows.map((r) => ({
+    date: r.date,
+    solo: r.solo,
+    ai: r.ai,
+    saved: r.saved,
+  })),
 };
 
 const file = `// GENERATED FILE — do not edit by hand.
@@ -124,12 +134,20 @@ export type TimeLogWindow = {
   rowCount: number;
 };
 
+export type TimeLogRow = {
+  date: string;
+  solo: number;
+  ai: number;
+  saved: number;
+};
+
 export type TimeLogStats = {
   generatedAt: string;
   windowAnchor: string;
   weekStart: string;
   week: TimeLogWindow;
   allTime: TimeLogWindow;
+  rows: TimeLogRow[];
 };
 
 export const timeLogStats: TimeLogStats = ${JSON.stringify(stats, null, 2)};

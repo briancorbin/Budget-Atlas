@@ -1,16 +1,39 @@
 import { theme, fonts, rem } from '../theme';
-import { timeLogStats, type TimeLogWindow } from '../data/timeLogStats';
+import {
+  timeLogStats,
+  type TimeLogRow,
+  type TimeLogWindow,
+} from '../data/timeLogStats';
 
 /**
  * Editorial stat strip — surfaces aggregate AI-time-log numbers on the
  * Marginalia front page and on every post. Source data is the Atlas's
  * `AI_TIME_LOG.md`, parsed at build time by `scripts/build-stats.mjs`.
  *
- * Two windows: the most recent 7 days (anchored on the latest dated
- * row, not the build clock — stable across rebuilds), and all-time
- * since the project started.
+ * Two modes:
+ *   - default (no `range` prop): "Last 7 days" + "All time". Used on
+ *     the index. The 7-day window is anchored on the most recent dated
+ *     row in the log, not the build clock — stable across rebuilds of
+ *     the same commit.
+ *   - ranged (`range` prop): the supplied date range + "All time". Used
+ *     on post pages so each post shows the time tracked during the
+ *     period it covers, not just the rolling week from build time.
  */
-export function TimeLogStrip() {
+export function TimeLogStrip({
+  range,
+}: {
+  range?: { from: string; to: string; label?: string };
+}) {
+  const primary: { window: TimeLogWindow; label: string } = range
+    ? {
+        window: windowRows(timeLogStats.rows, range.from, range.to),
+        label: range.label ?? `${range.from} → ${range.to}`,
+      }
+    : {
+        window: timeLogStats.week,
+        label: `Last 7 days (${timeLogStats.weekStart} → ${timeLogStats.windowAnchor})`,
+      };
+
   return (
     <section
       aria-label="AI time-log stats"
@@ -40,7 +63,7 @@ export function TimeLogStrip() {
         <span>
           From the Atlas's{' '}
           <a
-            href={`https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/AI_TIME_LOG.md`}
+            href="https://github.com/TheBudgetAtlas/thebudgetatlas/blob/main/AI_TIME_LOG.md"
             style={{ color: theme.inkMuted, textDecoration: 'underline' }}
           >
             time log
@@ -54,14 +77,28 @@ export function TimeLogStrip() {
           gap: 18,
         }}
       >
-        <Window
-          label={`Last 7 days (${timeLogStats.weekStart} → ${timeLogStats.windowAnchor})`}
-          window={timeLogStats.week}
-        />
+        <Window label={primary.label} window={primary.window} />
         <Window label="All time" window={timeLogStats.allTime} />
       </div>
     </section>
   );
+}
+
+function windowRows(rows: TimeLogRow[], from: string, to: string): TimeLogWindow {
+  const filtered = rows.filter((r) => r.date >= from && r.date <= to);
+  return filtered.reduce<TimeLogWindow>(
+    (acc, r) => ({
+      solo: round(acc.solo + r.solo),
+      ai: round(acc.ai + r.ai),
+      saved: round(acc.saved + r.saved),
+      rowCount: acc.rowCount + 1,
+    }),
+    { solo: 0, ai: 0, saved: 0, rowCount: 0 },
+  );
+}
+
+function round(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 function Window({ label, window }: { label: string; window: TimeLogWindow }) {

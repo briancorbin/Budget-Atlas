@@ -140,7 +140,22 @@ interface RollupDef {
 }
 
 const ROLLUPS: readonly RollupDef[] = [
-  { id: 'housing', label: 'Housing', kind: 'essential', lines: ['Housing'] },
+  {
+    id: 'housing',
+    label: 'Housing',
+    kind: 'essential',
+    // Tenure-gated: renters see Housing (rent); owners see Mortgage P&I /
+    // Property tax / Homeowners insurance / Maintenance. Inapplicable
+    // leaves are $0 + filtered from the summary, but kept in the detail
+    // panel with an `expenseModelNotes` reason badge.
+    lines: [
+      'Housing',
+      'Mortgage P&I',
+      'Property tax',
+      'Homeowners insurance',
+      'Maintenance & repairs',
+    ],
+  },
   {
     id: 'bills',
     label: 'Bills & home upkeep',

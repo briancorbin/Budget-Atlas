@@ -10,8 +10,30 @@ import {
   cuSizeBucket,
   quintileFromIncome,
   type BLSCEXLineItem,
+  type CompositionType,
   type GeoGranularity,
 } from '@/data/cex';
+
+// Childcare BLS baseline — Table 1502 "Personal services" subline delta
+// vs. married-no-kids per composition column. Hoisted to module level
+// (was per-call inside `computeBudget`) so the income-sweep loop in
+// CliffCurve doesn't re-allocate this map on every iteration. Same
+// values used by the cexBaseline['Childcare'] derivation later in the
+// file — single source of truth.
+//
+// v1 limitation: `compositionBucket` collapses any 2-adult household
+// with kids into `marriedKids617`, so the marriedKidsU6 column ($454)
+// and singleParent column ($47) only fire when the model can route
+// there explicitly. Per-child age routing is roadmap #3.
+export const CHILDCARE_BLS_PER_COMP: Readonly<Record<CompositionType, number>> = {
+  marriedNoKids: 0,
+  marriedKidsU6: 454,
+  marriedKids617: 118,
+  marriedKids18p: 0,
+  otherMarried: 0,
+  singleParent: 47,
+  singleOrOther: 0,
+};
 import {
   RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB,
   NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB,
@@ -139,7 +161,7 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
     label: 'BLS CEX Table 1502 (Personal services)',
     tier: 'primary',
     description:
-      'BLS CEX Table 1502 "Personal services" subline, delta vs. married-no-kids per composition. Captures what the average household with kids ACTUALLY spends on childcare out-of-pocket — net of free / family / community / CCDF-subsidized care. Per-composition values: ~$454/mo (married + oldest <6), ~$118/mo (married + oldest 6–17), ~$47/mo (single parent). Replaces the previous Care.com-based formula (private-market full-time center prices × kids × 0.85), which overstated by 5–10× for the typical household — most American childcare is informal (relatives, friends, churches) and CCDF subsidies cover most cost above a small co-pay for income-eligible families. Care.com private-market data stays in `cityData.childcarePreschool` for future re-introduction as a private-market reference. Note: BLS\'s Education line includes a small daycare share that overlaps slightly with this — see issue #190.',
+      'BLS CEX Table 1502 "Personal services" subline, delta vs. married-no-kids per composition. Captures what the average household with kids ACTUALLY spends on childcare out-of-pocket — net of free / family / community / CCDF-subsidized care. Per-composition values: ~$454/mo (married + oldest <6), ~$118/mo (married + oldest 6–17), ~$47/mo (single parent). v1 limitation: the model bucket-routes any 2-adult household with kids into the "oldest 6–17" column, so the higher under-6 value only fires when per-child age tracking lands (roadmap #3). Replaces the previous Care.com-based formula (private-market full-time center prices × kids × 0.85), which overstated by 5–10× for the typical household — most American childcare is informal (relatives, friends, churches) and CCDF subsidies cover most cost above a small co-pay for income-eligible families. Care.com private-market data stays in `cityData.childcarePreschool` for future re-introduction as a private-market reference. Note: BLS\'s Education line includes a small daycare share that overlaps slightly with this — see issue #190.',
   },
   Education: BLS_CEX,
   'Food at home': BLS_CEX,
@@ -602,15 +624,8 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // home) and otherMarried (multigenerational): $0 — Personal
   // services delta in those columns is dominated by adult care
   // rather than childcare, and our model doesn't distinguish.
-  const CHILDCARE_BLS_PER_COMP: Record<typeof composition, number> = {
-    marriedNoKids: 0,
-    marriedKidsU6: 454,
-    marriedKids617: 118,
-    marriedKids18p: 0,
-    otherMarried: 0,
-    singleParent: 47,
-    singleOrOther: 0,
-  };
+  // (Lookup table hoisted to module level — see `CHILDCARE_BLS_PER_COMP`
+  // at the top of this file.)
   const childcare = kids > 0 ? CHILDCARE_BLS_PER_COMP[composition] : 0;
 
   // Phone & Internet split per the locked tree:
@@ -1027,29 +1042,13 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       // <6" delta is ~$454/mo; "married, oldest 6-17" is ~$118/mo;
       // single parent is ~$47/mo (lower because single-parent
       // households in CEX use less paid care on average).
-      //
-      // Two honesty caveats baked into the shape:
-      //   - Returns `undefined` for compositions BLS doesn't surface
-      //     a delta for (marriedKids18p, marriedNoKids, otherMarried,
-      //     singleOrOther). The UI treats "no baseline signal" as
-      //     "skip the comparison" rather than rendering "BLS = $0 →
-      //     shipped = $X" which would read as a misleading data point.
-      //   - This baseline is a national composition-only delta. It
-      //     does NOT vary by income / geo / CU-size the way every
-      //     other `cexBaseline` entry does. The detail-view tooltip's
-      //     "BLS baseline at your income/region/size/composition cell"
-      //     copy is technically inaccurate for Childcare; until we
-      //     extend `BudgetResult` with per-leaf baseline-provenance
-      //     metadata (followup PR), the gap is documented here.
+      // Reuses the module-level CHILDCARE_BLS_PER_COMP map so the
+      // baseline column and the model's shipped value stay in sync.
+      // Returns undefined for compositions with no signal (so the UI
+      // skips the misleading "BLS = $0 → shipped = $X" comparison).
       Childcare:
-        kids > 0
-          ? composition === 'marriedKidsU6'
-            ? 454
-            : composition === 'marriedKids617'
-              ? 118
-              : composition === 'singleParent'
-                ? 47
-                : undefined // marriedKids18p, marriedNoKids, otherMarried, singleOrOther — no Table-1502 signal
+        kids > 0 && CHILDCARE_BLS_PER_COMP[composition] > 0
+          ? CHILDCARE_BLS_PER_COMP[composition]
           : undefined,
       Utilities:
         (cexBaselineCache.utilitiesElectricGas ?? 0) + (cexBaselineCache.utilitiesWaterPublic ?? 0),

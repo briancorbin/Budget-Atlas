@@ -11,7 +11,6 @@ import {
   compositionBucket,
   blendCexSpendingTrace,
   type BLSCEXLineItem,
-  type CompositionType,
 } from '@/data/cex';
 
 // Per-axis cell labels are inlined into each trace row directly (see
@@ -67,13 +66,12 @@ const LEAF_TO_CEX_ITEM: Readonly<Record<string, BLSCEXLineItem>> = {
  * currency-formatted way as the inline budget.
  */
 /**
- * Per-composition human-readable label for the Childcare tooltip.
- * Renders the household's CEX Table 1502 composition column in plain
- * English ("married couple, oldest child <6") rather than the internal
- * `CompositionType` key. Typed against `CompositionType` so adding a
- * new composition bucket in cex.ts is caught by the compiler here.
+ * Per-composition Childcare BLS-derived monthly value (mirrors the
+ * lookup in `budget.ts`). Used by `calcExplanation` to describe how
+ * the Childcare leaf was computed — Table 1502 "Personal services"
+ * subline delta vs. married-no-kids per composition.
  */
-const CHILDCARE_BLS_DESCRIPTION: Readonly<Record<CompositionType, string>> = {
+const CHILDCARE_BLS_DESCRIPTION: Record<string, string> = {
   marriedKidsU6: 'married couple, oldest child <6',
   marriedKids617: 'married couple, oldest child 6–17',
   marriedKids18p: 'married couple, adult kids',
@@ -136,7 +134,7 @@ function calcExplanation(
         <Header>How this is calculated</Header>
         <div style={{ color: T.inkSoft }}>
           Childcare uses BLS CEX Table 1502 "Personal services" subline, computed as the spending
-          delta between your composition (<strong>{compDesc}</strong>) and married-no-kids
+          delta between your composition (<strong>{compDesc}</strong>) and married-no- kids
           households. This represents what households like yours actually spend on childcare on
           average — net of free / family / community / CCDF-subsidized care, not private-market
           full-time center prices.
@@ -180,7 +178,7 @@ function calcExplanation(
         <div style={{ color: T.inkSoft }}>
           Healthcare combines two sources. The BLS-baseline column shows out-of-pocket only (CEX
           medical services + drugs + supplies, no insurance premium):{' '}
-          <strong>{fmt(oopBaseline)}</strong>. The Atlas-shipped value adds the worker share of the
+          <strong>{fmt(oopBaseline)}</strong>. The Atlas estimate adds the worker share of the
           employer-sponsored health insurance premium from KFF{' '}
           <em>
             (Employer Health Benefits Survey, family vs single tier based on household composition)
@@ -213,10 +211,12 @@ function calcExplanation(
   // doesn't need a calc tooltip.
   if (baseline !== undefined && elasticity !== undefined) {
     const factor = 1 + elasticity * dialSign;
-    const elasticityCopy =
-      elasticity === 0
-        ? 'not modulated by lifestyle dial (config-driven)'
-        : `× lifestyle ${dialSign === 0 ? '1.00' : (factor >= 1 ? '+' : '') + ((factor - 1) * 100).toFixed(0) + '%'} (${dialName} dial, ±${(elasticity * 100).toFixed(0)}% per-leaf elasticity)`;
+    // Compact label for the grid lifestyle row — pairs with a
+    // dedicated multiplier cell ("1.00×") and running-$ cell. The
+    // zero-elasticity branch keeps the prose form because there's no
+    // multiplier to render and a one-line note reads better than a
+    // half-empty grid row.
+    const lifestyleRowLabel = `× lifestyle (${dialName}, ±${(elasticity * 100).toFixed(0)}%)`;
 
     // Compute the per-axis cells (used inline in the merged trace
     // below — labels embedded in each factor row instead of a
@@ -290,109 +290,213 @@ function calcExplanation(
                 : composition === 'marriedKids18p'
                   ? 'married, adult kids'
                   : 'other married';
-    const traceBlock = trace ? (
-      <div
-        style={{
-          marginTop: 6,
-          padding: '6px 8px',
-          background: T.bgAlt,
-          borderRadius: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          fontSize: rem(11),
-          fontFamily: fonts.mono,
-          color: T.inkSoft,
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>
-            {trace.quintileAnchor.quintile} anchor (~$
-            {(trace.quintileAnchor.mean / 1000).toFixed(0)}K/yr mean)
-          </span>
-          <span style={{ color: T.ink }}>{fmt(trace.quintileAnchor.value / 12)}/mo</span>
-        </div>
-        {/* Smoothing row — only show when interpolation actually moved
-            the value (income sits between two quintile means; clamping
-            to q1 / q5 yields factor = 1.00 and adds nothing useful). */}
-        {/* Threshold matches the rendered precision (toFixed(2) → 0.005)
-            so the row only appears when the displayed value would NOT
-            be 1.00× — avoids a "× 1.00× → $X" row that contradicts the
-            "smoothing didn't apply" intuition. */}
-        {Math.abs(trace.quintileInterpolationFactor - 1) > 0.005 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <span>× quintile-curve smoothing (your income)</span>
-            <span>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
-          </div>
-        )}
-        {/* Anchor-vs-quintile mismatch note. Two definitions of "your
-            quintile" don't perfectly align: the floor-based quintile
-            (used by the IncomePosition thermometer) puts a household at
-            $60K in q3, but the smoothing anchors at quintile MEANS, so
-            the same $60K household anchors at q2 and interpolates up.
-            Surface this explicitly when they differ — otherwise readers
-            wonder why the trace says "q2 anchor" while elsewhere the
-            household is labeled q3. */}
-        {trace.quintileAnchor.quintile !== result.incomeQuintile && (
-          <div
-            style={{
-              fontSize: rem(10),
-              color: T.inkMuted,
-              fontStyle: 'italic',
-              fontFamily: fonts.body,
-              paddingTop: 2,
-              lineHeight: 1.4,
-            }}
-          >
-            You're in {result.incomeQuintile} by floor, but anchored at{' '}
-            {trace.quintileAnchor.quintile} because the smoothing anchors at quintile means rather
-            than floors — your income hasn't yet crossed {result.incomeQuintile}'s mean, so the
-            blend interpolates from {trace.quintileAnchor.quintile}'s mean upward.
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>
-            × geo ({region}, {trace.geoCut})
-          </span>
-          <span>{trace.geoFactor.toFixed(2)}×</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>× size ({sizeLabelShort})</span>
-          <span>{trace.sizeFactor.toFixed(2)}×</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>× family-comp ({compLabelShort})</span>
-          <span>{trace.compositionFactor.toFixed(2)}×</span>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 8,
-            paddingTop: 2,
-            borderTop: `1px solid ${T.border}`,
-          }}
-        >
-          <span>= BLS baseline</span>
-          <span style={{ color: T.ink }}>{fmt(trace.finalAnnual / 12)}/mo</span>
-        </div>
-      </div>
-    ) : null;
+    // 3-column grid (label / multiplier / running $/mo) so every row
+    // aligns at the same vertical seam. Without this, flexbox + a wide
+    // right string ("1.45× → $190/mo") wraps onto its own line whenever
+    // the label fills the row, and rows look like 2-3 visual lines for
+    // one logical step. Anchor + baseline rows leave the multiplier
+    // column blank — they're endpoints, not multipliers.
+    const traceBlock = trace
+      ? (() => {
+          const afterGeo = trace.nationalQuintile * trace.geoFactor;
+          const afterSize = afterGeo * trace.sizeFactor;
+          const showSmoothing = Math.abs(trace.quintileInterpolationFactor - 1) > 0.001;
+          const showMismatch = trace.quintileAnchor.quintile !== result.incomeQuintile;
+          // Single grid container for the entire trace — every row's cells
+          // are direct grid children, so the three columns size once and
+          // align across all rows. Per-row wrappers (the previous shape)
+          // each created their own grid context and column 2 sized
+          // independently per row, producing visible misalignment.
+          const multCell: React.CSSProperties = {
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          const valCell: React.CSSProperties = {
+            textAlign: 'right',
+            color: T.ink,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          // Full-width separator pseudo-row between sections. Spans all 3
+          // columns as a single continuous rule (an earlier per-cell border
+          // approach left orphan line segments stranded in the empty
+          // middle column, broken up by the grid column-gap).
+          const separator: React.CSSProperties = {
+            gridColumn: '1 / -1',
+            height: 1,
+            background: T.border,
+            margin: '4px 0 2px',
+          };
+          const fullSpan: React.CSSProperties = { gridColumn: '1 / -1' };
+          return (
+            <div
+              style={{
+                marginTop: 6,
+                padding: '8px 10px',
+                background: T.bgAlt,
+                borderRadius: 2,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto auto',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
+              }}
+            >
+              {/* Anchor row — the starting reference. Bold value; full-width
+              separator below marks it off from the multiplier rows. */}
+              <span style={{ color: T.ink }}>
+                {trace.quintileAnchor.quintile} anchor (~$
+                {(trace.quintileAnchor.mean / 1000).toFixed(0)}K/yr mean)
+              </span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>
+                {fmt(trace.quintileAnchor.value / 12)}/mo
+              </span>
+              <span style={separator} />
+
+              {/* Smoothing row — only show when interpolation actually moved
+              the value (income sits between two quintile means; clamping
+              to q1 / q5 yields factor = 1.00 and adds nothing useful). */}
+              {showSmoothing && (
+                <>
+                  <span>× quintile-curve smoothing (your income)</span>
+                  <span style={multCell}>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
+                  <span style={valCell}>{fmt(trace.nationalQuintile / 12)}/mo</span>
+                </>
+              )}
+
+              {/* Anchor-vs-quintile mismatch note. Two definitions of "your
+              quintile" don't perfectly align: the floor-based quintile
+              (used by the IncomePosition thermometer) puts a household
+              at $60K in q3, but the smoothing anchors at quintile MEANS,
+              so the same $60K household anchors at q2 and interpolates
+              up. Surface this explicitly when they differ — otherwise
+              readers wonder why the trace says "q2 anchor" while
+              elsewhere the household is labeled q3. */}
+              {showMismatch && (
+                <span
+                  style={{
+                    ...fullSpan,
+                    fontSize: rem(10),
+                    color: T.inkMuted,
+                    fontStyle: 'italic',
+                    fontFamily: fonts.body,
+                    paddingTop: 2,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  You're in {result.incomeQuintile} by floor, but anchored at{' '}
+                  {trace.quintileAnchor.quintile} because your income is below{' '}
+                  {result.incomeQuintile}'s mean — interpolating upward toward it.
+                </span>
+              )}
+
+              <span>
+                × geo ({region}, {trace.geoCut})
+              </span>
+              <span style={multCell}>{trace.geoFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterGeo / 12)}/mo</span>
+
+              <span>× size ({sizeLabelShort})</span>
+              <span style={multCell}>{trace.sizeFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterSize / 12)}/mo</span>
+
+              <span>× family-comp ({compLabelShort})</span>
+              <span style={multCell}>{trace.compositionFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(trace.finalAnnual / 12)}/mo</span>
+
+              {/* Baseline row — full-width separator above marks the
+              conclusion of the data-blend stage. */}
+              <span style={separator} />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= BLS baseline</span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>{fmt(trace.finalAnnual / 12)}/mo</span>
+            </div>
+          );
+        })()
+      : null;
     return (
       <>
         <Header>{includeLifestyle ? 'How this is calculated' : 'BLS baseline'}</Header>
         {traceBlock ?? (
           <div style={{ color: T.inkSoft }}>
             BLS baseline at your region · quintile · CU size · family-comp blend:{' '}
-            <strong>{fmt(baseline)}</strong>
+            <strong>{fmt(baseline)}/mo</strong>
           </div>
         )}
-        {includeLifestyle && (
-          <div style={{ color: T.inkSoft, marginTop: 6 }}>
-            {elasticityCopy}
-            <br />= shipped <strong>{fmt(shipped)}</strong>
-          </div>
-        )}
+        {includeLifestyle &&
+          (elasticity === 0 ? (
+            <div style={{ color: T.inkSoft, marginTop: 6 }}>
+              not modulated by lifestyle dial (config-driven)
+              <br />= Atlas estimate <strong>{fmt(shipped)}/mo</strong>
+            </div>
+          ) : (
+            // Single grid for lifestyle + Atlas-estimate rows so the
+            // multiplier and value columns line up with each other
+            // (mirroring the trace block above). Kept as its own grid —
+            // not merged into the trace block — because this is a
+            // separate stage (user dial, not data blend) and the visual
+            // break helps signal that.
+            <div
+              style={{
+                marginTop: 6,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto auto',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
+              }}
+            >
+              <span>{lifestyleRowLabel}</span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {factor.toFixed(2)}×
+              </span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+              <span
+                style={{
+                  gridColumn: '1 / -1',
+                  height: 1,
+                  background: T.border,
+                  margin: '4px 0 2px',
+                }}
+              />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= Atlas estimate</span>
+              <span />
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+            </div>
+          ))}
         {utilitiesEiaNote}
       </>
     );
@@ -407,8 +511,7 @@ function calcExplanation(
       <>
         <Header>How this is calculated</Header>
         <div style={{ color: T.inkSoft }}>
-          Sourced from <strong>{src.label}</strong>.{' '}
-          {src.description.match(/^.*?\.(?=\s+[A-Z]|$)/)?.[0] ?? src.description}
+          Sourced from <strong>{src.label}</strong>. {src.description.split('.')[0]}.
         </div>
       </>
     );
@@ -703,11 +806,7 @@ function OverrideInput({
   onChange: (label: string, value: number | null) => void;
 }) {
   const [draft, setDraft] = useState<string>(override !== undefined ? String(override) : '');
-  // Keep draft in sync when the external `override` prop changes
-  // (share-link load, dial toggle on a non-overridden leaf, etc.).
-  // Uses the "adjust state during render" pattern rather than a
-  // useEffect — same shape as SearchableSelect's prevQ/prevOpen guard.
-  // See https://react.dev/learn/you-might-not-need-an-effect
+  // Adjust state during render — see https://react.dev/learn/you-might-not-need-an-effect
   const [prevOverride, setPrevOverride] = useState<number | undefined>(override);
   if (prevOverride !== override) {
     setPrevOverride(override);

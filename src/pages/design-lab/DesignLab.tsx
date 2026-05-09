@@ -64,6 +64,16 @@ interface LabSection {
 }
 const LAB_SECTIONS: ReadonlyArray<LabSection> = [
   {
+    id: 'blend-ladder',
+    nav: 'Blend-trace ladder',
+    count: 7,
+    Component: SectionBlendLadder,
+    status: 'decided',
+    decidedAs: 'V3 — running $/mo per row (no chrome, just the missing column)',
+    decidedNote:
+      "After six visualization variants, the honest read was that visual treatments don't beat the existing text trace for dense per-step numerical data. Bars-as-composition, lines-as-continuity, and bidirectional-deflection all carry semantic baggage that isn't actually present (left/right reads as bad/good even when neutral-colored; magnitude-only bars don't add over the multiplier number). The one piece readers genuinely had to compound mentally was the running monthly $ at each step — V3 just adds that as inline text on each multiplier row (e.g. `1.20× → $137/mo`). Shipped to production. Other variants kept here as a record of why they don't beat plain text.",
+  },
+  {
     id: 'status-dots',
     nav: 'Status dot palette',
     count: 1,
@@ -5531,5 +5541,988 @@ function SectionStatusDotPalette() {
         </div>
       </div>
     </Section>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Blend-trace ladder — visualizing the synthetic-blend progression
+ *
+ * The calc tooltip in production today shows the blend as a wall of text
+ * rows: q-anchor / × smoothing / × geo / × size / × composition = baseline.
+ * Honest but dense. This section explores making the trajectory legible at
+ * a glance — bars, sparkline, etc.
+ *
+ * Sample trace numbers are realistic but mocked here so the section is
+ * self-contained and doesn't depend on user inputs.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+interface LadderStep {
+  /** Short label for the step (e.g. "q3 anchor", "× geo (Midwest div.)"). */
+  label: string;
+  /** Multiplier applied at this step. 1 for the starting anchor row. */
+  multiplier: number;
+  /** Running monthly $ value AFTER this step's multiplier is applied. */
+  monthly: number;
+  /** Free-form descriptor (e.g. "South Atlantic division", "3-person CU"). */
+  cell?: string;
+}
+
+// Realistic mocked trace for a hypothetical Education-line household:
+// q3 (~$84K mean) anchor, smoothed up to user $92K, Midwest division
+// slight bump, 3-person CU, married + kids 6-17.
+const SAMPLE_LADDER: ReadonlyArray<LadderStep> = [
+  { label: 'q3 anchor', multiplier: 1, monthly: 100, cell: 'national, ~$84K mean' },
+  {
+    label: '× quintile-curve smoothing',
+    multiplier: 1.083,
+    monthly: 108,
+    cell: 'interp toward q4',
+  },
+  { label: '× geo factor', multiplier: 1.05, monthly: 114, cell: 'Midwest division' },
+  { label: '× CU-size factor', multiplier: 1.2, monthly: 137, cell: '3-person CU' },
+  { label: '× family-comp factor', multiplier: 0.95, monthly: 130, cell: 'married, oldest 6–17' },
+  { label: 'BLS baseline', multiplier: 1, monthly: 130 },
+  { label: '× lifestyle (comfortable)', multiplier: 1.1, monthly: 143, cell: '+10% per-leaf' },
+];
+
+function SectionBlendLadder() {
+  return (
+    <Section
+      heading="Blend-trace ladder"
+      subhead="The synthetic blend layers q-anchor → smoothing → geo → size → composition → lifestyle. Today the tooltip shows this as text rows; here we explore visual variants. Sample data: a hypothetical Education line, q3 anchor at $84K, household at $92K in a Midwest division city, 3-person CU, married + kids 6–17, comfortable lifestyle dial."
+      columns={1}
+    >
+      <Variation
+        title="V0 — Current production (text rows, baseline)"
+        description="What ships today. Each row names its axis cell inline. Honest but dense — eight near-identical rows of mono text. Easy to read once you know the structure; intimidating before you do."
+      >
+        <LadderV0 />
+      </Variation>
+      <Variation
+        title="V1 — Horizontal bar ladder (width = monthly $)"
+        description="Each step is a horizontal bar; bar width tracks the running monthly value. Multiplier badges float between bars. Magnitude changes (the 1.20× CU-size jump, the 0.95× family-comp dip) are visible at a glance without reading the numbers."
+      >
+        <LadderV1 />
+      </Variation>
+      <Variation
+        title="V2 — Step sparkline (compact trajectory)"
+        description="A tiny line chart of the running value across steps. Most compact — fits at the bottom of the existing tooltip without taking real estate from the text rows. Good as an at-a-glance summary; loses per-step magnitude detail."
+      >
+        <LadderV2 />
+      </Variation>
+      <Variation
+        title="V3 — Running $/mo per row (multiplier + value on the same line)"
+        description="Each trace row carries both the multiplier and the running monthly $ that emerges after applying it. The reader doesn't have to mentally compound multipliers row-by-row; the number is right there. Shipped — minimal change, only addition was the running $ inline on each multiplier row."
+        decided
+      >
+        <LadderV3 />
+      </Variation>
+      <Variation
+        title="V4 — Multiplier deflection bars (centered at 1.00×)"
+        description="Each axis gets a small horizontal track with a tick at 1.00× in the middle; the bar deflects right (warm) when the multiplier > 1, left (cool) when < 1. Bar width tracks magnitude of deviation. Honest about what's actually being shown — multiplication is push-against-neutral, not addition-to-baseline. Anchor + baseline still get $/mo on dedicated rows."
+      >
+        <LadderV4 />
+      </Variation>
+      <Variation
+        title="V5 — Deflection bars + running $/mo column"
+        description="V4's deflection bars with an extra column showing the running monthly $ after each multiplier is applied. Reader sees both the visual push-against-neutral AND the dollar trajectory without having to compound mentally. Densest of the variants but answers both 'which axis pushed how hard' and 'where did the value end up at each step.'"
+      >
+        <LadderV5 />
+      </Variation>
+      <Variation
+        title="V6 — Magnitude-only bars (no direction in visual)"
+        description="The bar is single-directional — width tracks |multiplier − 1|, i.e. how hard this axis pushed. The multiplier text (0.95× vs 1.20×) carries the direction; the bar carries only the strength of effect. Avoids any 'left vs right = bad vs good' read because there's no left/right to it. Running $/mo column still answers 'where did the value end up.'"
+      >
+        <LadderV6 />
+      </Variation>
+    </Section>
+  );
+}
+
+function LadderV0() {
+  // Faithful copy of the production trace block in
+  // src/pages/atlas/ExpenseBreakdown.tsx#calcExplanation. The right column
+  // is multiplier (e.g. "1.08×"), NOT a running $/mo — the only $/mo
+  // values shown are the anchor value (top) and the final baseline (footer).
+  // Lifestyle → shipped is a separate paragraph below the trace box.
+  const traceRow = (left: string, right: string, opts?: { boldRight?: boolean }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      <span>{left}</span>
+      <span style={{ color: opts?.boldRight ? T.ink : undefined }}>{right}</span>
+    </div>
+  );
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <div
+        style={{
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: T.ink,
+        }}
+      >
+        How this is calculated
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          padding: '6px 8px',
+          background: T.bgAlt,
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          fontSize: rem(11),
+          fontFamily: fonts.mono,
+          color: T.inkSoft,
+        }}
+      >
+        {traceRow('q3 anchor (~$84K/yr mean)', '$100/mo', { boldRight: true })}
+        {traceRow('× quintile-curve smoothing (your income)', '1.08×')}
+        {traceRow('× geo (Midwest, division)', '1.05×')}
+        {traceRow('× size (3-person)', '1.20×')}
+        {traceRow('× family-comp (married, oldest 6–17)', '0.95×')}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 8,
+            paddingTop: 2,
+            borderTop: `1px solid ${T.border}`,
+          }}
+        >
+          <span>= BLS baseline</span>
+          <span style={{ color: T.ink }}>$130/mo</span>
+        </div>
+      </div>
+      <div
+        style={{
+          color: T.inkSoft,
+          marginTop: 6,
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+        }}
+      >
+        × +10% lifestyle (comfortable, ±10% on this leaf)
+        <br />= shipped <strong>$143</strong>
+      </div>
+    </div>
+  );
+}
+
+function LadderV3() {
+  // What I originally mocked as "V0" before realizing it didn't match
+  // production. Each row pairs the step's multiplier with the running
+  // monthly $ AFTER that multiplier is applied. Reads like a calculator
+  // tape — no mental compounding required, but denser per row.
+  return (
+    <div style={{ maxWidth: 520 }}>
+      <div
+        style={{
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: T.ink,
+        }}
+      >
+        How this is calculated
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          padding: '6px 8px',
+          background: T.bgAlt,
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          fontSize: rem(11),
+          fontFamily: fonts.mono,
+          color: T.inkSoft,
+        }}
+      >
+        {SAMPLE_LADDER.slice(0, -2).map((s, i) => {
+          const isAnchor = i === 0;
+          return (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <span>
+                {s.label}
+                {s.cell && <span style={{ color: T.inkMuted }}> · {s.cell}</span>}
+              </span>
+              <span style={{ color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
+                {!isAnchor && `${s.multiplier.toFixed(2)}× → `}
+                {`$${s.monthly}/mo`}
+              </span>
+            </div>
+          );
+        })}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 8,
+            paddingTop: 2,
+            borderTop: `1px solid ${T.border}`,
+          }}
+        >
+          <span>= BLS baseline</span>
+          <span style={{ color: T.ink, fontVariantNumeric: 'tabular-nums' }}>$130/mo</span>
+        </div>
+      </div>
+      <div
+        style={{
+          color: T.inkSoft,
+          marginTop: 6,
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+        }}
+      >
+        × +10% lifestyle (comfortable, ±10% on this leaf)
+        <br />= shipped <strong>$143</strong>
+      </div>
+    </div>
+  );
+}
+
+function LadderV4() {
+  // Multiplier-deflection visualization. Each axis row has a horizontal
+  // track with a center tick at 1.00×. The bar deflects right when the
+  // multiplier > 1, left when < 1. The visual maps to the real math:
+  // multiplication is "this axis pushes the value away from neutral by
+  // this much." Anchor + baseline are dedicated rows with $/mo (they're
+  // not multipliers, they're the endpoints).
+  //
+  // Color is intentionally neutral (single ink shade) — bidirectional
+  // tinting would smuggle in good/bad semantics that aren't there. A
+  // 1.20× size factor isn't "bad," just "your household is bigger than
+  // the all-CU average and this leaf scales up." Direction is encoded
+  // by which side of center the bar sits on; magnitude by bar width.
+  //
+  // Track half-width represents deviation up to ±0.5× (i.e. multipliers
+  // in [0.5, 1.5] fit; clamped beyond that). Generous enough for the
+  // realistic factor range we see (~0.7× to ~1.5×).
+  const TRACK_HALF = 0.5;
+  const trackWidth = 200; // px
+  const deflectionRow = (label: string, multiplier: number, cell?: string) => {
+    const dev = multiplier - 1;
+    const clamped = Math.max(-TRACK_HALF, Math.min(TRACK_HALF, dev));
+    const widthPx = (Math.abs(clamped) / TRACK_HALF) * (trackWidth / 2);
+    const isWarm = dev > 0;
+    const barColor = T.ink;
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `1fr ${trackWidth}px 50px`,
+          alignItems: 'center',
+          gap: 10,
+          padding: '4px 0',
+        }}
+      >
+        <div style={{ fontSize: rem(11), color: T.inkSoft, fontFamily: fonts.body }}>
+          {label}
+          {cell && <span style={{ color: T.inkMuted }}> · {cell}</span>}
+        </div>
+        <div
+          style={{
+            position: 'relative',
+            height: 12,
+            background: T.bgAlt,
+            border: `1px solid ${T.border}`,
+          }}
+        >
+          {/* center tick at 1.00× */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: -2,
+              bottom: -2,
+              width: 1,
+              background: T.inkMuted,
+            }}
+          />
+          {/* deflection bar */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: isWarm ? '50%' : `calc(50% - ${widthPx}px)`,
+              width: widthPx,
+              background: barColor,
+              opacity: 0.6,
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            color: T.ink,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {multiplier.toFixed(2)}×
+        </div>
+      </div>
+    );
+  };
+  const endpointRow = (label: string, monthly: number, opts?: { strong?: boolean }) => (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 8,
+        padding: '4px 0',
+        fontSize: rem(11),
+        fontFamily: fonts.mono,
+        color: T.ink,
+        fontWeight: opts?.strong ? 600 : 400,
+      }}
+    >
+      <span style={{ fontFamily: fonts.body, color: T.ink }}>{label}</span>
+      <span>${monthly}/mo</span>
+    </div>
+  );
+  return (
+    <div style={{ maxWidth: 540 }}>
+      <div
+        style={{
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: T.ink,
+        }}
+      >
+        How this is calculated
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          padding: '8px 10px',
+          background: T.bgAlt,
+          borderRadius: 2,
+        }}
+      >
+        {endpointRow('q3 anchor (~$84K/yr mean)', 100)}
+        {deflectionRow('quintile-curve smoothing', 1.083, 'your income')}
+        {deflectionRow('geo', 1.05, 'Midwest, division')}
+        {deflectionRow('size', 1.2, '3-person')}
+        {deflectionRow('family-comp', 0.95, 'married, oldest 6–17')}
+        <div
+          style={{
+            borderTop: `1px solid ${T.border}`,
+            marginTop: 4,
+            paddingTop: 4,
+          }}
+        >
+          {endpointRow('= BLS baseline', 130, { strong: true })}
+        </div>
+      </div>
+      <div
+        style={{
+          color: T.inkSoft,
+          marginTop: 6,
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+        }}
+      >
+        × +10% lifestyle (comfortable, ±10% on this leaf)
+        <br />= shipped <strong>$143</strong>
+      </div>
+    </div>
+  );
+}
+
+function LadderV5() {
+  // V4 (deflection bars) + a running $/mo column that compounds the
+  // anchor through each multiplier. Shows both "which axis pushed how
+  // hard" (the bar) AND "where did the value land after this step"
+  // (the $/mo). Densest of the variants — but the reader doesn't have
+  // to mentally compound 1.08 × 1.05 × 1.20 × 0.95.
+  const TRACK_HALF = 0.5;
+  const trackWidth = 160;
+  type AxisRow = { label: string; multiplier: number; cell?: string };
+  const axes: AxisRow[] = [
+    { label: 'quintile-curve smoothing', multiplier: 1.083, cell: 'your income' },
+    { label: 'geo', multiplier: 1.05, cell: 'Midwest, division' },
+    { label: 'size', multiplier: 1.2, cell: '3-person' },
+    { label: 'family-comp', multiplier: 0.95, cell: 'married, oldest 6–17' },
+  ];
+  const anchorMonthly = 100;
+  // Compound running monthly value. Round to nearest dollar at each step
+  // (matches what production does — `fmt(value/12)` with integer dollars).
+  const running: number[] = [];
+  let v = anchorMonthly;
+  for (const a of axes) {
+    v = v * a.multiplier;
+    running.push(Math.round(v));
+  }
+  const baselineMonthly = running[running.length - 1];
+
+  const cols = `1fr ${trackWidth}px 50px 60px`;
+
+  const headerRow = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: cols,
+        gap: 10,
+        padding: '0 0 4px 0',
+        fontSize: rem(9),
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase' as const,
+        color: T.inkMuted,
+        fontFamily: fonts.body,
+        borderBottom: `1px dashed ${T.border}`,
+        marginBottom: 4,
+      }}
+    >
+      <div>axis</div>
+      <div style={{ textAlign: 'center' }}>vs. neutral 1.00×</div>
+      <div style={{ textAlign: 'right' }}>×</div>
+      <div style={{ textAlign: 'right' }}>$/mo</div>
+    </div>
+  );
+
+  const deflectionRow = (a: AxisRow, runningMonthly: number) => {
+    const dev = a.multiplier - 1;
+    const clamped = Math.max(-TRACK_HALF, Math.min(TRACK_HALF, dev));
+    const widthPx = (Math.abs(clamped) / TRACK_HALF) * (trackWidth / 2);
+    const isWarm = dev > 0;
+    const barColor = T.ink;
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: cols,
+          alignItems: 'center',
+          gap: 10,
+          padding: '4px 0',
+        }}
+      >
+        <div style={{ fontSize: rem(11), color: T.inkSoft, fontFamily: fonts.body }}>
+          {a.label}
+          {a.cell && <span style={{ color: T.inkMuted }}> · {a.cell}</span>}
+        </div>
+        <div
+          style={{
+            position: 'relative',
+            height: 12,
+            background: T.bg,
+            border: `1px solid ${T.border}`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: -2,
+              bottom: -2,
+              width: 1,
+              background: T.inkMuted,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: isWarm ? '50%' : `calc(50% - ${widthPx}px)`,
+              width: widthPx,
+              background: barColor,
+              opacity: 0.6,
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            color: T.ink,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {a.multiplier.toFixed(2)}×
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            color: T.ink,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          ${runningMonthly}
+        </div>
+      </div>
+    );
+  };
+
+  const endpointRow = (label: string, monthly: number, opts?: { strong?: boolean }) => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: cols,
+        alignItems: 'center',
+        gap: 10,
+        padding: '4px 0',
+        fontSize: rem(11),
+        fontFamily: fonts.body,
+        color: T.ink,
+        fontWeight: opts?.strong ? 600 : 400,
+      }}
+    >
+      <span>{label}</span>
+      <span />
+      <span />
+      <span
+        style={{
+          fontFamily: fonts.mono,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        ${monthly}
+      </span>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div
+        style={{
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: T.ink,
+        }}
+      >
+        How this is calculated
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          padding: '8px 10px',
+          background: T.bgAlt,
+          borderRadius: 2,
+        }}
+      >
+        {headerRow}
+        {endpointRow('q3 anchor (~$84K/yr mean)', anchorMonthly)}
+        {axes.map((a, i) => (
+          <div key={i}>{deflectionRow(a, running[i])}</div>
+        ))}
+        <div
+          style={{
+            borderTop: `1px solid ${T.border}`,
+            marginTop: 4,
+            paddingTop: 4,
+          }}
+        >
+          {endpointRow('= BLS baseline', baselineMonthly, { strong: true })}
+        </div>
+      </div>
+      <div
+        style={{
+          color: T.inkSoft,
+          marginTop: 6,
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+        }}
+      >
+        × +10% lifestyle (comfortable, ±10% on this leaf)
+        <br />= shipped <strong>${Math.round(baselineMonthly * 1.1)}</strong>
+      </div>
+    </div>
+  );
+}
+
+function LadderV6() {
+  // Magnitude-only bar: width tracks |multiplier - 1|, single direction
+  // (always grows from the left edge). The multiplier text says which
+  // way; the bar says how hard. Avoids any directional read in the
+  // visual — the bar is purely a strength-of-effect indicator.
+  const TRACK_HALF = 0.5; // multipliers in [0.5, 1.5] fill the track
+  const trackWidth = 120;
+  type AxisRow = { label: string; multiplier: number; cell?: string };
+  const axes: AxisRow[] = [
+    { label: 'quintile-curve smoothing', multiplier: 1.083, cell: 'your income' },
+    { label: 'geo', multiplier: 1.05, cell: 'Midwest, division' },
+    { label: 'size', multiplier: 1.2, cell: '3-person' },
+    { label: 'family-comp', multiplier: 0.95, cell: 'married, oldest 6–17' },
+  ];
+  const anchorMonthly = 100;
+  const running: number[] = [];
+  let v = anchorMonthly;
+  for (const a of axes) {
+    v = v * a.multiplier;
+    running.push(Math.round(v));
+  }
+  const baselineMonthly = running[running.length - 1];
+
+  const cols = `1fr ${trackWidth}px 50px 60px`;
+
+  const headerRow = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: cols,
+        gap: 10,
+        padding: '0 0 4px 0',
+        fontSize: rem(9),
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase' as const,
+        color: T.inkMuted,
+        fontFamily: fonts.body,
+        borderBottom: `1px dashed ${T.border}`,
+        marginBottom: 4,
+      }}
+    >
+      <div>axis</div>
+      <div style={{ textAlign: 'center' }}>effect strength</div>
+      <div style={{ textAlign: 'right' }}>×</div>
+      <div style={{ textAlign: 'right' }}>$/mo</div>
+    </div>
+  );
+
+  const magnitudeRow = (a: AxisRow, runningMonthly: number) => {
+    const mag = Math.min(TRACK_HALF, Math.abs(a.multiplier - 1));
+    const widthPx = (mag / TRACK_HALF) * trackWidth;
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: cols,
+          alignItems: 'center',
+          gap: 10,
+          padding: '4px 0',
+        }}
+      >
+        <div style={{ fontSize: rem(11), color: T.inkSoft, fontFamily: fonts.body }}>
+          {a.label}
+          {a.cell && <span style={{ color: T.inkMuted }}> · {a.cell}</span>}
+        </div>
+        <div
+          style={{
+            position: 'relative',
+            height: 12,
+            background: T.bg,
+            border: `1px solid ${T.border}`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: widthPx,
+              background: T.ink,
+              opacity: 0.55,
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            color: T.ink,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {a.multiplier.toFixed(2)}×
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            color: T.ink,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          ${runningMonthly}
+        </div>
+      </div>
+    );
+  };
+
+  const endpointRow = (label: string, monthly: number, opts?: { strong?: boolean }) => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: cols,
+        alignItems: 'center',
+        gap: 10,
+        padding: '4px 0',
+        fontSize: rem(11),
+        fontFamily: fonts.body,
+        color: T.ink,
+        fontWeight: opts?.strong ? 600 : 400,
+      }}
+    >
+      <span>{label}</span>
+      <span />
+      <span />
+      <span
+        style={{
+          fontFamily: fonts.mono,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        ${monthly}
+      </span>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 540 }}>
+      <div
+        style={{
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: T.ink,
+        }}
+      >
+        How this is calculated
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          padding: '8px 10px',
+          background: T.bgAlt,
+          borderRadius: 2,
+        }}
+      >
+        {headerRow}
+        {endpointRow('q3 anchor (~$84K/yr mean)', anchorMonthly)}
+        {axes.map((a, i) => (
+          <div key={i}>{magnitudeRow(a, running[i])}</div>
+        ))}
+        <div
+          style={{
+            borderTop: `1px solid ${T.border}`,
+            marginTop: 4,
+            paddingTop: 4,
+          }}
+        >
+          {endpointRow('= BLS baseline', baselineMonthly, { strong: true })}
+        </div>
+      </div>
+      <div
+        style={{
+          color: T.inkSoft,
+          marginTop: 6,
+          fontSize: rem(13),
+          fontFamily: fonts.body,
+        }}
+      >
+        × +10% lifestyle (comfortable, ±10% on this leaf)
+        <br />= shipped <strong>${Math.round(baselineMonthly * 1.1)}</strong>
+      </div>
+    </div>
+  );
+}
+
+function LadderV1() {
+  const maxMonthly = Math.max(...SAMPLE_LADDER.map((s) => s.monthly));
+  return (
+    <div
+      style={{
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        padding: 18,
+        maxWidth: 560,
+      }}
+    >
+      {SAMPLE_LADDER.map((s, i) => {
+        const isBaseline = s.label === 'BLS baseline';
+        const isAnchor = i === 0;
+        const widthPct = (s.monthly / maxMonthly) * 100;
+        // Multiplier direction tinting: warm for >1, cool for <1, neutral for =1
+        const mTint =
+          s.multiplier > 1
+            ? 'rgba(166, 38, 28, 0.10)'
+            : s.multiplier < 1
+              ? 'rgba(45, 80, 22, 0.10)'
+              : T.bgAlt;
+        const mFg = s.multiplier > 1 ? T.accent : s.multiplier < 1 ? 'rgb(45, 80, 22)' : T.inkSoft;
+        return (
+          <div
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '160px 56px 1fr 80px',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 0',
+              borderTop: isBaseline ? `1px solid ${T.border}` : 'none',
+              marginTop: isBaseline ? 4 : 0,
+              paddingTop: isBaseline ? 10 : 6,
+            }}
+          >
+            <div
+              style={{
+                fontSize: rem(11),
+                color: isAnchor || isBaseline ? T.ink : T.inkSoft,
+                fontWeight: isBaseline ? 600 : 400,
+                fontFamily: fonts.body,
+              }}
+            >
+              {s.label}
+              {s.cell && <div style={{ fontSize: rem(10), color: T.inkMuted }}>{s.cell}</div>}
+            </div>
+            <div
+              style={{
+                fontFamily: fonts.mono,
+                fontSize: rem(11),
+                color: mFg,
+                background: s.multiplier === 1 ? 'transparent' : mTint,
+                padding: s.multiplier === 1 ? 0 : '2px 6px',
+                borderRadius: 2,
+                textAlign: 'center',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {s.multiplier === 1 || isBaseline ? '' : `${s.multiplier.toFixed(2)}×`}
+            </div>
+            <div
+              style={{
+                height: 14,
+                background: T.bgAlt,
+                position: 'relative',
+                border: `1px solid ${T.border}`,
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -1,
+                  left: -1,
+                  bottom: -1,
+                  width: `calc(${widthPct}% + 2px)`,
+                  background: isBaseline ? T.ink : isAnchor ? 'rgba(0,0,0,0.45)' : T.accent,
+                  opacity: isBaseline ? 1 : 0.85,
+                }}
+              />
+            </div>
+            <div
+              style={{
+                fontFamily: fonts.mono,
+                fontSize: rem(12),
+                color: T.ink,
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                fontWeight: isBaseline ? 600 : 400,
+              }}
+            >
+              ${s.monthly}/mo
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LadderV2() {
+  const data = SAMPLE_LADDER.map((s, i) => ({ idx: i, label: s.label, monthly: s.monthly }));
+  const baselineIdx = SAMPLE_LADDER.findIndex((s) => s.label === 'BLS baseline');
+  return (
+    <div
+      style={{
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        padding: 18,
+        maxWidth: 560,
+      }}
+    >
+      <div style={{ height: 120, marginBottom: 12 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
+            <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
+            <XAxis dataKey="idx" hide type="number" domain={[0, SAMPLE_LADDER.length - 1]} />
+            <YAxis
+              tick={{ fontSize: 10, fill: T.inkMuted }}
+              tickFormatter={(v) => `$${v}`}
+              width={42}
+              stroke={T.border}
+            />
+            <ReferenceLine
+              x={baselineIdx}
+              stroke={T.ink}
+              strokeDasharray="3 3"
+              label={{
+                value: 'baseline',
+                position: 'top',
+                fontSize: 10,
+                fill: T.inkSoft,
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="monthly"
+              stroke={T.accent}
+              strokeWidth={2}
+              dot={{ r: 3, fill: T.accent, strokeWidth: 0 }}
+              isAnimationActive={false}
+            />
+            <ReferenceDot
+              x={SAMPLE_LADDER.length - 1}
+              y={SAMPLE_LADDER[SAMPLE_LADDER.length - 1].monthly}
+              r={4}
+              fill={T.ink}
+              stroke="none"
+              label={{
+                value: `$${SAMPLE_LADDER[SAMPLE_LADDER.length - 1].monthly}/mo`,
+                position: 'right',
+                fontSize: 11,
+                fill: T.ink,
+              }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div
+        style={{
+          fontSize: rem(10),
+          color: T.inkMuted,
+          fontFamily: fonts.body,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 4,
+        }}
+      >
+        {SAMPLE_LADDER.map((s, i) => (
+          <span
+            key={i}
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              fontWeight: s.label === 'BLS baseline' ? 600 : 400,
+              color: s.label === 'BLS baseline' ? T.ink : T.inkMuted,
+            }}
+          >
+            {s.label
+              .replace(/^× /, '')
+              .replace(' factor', '')
+              .replace('-curve smoothing', ' smooth')}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -423,6 +423,24 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
+  {
+    id: 217,
+    title: 'Detail-view tooltips use HoverGloss',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "Fixed two new detail-view tooltips (geo-granularity badges and BLS-baseline values) to use the project's `HoverGloss` primitive instead of native `title=` attributes — matches the styled hover popover the rest of the detail view already uses (SourceBadge dots, etc.). The native `title` is browser-flaky and didn't match the visual family. Override clear button keeps native `title` (button accessibility hint, not a content tooltip).",
+  },
+  {
+    id: 216,
+    title: 'Lifestyle elasticity calibration',
+    category: 'Cost of living',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      'Recalibrated LIFESTYLE_ELASTICITY against CEX q5/q1 spreads per line, with volume/needs subtracted out so the dial captures only lifestyle-driven variance (q5/q1 vehicle-insurance ratio is mostly "high earners own more cars" — volume, not lifestyle). Bumped 9 lines: foodAtHome 0.05→0.08, gasoline 0.05→0.07, vehicleMaintRepair 0.05→0.07, vehicleInsurance 0→0.05, lifeInsurance 0→0.05, personalCare 0.05→0.10, furnishings/householdOperations/pets 0.15→0.20.',
+  },
 ];
 
 /**

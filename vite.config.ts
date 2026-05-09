@@ -53,20 +53,17 @@ export default defineConfig({
     allowedHosts: ['dev.thebudgetatlas.com', '.trycloudflare.com'],
     // Proxy /api/* to a backend so the dev server can fetch audit data.
     //
-    // Default target is the deployed Worker — zero-effort for UI-only
-    // work, no need to spin up local infra. When iterating on the
-    // backend itself, run `yarn dev:worker` (wrangler in --local mode)
-    // and set AUDIT_PROXY_TARGET=http://localhost:8787 in your shell so
-    // the proxy hits the local Worker (with its local D1) instead of
-    // production. See audit/links/README.md "Local backend" for the
-    // full workflow.
-    //
-    // The backend has no auth on reads (the data is public), so the
-    // default of pointing at prod is safe; writes are gated by
-    // AUDIT_WRITE_TOKEN regardless of origin.
+    // Default target is the deployed develop Worker — UI work hits develop
+    // data so prod isn't the staging surface. Three modes:
+    //   - `yarn dev`       → develop (this default)
+    //   - `yarn dev:local` → local wrangler worker (with local D1)
+    //   - `yarn dev:prod`  → production (read-only safe; writes are gated
+    //                        by AUDIT_WRITE_TOKEN regardless of origin)
+    // Each script sets AUDIT_PROXY_TARGET explicitly; this fallback only
+    // kicks in if you run `vite` outside the package scripts.
     proxy: {
       '/api': {
-        target: process.env.AUDIT_PROXY_TARGET ?? 'https://thebudgetatlas.com',
+        target: process.env.AUDIT_PROXY_TARGET ?? 'https://develop.thebudgetatlas.com',
         changeOrigin: true,
         secure: true,
       },

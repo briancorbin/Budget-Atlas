@@ -62,8 +62,7 @@
         {
           "binding": "DB",
           "database_name": "budget-atlas-audit-develop",
-          // TODO: replace with id from `wrangler d1 create budget-atlas-audit-develop`.
-          "database_id": "REPLACE_WITH_DEVELOP_D1_ID",
+          "database_id": "6b6a5437-913d-4984-aa7c-8b36c8878a01",
         },
       ],
     },

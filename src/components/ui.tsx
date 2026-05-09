@@ -445,6 +445,7 @@ export function SearchableSelect<T extends string>({
   placeholder,
   ariaLabel,
   minWidth,
+  compact,
 }: {
   value: T;
   options: readonly SearchableOption<T>[];
@@ -452,6 +453,7 @@ export function SearchableSelect<T extends string>({
   placeholder?: string;
   ariaLabel?: string;
   minWidth?: number;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -566,24 +568,37 @@ export function SearchableSelect<T extends string>({
         onKeyDown={onKey}
         style={{
           width: '100%',
-          padding: '10px 32px 10px 12px',
+          padding: compact ? '6px 22px 6px 8px' : '10px 32px 10px 12px',
           fontFamily: fonts.body,
-          fontSize: rem(14),
+          fontSize: compact ? rem(12) : rem(14),
           background: T.bg,
           border: `1px solid ${T.border}`,
           color: T.ink,
           outline: 'none',
           boxSizing: 'border-box',
+          // text-overflow: ellipsis only kicks in when the box also has
+          // overflow: hidden + white-space: nowrap. Apply only in
+          // compact mode (sticky bar) where the picker button can't
+          // fit the full label. Full-width mode keeps default input
+          // overflow (horizontal scroll while typing) so users can see
+          // their query as they type.
+          ...(compact
+            ? {
+                textOverflow: 'ellipsis' as const,
+                overflow: 'hidden' as const,
+                whiteSpace: 'nowrap' as const,
+              }
+            : {}),
         }}
       />
       <span
         style={{
           position: 'absolute',
-          right: 12,
+          right: compact ? 8 : 12,
           top: '50%',
           transform: 'translateY(-50%)',
           color: T.inkMuted,
-          fontSize: rem(11),
+          fontSize: compact ? rem(9) : rem(11),
           pointerEvents: 'none',
         }}
       >

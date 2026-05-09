@@ -2,12 +2,40 @@
 // triple-slash directive (tsconfig.node.json has an explicit `types` array
 // that suppresses ambient lookups). vitest/config re-exports vite's
 // defineConfig with the test field merged in.
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// On the develop instance (DEPLOY_ENV=develop in the build env), inject a
+// noindex meta tag and write a disallow-all robots.txt so search engines
+// don't index develop.thebudgetatlas.com.
+function noindexOnDevelop(): Plugin {
+  const isDevelop = process.env.DEPLOY_ENV === 'develop';
+  let outDir = 'dist';
+  return {
+    name: 'noindex-on-develop',
+    apply: 'build',
+    configResolved(c) {
+      outDir = c.build.outDir;
+    },
+    transformIndexHtml(html) {
+      if (!isDevelop) return html;
+      return html.replace(
+        '</head>',
+        '    <meta name="robots" content="noindex, nofollow" />\n  </head>',
+      );
+    },
+    closeBundle() {
+      if (!isDevelop) return;
+      fs.writeFileSync(path.resolve(outDir, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), noindexOnDevelop()],
   base: './', // works for static hosts and GitHub Pages out of the box
   // Vitest reads this same config; tests are colocated as `*.test.ts` next
   // to the source they cover. Pure-function libs only — no jsdom needed.

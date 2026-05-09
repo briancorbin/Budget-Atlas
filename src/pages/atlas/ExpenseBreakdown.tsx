@@ -806,11 +806,12 @@ function OverrideInput({
   onChange: (label: string, value: number | null) => void;
 }) {
   const [draft, setDraft] = useState<string>(override !== undefined ? String(override) : '');
-  // Keep draft in sync if external state changes (share-link load, dial
-  // toggle on a non-overridden leaf, etc.).
-  useEffect(() => {
+  // Adjust state during render — see https://react.dev/learn/you-might-not-need-an-effect
+  const [prevOverride, setPrevOverride] = useState<number | undefined>(override);
+  if (prevOverride !== override) {
+    setPrevOverride(override);
     setDraft(override !== undefined ? String(override) : '');
-  }, [override]);
+  }
 
   const commit = () => {
     if (draft.trim() === '') {

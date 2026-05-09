@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 219,
+    title: 'EIA state electricity context',
+    category: 'Cost of living',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      'First per-cell state-external data wiring — fetched all 51 jurisdictions from EIA Electric Power Monthly Table 5.6.A (Feb 2026 vintage, ¢/kWh residential prices) into a typed data file. `BudgetResult.electricityContext` now exposes the state rate / national avg / state-vs-national factor on every result. NOT applied as a multiplicative factor on the Utilities leaf — CEX division-level signal already captures partial state variation; stacking would double-count. Surfaced for editorial context only ("your state pays X% above/below average") and as the foundation for future careful per-state model adjustments. Utilities source label updated to "BLS CEX (rollup) + EIA state context" (mixed tier).',
+  },
+  {
     id: 218,
     title: 'Childcare BLS baseline (#208 fill)',
     category: 'Cost of living',

@@ -27,10 +27,8 @@
  * Status:
  *   - Geographic data populated from BLS CEX 2023-2024 two-year-average
  *     tables — national all-CU, 4 regions, 9 divisions, and 22 selected
- *     MSAs. The MSA tables publish ~12 of the schema's 22 line items
- *     (the composite-utilities / healthcare-OOP fields and the new
- *     sublines aren't broken out at MSA level); the rest fall through
- *     to division.
+ *     MSAs (12 of 15 line items per MSA; the three composite-utilities/
+ *     healthcare fields aren't broken out at the MSA level by BLS).
  *   - Income-quintile data populated from BLS CEX 2024 single-year
  *     Table 1101.
  *   - `cexLineItemSpending(state, ...)` returns real numbers via the
@@ -286,12 +284,14 @@ export type CUSize = 'p1' | 'p2' | 'p3' | 'p4' | 'p5plus';
  * Households <1 (which shouldn't occur from real input) clamp to `p1` —
  * the published table starts at 1 person and we extrapolate down rather
  * than up.
+ *
+ * Caveat — Table 1400 doesn't distinguish "1 adult + 2 kids" from "3
+ * adults", both are 3-person CUs. That's an inherent BLS limitation
+ * inherited by the size factor; the composition axis (`CompositionType`,
+ * Table 1502) captures the structural difference and partly compensates
+ * by feeding in alongside the size factor in the synthetic blend.
  */
 export function cuSizeBucket(householdSize: number): CUSize {
-  // Treat NaN / Infinity as 1-person rather than letting them flow through
-  // `Math.floor(NaN) → NaN` and slip past the bucket comparisons to
-  // `p5plus` (the largest bucket). The "extrapolate down" docstring above
-  // is the principle: invalid → smallest, never largest.
   if (!Number.isFinite(householdSize)) return 'p1';
   const n = Math.max(1, Math.floor(householdSize));
   if (n <= 1) return 'p1';
@@ -299,6 +299,53 @@ export function cuSizeBucket(householdSize: number): CUSize {
   if (n === 3) return 'p3';
   if (n === 4) return 'p4';
   return 'p5plus';
+}
+
+/**
+ * Family-composition buckets, mirroring BLS CEX Table 1502's published
+ * columns. Captures structural differences in household spending that
+ * pure CU size can't (a single parent of 3 and a married couple of 4
+ * are both 4-person CUs but spend very differently — Table 1502 makes
+ * that visible).
+ *
+ *   marriedNoKids     — Married couple only (no kids in household)
+ *   marriedKidsU6     — Married couple, oldest child under 6
+ *   marriedKids617    — Married couple, oldest child 6 to 17
+ *   marriedKids18p    — Married couple, oldest child 18 or older (adult
+ *                       child still at home; relevant for roadmap #17)
+ *   otherMarried      — Other married CU (multigenerational, etc.)
+ *   singleParent      — One parent + at least one child <18
+ *   singleOrOther     — Single person + other CU (default fallback)
+ *
+ * Used as the fourth axis in the synthetic blend (alongside region,
+ * income quintile, and CU size).
+ */
+export type CompositionType =
+  | 'marriedNoKids'
+  | 'marriedKidsU6'
+  | 'marriedKids617'
+  | 'marriedKids18p'
+  | 'otherMarried'
+  | 'singleParent'
+  | 'singleOrOther';
+
+/**
+ * Map household input shape (adults + kids count) to a CEX composition
+ * bucket. We don't yet track per-child age (roadmap #3), so households
+ * with kids default to `marriedKids617` for two-adult families and
+ * `singleParent` for one-adult families — school-age is the broadest
+ * "have kids" category by share of households. When per-child age
+ * detail (#3) lands, this mapping becomes age-aware.
+ */
+export function compositionBucket(adults: number, kids: number): CompositionType {
+  const a = Math.max(1, Math.floor(adults));
+  const k = Math.max(0, Math.floor(kids));
+  if (a >= 2) {
+    if (k === 0) return 'marriedNoKids';
+    return 'marriedKids617'; // default age band; refined when per-child #3 lands
+  }
+  // Single adult
+  return k > 0 ? 'singleParent' : 'singleOrOther';
 }
 
 /**
@@ -470,17 +517,10 @@ export type LineItemSpending = Readonly<Record<BLSCEXLineItem, number>>;
 //   housekeepingSupplies = "Housekeeping supplies"
 //   furnishings          = "Household furnishings and equipment"
 //
-// "Telephone services" rollup (CEX ~$1,431/CU/yr nationally — the
-// parent line that bundles cellular + residential phone + VoIP +
-// pagers) is intentionally not consumed as a top-level CEX line item.
-// We DO consume the `cellularService` subline (added with the leaf
-// restructure) and surface it as the 'Cell service' leaf; the
-// residential-phone share is left out (vanishingly small and not
-// individually published at our schema depth). The `Home internet`
-// leaf is a separate flat-value placeholder in `lib/budget.ts` —
-// CEX bundles internet ambiguously inside Telephone services and is
-// the wrong shape to extract a clean residential-broadband number;
-// FCC Urban Rate Survey is the planned replacement.
+// Telephone services (CEX ~$1,431/CU/yr nationally) is intentionally
+// excluded — `lib/budget.ts` already carries a separate phoneInternet
+// line, and folding telephone services into utilitiesElectricGas would
+// double-count.
 //
 // Reading, Tobacco, and Cash contributions are excluded as out of
 // scope for the take-home model.
@@ -1345,14 +1385,11 @@ export const MSA_ALLCU_SPENDING: Readonly<Record<BLSMSA, Partial<LineItemSpendin
  * denominator both 2024 single-year), so the size factor stays internally
  * consistent. Combining with the 2y geo factor and the 1y quintile value
  * is the same cross-vintage product the geo blend already accepts; the
- * documented <6% national-CU drift between vintages applies (most
- * lines <2%; vehicleInsurance ~5.8% is the outlier).
+ * documented <2% national-CU drift between vintages applies.
  *
- * The Reading / Tobacco / Cash-contributions lines BLS publishes in
- * Table 1400 are intentionally not consumed (same scope as the rest
- * of `BLSCEXLineItem`). Pets WAS in this excluded list previously;
- * with the leaf restructure, pets is now surfaced as its own
- * `BLSCEXLineItem` and pulled from Table 1400.
+ * The Pets / Reading / Tobacco / Cash-contributions lines BLS publishes
+ * in Table 1400 are intentionally not consumed (same scope as the rest
+ * of `BLSCEXLineItem`).
  *
  * `householdOperations` is reassembled from "Personal services" +
  * "Other household expenses" (the two CEX sublines) — same convention
@@ -1496,6 +1533,199 @@ export const SIZE_ALLCU_SPENDING: Readonly<Record<CUSize, LineItemSpending>> = {
  *     ~3.3%, otherLodging ~3.0%
  * The cross-vintage drift bound is asserted by `cex.test.ts`.
  */
+/**
+ * Per-family-composition all-CU annual spending. Carries the structural
+ * shape in the blend: `COMPOSITION_ALLCU_SPENDING[comp][item] /
+ * COMPOSITION_BASELINE_ALLCU[item]` is the composition factor.
+ *
+ * Source: BLS CEX 2024 single-year, Table 1502 (Composition of consumer
+ * unit). Same vintage as `SIZE_ALLCU_SPENDING`; both are 2024 single-
+ * year and self-normalize within their tables.
+ *
+ * Note: `marriedKidsU6` shows a high `householdOperations` value (driven
+ * by Personal Services — childcare). The composition axis captures this
+ * naturally; it's a real signal that our childcare leaf (Care.com) is
+ * already modeling, but the elevated householdOperations spending in
+ * 1502 carries it over diffuse Household Operations spending too.
+ *
+ * Honesty caveat (independence assumption): like the size factor, this
+ * is a single-axis cross-tab from BLS — the synthetic blend treats
+ * composition as independent of income quintile and geography. Real
+ * distributions correlate (married-with-kids skews q3-q4 because of
+ * peak earning years; single-parent skews lower-quintile). PUMD would
+ * resolve this; the blend is the published-table approximation.
+ */
+export const COMPOSITION_ALLCU_SPENDING: Readonly<Record<CompositionType, LineItemSpending>> = {
+  marriedNoKids: {
+    foodAtHome: 6514,
+    foodAway: 4469,
+    alcohol: 998,
+    utilitiesElectricGas: 2691,
+    utilitiesWaterPublic: 952,
+    cellularService: 1394,
+    gasoline: 2460,
+    vehiclePurchase: 6445,
+    vehicleOther: 4528,
+    vehicleInsurance: 2065,
+    vehicleMaintRepair: 1123,
+    healthcareOOP: 2906,
+    apparel: 2154,
+    entertainment: 4537,
+    pets: 1184,
+    personalCare: 1132,
+    education: 1288,
+    householdOperations: 1799,
+    housekeepingSupplies: 1072,
+    furnishings: 3070,
+    otherLodging: 2326,
+    lifeInsurance: 828,
+  },
+  marriedKidsU6: {
+    foodAtHome: 8317,
+    foodAway: 5139,
+    alcohol: 742,
+    utilitiesElectricGas: 2727,
+    utilitiesWaterPublic: 958,
+    cellularService: 1363,
+    gasoline: 2620,
+    vehiclePurchase: 6810,
+    vehicleOther: 5118,
+    vehicleInsurance: 2060,
+    vehicleMaintRepair: 869,
+    healthcareOOP: 2380,
+    apparel: 3356,
+    entertainment: 4200,
+    pets: 608,
+    personalCare: 1157,
+    education: 1276,
+    householdOperations: 7151, // childcare signal — Personal Services dominates
+    housekeepingSupplies: 1270,
+    furnishings: 3046,
+    otherLodging: 1099,
+    lifeInsurance: 575,
+  },
+  marriedKids617: {
+    foodAtHome: 9582,
+    foodAway: 6177,
+    alcohol: 767,
+    utilitiesElectricGas: 3165,
+    utilitiesWaterPublic: 1107,
+    cellularService: 1902,
+    gasoline: 3624,
+    vehiclePurchase: 8506,
+    vehicleOther: 5742,
+    vehicleInsurance: 2458,
+    vehicleMaintRepair: 1326,
+    healthcareOOP: 2650,
+    apparel: 3263,
+    entertainment: 6542,
+    pets: 1681,
+    personalCare: 1387,
+    education: 3484,
+    householdOperations: 3372,
+    housekeepingSupplies: 1114,
+    furnishings: 3176,
+    otherLodging: 1906,
+    lifeInsurance: 1132,
+  },
+  marriedKids18p: {
+    foodAtHome: 9169,
+    foodAway: 6098,
+    alcohol: 726,
+    utilitiesElectricGas: 3155,
+    utilitiesWaterPublic: 1214,
+    cellularService: 2230,
+    gasoline: 4175,
+    vehiclePurchase: 8268,
+    vehicleOther: 7231,
+    vehicleInsurance: 3446,
+    vehicleMaintRepair: 1618,
+    healthcareOOP: 3275,
+    apparel: 2803,
+    entertainment: 4350,
+    pets: 1174,
+    personalCare: 1452,
+    education: 3680,
+    householdOperations: 1906,
+    housekeepingSupplies: 1287,
+    furnishings: 3540,
+    otherLodging: 1891,
+    lifeInsurance: 784,
+  },
+  otherMarried: {
+    foodAtHome: 9704,
+    foodAway: 5103,
+    alcohol: 514,
+    utilitiesElectricGas: 3323,
+    utilitiesWaterPublic: 1163,
+    cellularService: 2200,
+    gasoline: 3932,
+    vehiclePurchase: 6130,
+    vehicleOther: 6166,
+    vehicleInsurance: 3011,
+    vehicleMaintRepair: 1400,
+    healthcareOOP: 2553,
+    apparel: 2534,
+    entertainment: 4076,
+    pets: 873,
+    personalCare: 1177,
+    education: 2426,
+    householdOperations: 2123,
+    housekeepingSupplies: 1240,
+    furnishings: 3000,
+    otherLodging: 1481,
+    lifeInsurance: 989,
+  },
+  singleParent: {
+    foodAtHome: 5666,
+    foodAway: 3529,
+    alcohol: 391,
+    utilitiesElectricGas: 2401,
+    utilitiesWaterPublic: 669,
+    cellularService: 1337,
+    gasoline: 2038,
+    vehiclePurchase: 4940,
+    vehicleOther: 3233,
+    vehicleInsurance: 1631,
+    vehicleMaintRepair: 826,
+    healthcareOOP: 1157,
+    apparel: 1976,
+    entertainment: 2125,
+    pets: 356,
+    personalCare: 923,
+    education: 1343,
+    householdOperations: 1872,
+    housekeepingSupplies: 588,
+    furnishings: 1783,
+    otherLodging: 819,
+    lifeInsurance: 260,
+  },
+  singleOrOther: {
+    foodAtHome: 4320,
+    foodAway: 2622,
+    alcohol: 452,
+    utilitiesElectricGas: 1970,
+    utilitiesWaterPublic: 616,
+    cellularService: 1004,
+    gasoline: 1706,
+    vehiclePurchase: 3473,
+    vehicleOther: 3060,
+    vehicleInsurance: 1554,
+    vehicleMaintRepair: 725,
+    healthcareOOP: 1524,
+    apparel: 1319,
+    entertainment: 2417,
+    pets: 566,
+    personalCare: 700,
+    education: 872,
+    householdOperations: 1252,
+    housekeepingSupplies: 614,
+    furnishings: 1696,
+    otherLodging: 736,
+    lifeInsurance: 291,
+  },
+};
+
 export const SIZE_BASELINE_ALLCU: LineItemSpending = {
   foodAtHome: 6224,
   foodAway: 3945,
@@ -1520,6 +1750,17 @@ export const SIZE_BASELINE_ALLCU: LineItemSpending = {
   otherLodging: 1347,
   lifeInsurance: 575,
 };
+
+/**
+ * Table 1502's "All consumer units" column — the denominator for the
+ * composition factor. By construction this is the *same* population
+ * aggregate as Table 1400's All-CU column (both are 2024 single-year,
+ * both report the same national CEX universe before partitioning).
+ * Aliased to `SIZE_BASELINE_ALLCU` to make that identity explicit and
+ * to avoid the maintenance hazard of two value-for-value duplicates
+ * drifting on a future BLS vintage refresh.
+ */
+export const COMPOSITION_BASELINE_ALLCU = SIZE_BASELINE_ALLCU;
 
 // ─── The synthetic blend ─────────────────────────────────────────────────
 
@@ -1578,32 +1819,32 @@ export function smoothNationalQuintile(
  * `cexLineItemSpending` and `cexLineItemSpendingForCity` below are the
  * thin shims that pull the constants.
  *
- *     spending = quintileShape × geoFactor × sizeFactor
+ *     spending = quintileShape × geoFactor × sizeFactor × compFactor
  *     quintileShape = nationalQuintile
  *     geoFactor     = geoAllCU / nationalAllCU
- *     sizeFactor    = sizeAllCU / sizeBaselineAllCU      (new — issue #128)
+ *     sizeFactor    = sizeAllCU / sizeBaselineAllCU      (issue #128)
+ *     compFactor    = compositionAllCU / compositionBaselineAllCU  (#207)
  *
  * `geoAllCU` is the most-specific geographic average available — MSA if
  * provided and non-zero, else division if non-zero/non-undefined, else
  * region. `msaAllCU` and `divisionAllCU` being `undefined` is the
  * expected fallback signal, not an error.
  *
- * The size factor is opt-in: callers omit `sizeAllCU`/`sizeBaselineAllCU`
- * when they want the legacy "average CU" behavior. A 1-person household
- * gets ~0.55× scaling on diffuse lines; a 4-person household gets ~1.40×.
- * Honesty caveat: the size axis is treated as independent of income
- * and geography (the synthetic-blend independence assumption). The
- * caveat is true in degree, not in kind — small households skew older
- * and lower-income, larger households skew toward middle quintiles
- * and peak earning years. Surfacing this honestly to users is a
- * separate work-stream (MethodologyNote callout, per-leaf source
- * descriptions); see roadmap entries on transparency.
+ * The size and composition factors are opt-in: callers omit the
+ * respective inputs when they want the legacy behavior. A single parent
+ * of 3 and a married-with-kids family of 3 are both 3-person CUs by
+ * size, but the composition factor captures the structural spending
+ * difference between them.
+ *
+ * Honesty caveat: every axis is treated as independent of every other
+ * (synthetic-blend independence assumption). Documented per-leaf in
+ * `EXPENSE_SOURCE` and at the top of `MethodologyNote`.
  *
  * Returns 0 when:
  *   - `nationalAllCU` is 0 (no denominator), or
  *   - `nationalQuintile` is 0 (income axis not populated for this cell), or
  *   - every geographic level (MSA, division, region) is missing or 0, or
- *   - size scaling was requested and `sizeBaselineAllCU` is 0 (no denom).
+ *   - any opt-in factor was requested with a zero baseline (no denom).
  */
 export function blendCexSpending(inputs: {
   nationalAllCU: number;
@@ -1613,6 +1854,8 @@ export function blendCexSpending(inputs: {
   regionAllCU: number;
   sizeAllCU?: number | undefined;
   sizeBaselineAllCU?: number | undefined;
+  compositionAllCU?: number | undefined;
+  compositionBaselineAllCU?: number | undefined;
 }): number {
   const {
     nationalAllCU,
@@ -1622,6 +1865,8 @@ export function blendCexSpending(inputs: {
     regionAllCU,
     sizeAllCU,
     sizeBaselineAllCU,
+    compositionAllCU,
+    compositionBaselineAllCU,
   } = inputs;
   if (nationalAllCU === 0) return 0;
   if (nationalQuintile === 0) return 0;
@@ -1630,15 +1875,21 @@ export function blendCexSpending(inputs: {
   else if (divisionAllCU !== undefined && divisionAllCU > 0) geoAllCU = divisionAllCU;
   else geoAllCU = regionAllCU;
   if (geoAllCU === 0) return 0;
-  const base = nationalQuintile * (geoAllCU / nationalAllCU);
+  let result = nationalQuintile * (geoAllCU / nationalAllCU);
   // Size factor is opt-in. Pre-#128 callers (or callers covering exempt
   // leaves like rent/premium/childcare) skip it by omitting the size
   // inputs.
   if (sizeAllCU !== undefined && sizeBaselineAllCU !== undefined) {
     if (sizeBaselineAllCU === 0) return 0;
-    return base * (sizeAllCU / sizeBaselineAllCU);
+    result = result * (sizeAllCU / sizeBaselineAllCU);
   }
-  return base;
+  // Composition factor is opt-in (#207). Captures structural spending
+  // differences (single parent vs married-with-kids of same size, etc.).
+  if (compositionAllCU !== undefined && compositionBaselineAllCU !== undefined) {
+    if (compositionBaselineAllCU === 0) return 0;
+    result = result * (compositionAllCU / compositionBaselineAllCU);
+  }
+  return result;
 }
 
 /**
@@ -1698,6 +1949,7 @@ export function cexLineItemSpending(
   grossIncome: number,
   item: BLSCEXLineItem,
   cuSize?: CUSize,
+  composition?: CompositionType,
 ): number {
   const region = stateToRegion(state);
   const division = STATE_TO_DIVISION[state];
@@ -1708,6 +1960,8 @@ export function cexLineItemSpending(
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
     sizeAllCU: cuSize ? SIZE_ALLCU_SPENDING[cuSize][item] : undefined,
     sizeBaselineAllCU: cuSize ? SIZE_BASELINE_ALLCU[item] : undefined,
+    compositionAllCU: composition ? COMPOSITION_ALLCU_SPENDING[composition][item] : undefined,
+    compositionBaselineAllCU: composition ? COMPOSITION_BASELINE_ALLCU[item] : undefined,
   });
 }
 
@@ -1728,6 +1982,7 @@ export function cexLineItemSpendingForCity(
   grossIncome: number,
   item: BLSCEXLineItem,
   cuSize?: CUSize,
+  composition?: CompositionType,
 ): { spending: number; granularity: GeoGranularity | null } {
   const region = stateToRegion(state);
   const division = STATE_TO_DIVISION[state];
@@ -1741,6 +1996,8 @@ export function cexLineItemSpendingForCity(
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
     sizeAllCU: cuSize ? SIZE_ALLCU_SPENDING[cuSize][item] : undefined,
     sizeBaselineAllCU: cuSize ? SIZE_BASELINE_ALLCU[item] : undefined,
+    compositionAllCU: composition ? COMPOSITION_ALLCU_SPENDING[composition][item] : undefined,
+    compositionBaselineAllCU: composition ? COMPOSITION_BASELINE_ALLCU[item] : undefined,
   };
   const spending = blendCexSpending(inputs);
   const granularity = spending === 0 ? null : geoGranularityFor(inputs);

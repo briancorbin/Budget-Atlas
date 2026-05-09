@@ -21,8 +21,11 @@ import {
   SIZE_ALLCU_SPENDING,
   SIZE_BASELINE_ALLCU,
   cuSizeBucket,
+  COMPOSITION_ALLCU_SPENDING,
+  COMPOSITION_BASELINE_ALLCU,
+  compositionBucket,
 } from './cex';
-import type { CUSize } from './cex';
+import type { CUSize, CompositionType } from './cex';
 import type { StateCode } from '@/types';
 
 const ALL_STATES: StateCode[] = [
@@ -729,5 +732,111 @@ describe('blendCexSpending size factor', () => {
     const sized = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p1');
     // The legacy path returns the All-CU value; sized=p1 returns ~55% of that.
     expect(legacy).toBeGreaterThan(sized);
+  });
+});
+
+describe('compositionBucket', () => {
+  it('maps household shape to a CEX composition column', () => {
+    expect(compositionBucket(2, 0)).toBe('marriedNoKids');
+    expect(compositionBucket(2, 1)).toBe('marriedKids617'); // default age band
+    expect(compositionBucket(2, 3)).toBe('marriedKids617');
+    expect(compositionBucket(1, 1)).toBe('singleParent');
+    expect(compositionBucket(1, 0)).toBe('singleOrOther');
+  });
+
+  it('clamps non-positive adults to 1 and non-positive kids to 0', () => {
+    expect(compositionBucket(0, 0)).toBe('singleOrOther');
+    expect(compositionBucket(-1, 2)).toBe('singleParent');
+  });
+});
+
+describe('COMPOSITION_ALLCU_SPENDING', () => {
+  it('publishes a value for every line item × every composition bucket', () => {
+    const comps: CompositionType[] = [
+      'marriedNoKids',
+      'marriedKidsU6',
+      'marriedKids617',
+      'marriedKids18p',
+      'otherMarried',
+      'singleParent',
+      'singleOrOther',
+    ];
+    for (const c of comps) {
+      for (const item of BLS_CEX_LINE_ITEMS) {
+        expect(COMPOSITION_ALLCU_SPENDING[c][item]).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('marriedKidsU6 has elevated householdOperations (childcare signal)', () => {
+    // Personal services (childcare) lives under household operations and
+    // dominates spending for households with kids under 6. The composition
+    // factor captures this — it's the BLS-side validation of why the
+    // childcare leaf exists.
+    expect(COMPOSITION_ALLCU_SPENDING.marriedKidsU6.householdOperations).toBeGreaterThan(
+      COMPOSITION_ALLCU_SPENDING.marriedNoKids.householdOperations * 3,
+    );
+  });
+
+  it('singleParent food at home is less than marriedKids617 (size + structure both matter)', () => {
+    expect(COMPOSITION_ALLCU_SPENDING.singleParent.foodAtHome).toBeLessThan(
+      COMPOSITION_ALLCU_SPENDING.marriedKids617.foodAtHome,
+    );
+  });
+
+  it('COMPOSITION_BASELINE_ALLCU is aliased to SIZE_BASELINE_ALLCU', () => {
+    // Both denominators describe the same population aggregate (CEX
+    // 2024 All-CU baseline). Aliased to one canonical object so a
+    // future BLS vintage refresh can't update one and miss the other.
+    expect(COMPOSITION_BASELINE_ALLCU).toBe(SIZE_BASELINE_ALLCU);
+  });
+});
+
+describe('blendCexSpending composition factor', () => {
+  it('applies compositionFactor when both compositionAllCU and compositionBaselineAllCU are supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1000,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      compositionAllCU: 1500, // married-with-kids
+      compositionBaselineAllCU: 1000,
+    });
+    // base = 1000 × 1.0 = 1000; comp factor = 1.5; final = 1500.
+    expect(out).toBe(1500);
+  });
+
+  it('size and composition factors stack multiplicatively when both supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1000,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 1400,
+      sizeBaselineAllCU: 1000,
+      compositionAllCU: 1500,
+      compositionBaselineAllCU: 1000,
+    });
+    // 1000 × 1.0 × 1.4 × 1.5 = 2100
+    expect(out).toBe(2100);
+  });
+
+  it('cexLineItemSpending: composition argument actually moves the result (size held constant)', () => {
+    // Earlier draft compared p4 vs p1 sizes — that test would still
+    // pass even if the composition factor were ignored, because the
+    // size factor alone produces the asymmetry. Hold size constant
+    // (both 4-person CUs) and vary only composition: a married couple
+    // with kids 6–17 spends differently on foodAtHome than a single
+    // parent of 3, by a margin that's strictly attributable to the
+    // composition factor.
+    const marriedKids = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4', 'marriedKids617');
+    const singleParent = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4', 'singleParent');
+    // Direction we expect (married couples with kids tend to spend
+    // more at-home on food than single-parent households at the same
+    // income & size, per Table 1502). The point of the test isn't the
+    // direction per se — it's that the composition argument moves the
+    // number at all when size is fixed.
+    expect(marriedKids).not.toBeCloseTo(singleParent, 0);
+    expect(marriedKids).toBeGreaterThan(singleParent);
   });
 });

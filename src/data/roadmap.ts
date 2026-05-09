@@ -347,9 +347,10 @@ export const ROADMAP: readonly RoadmapItem[] = [
     id: 207,
     title: 'BLS composition cross-tab',
     category: 'Cost of living',
-    status: 'planned',
+    status: 'shipped',
+    shippedAt: '2026-05-08',
     summary:
-      "Pull BLS CEX Table 1502 so per-line spending varies by family type — married+kids-under-6, single parent, no kids, etc. — instead of averaging across CU types. Won't break out exact kid count (BLS tops at 'any kids') but distinguishes no-kids from kids-present scenarios. Companion to #131.",
+      "Pulled BLS CEX Table 1502 as the fourth axis on the synthetic blend: family-composition (single, married no kids, married + oldest <6 / 6–17 / adult, single parent, other). Captures structural spending differences pure CU size misses — a single parent of 3 and a married couple of 4 are both 4-person CUs but spend very differently. BLS tops at 'any kids' (no exact kid count). Companion to #131; foundation for #208 / #5 / #3.",
   },
   {
     id: 201,

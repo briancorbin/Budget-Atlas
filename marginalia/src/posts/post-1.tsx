@@ -1,13 +1,12 @@
 import type { Post } from '../types';
 
-export const post1: Post = {
-  slug: 'post-1',
-  number: 'Week 1',
-  title: 'Now do it and suffer',
-  date: '2026-05-09',
-  coversFrom: '2026-05-01',
-  dek: 'Why this tool did not already exist, and what changed.',
-  editorial: () => (
+// NOTE: Post 1 intermediate polish levels (light/medium/heavy) are not yet
+// authored — only Raw and Full exist as real renders. The intermediate
+// slider positions temporarily render the Full version with a stub notice.
+// Brian-eyeballs of Post 0 first; if level definitions hold up, Post 1's
+// intermediate levels get authored next.
+
+const Editorial = () => (
     <>
       <p>A few days into the Atlas, I had a moment.</p>
       <p>
@@ -80,8 +79,9 @@ export const post1: Post = {
       </p>
       <p>And honestly, having an intern is just awesome.</p>
     </>
-  ),
-  fieldNotes: () => (
+);
+
+const FieldNotes = () => (
     <>
       <p>
         Roughly a week of entries in. They cluster around a recognizable
@@ -350,8 +350,9 @@ export const post1: Post = {
         </li>
       </ul>
     </>
-  ),
-  raw: () => (
+);
+
+const Raw = () => (
     <>
       <h3>Conversation</h3>
       <blockquote>
@@ -658,5 +659,42 @@ export const post1: Post = {
         leading to the surfacing of a model-honesty gap.
       </p>
     </>
-  ),
+);
+
+const Full = () => (
+  <>
+    <Editorial />
+    <hr />
+    <h2 style={{ marginTop: 0 }}>Field Notes</h2>
+    <FieldNotes />
+  </>
+);
+
+const NotYetAuthored = () => (
+  <>
+    <p>
+      <em>
+        — Intermediate polish levels for this post haven't been authored
+        yet. Showing Full. Slide to Raw to see the unfiltered transcript +
+        verbatim journal entries.
+      </em>
+    </p>
+    <Full />
+  </>
+);
+
+export const post1: Post = {
+  slug: 'post-1',
+  number: 'Week 1',
+  title: 'Now do it and suffer',
+  date: '2026-05-09',
+  coversFrom: '2026-05-01',
+  dek: 'Why this tool did not already exist, and what changed.',
+  levels: {
+    raw: Raw,
+    light: NotYetAuthored,
+    medium: NotYetAuthored,
+    heavy: NotYetAuthored,
+    full: Full,
+  },
 };

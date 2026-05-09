@@ -739,19 +739,27 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const overrideMap: Record<string, number> = hasOverrides
     ? Object.create(null)
     : (null as unknown as Record<string, number>);
+  let anyOverrideMatched = false;
   if (hasOverrides) {
     for (const [label, value] of overrideEntries) {
       if (Object.hasOwn(computedExpenses, label)) {
+        // Drop NaN / Infinity defensively. `Math.max(0, NaN)` is NaN
+        // and would propagate through the sum to break totalExpenses.
+        if (!Number.isFinite(value)) continue;
         const clamped = Math.max(0, value);
         overrideMap[label] = clamped;
         appliedOverrides[label] = clamped;
+        anyOverrideMatched = true;
       }
     }
   }
   // Materialize the post-override expenses map for downstream consumers
-  // (UI, tests, share-link round-trip). When no overrides apply we can
-  // hand back the computed map directly without copying.
-  const expensesAfterOverrides: Record<string, number> = hasOverrides
+  // (UI, tests, share-link round-trip). When no override actually
+  // matched a real leaf we can hand back the computed map directly
+  // without copying — guards against the case where `overrides` is
+  // non-empty but only contains stale labels from an old share-link
+  // (no real leaf is overridden, no need to allocate a copy).
+  const expensesAfterOverrides: Record<string, number> = anyOverrideMatched
     ? { ...computedExpenses, ...overrideMap }
     : computedExpenses;
   // Sum loop. Iterate the keys of the canonical map (`computedExpenses`)
@@ -759,7 +767,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // possibly-clamped value.
   for (const label of Object.keys(computedExpenses)) {
     const value =
-      hasOverrides && label in overrideMap ? overrideMap[label] : computedExpenses[label];
+      anyOverrideMatched && label in overrideMap ? overrideMap[label] : computedExpenses[label];
     if (EXPENSE_CATEGORY[label] === 'lifestyle') {
       lifestyleExpenses += value;
     } else {

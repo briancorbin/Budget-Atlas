@@ -211,7 +211,12 @@ export function decodeConfig(payload: string): SharedConfig {
   // tolerant.
   const o = p.get('o');
   if (o != null && o.length > 0) {
-    const entries: Record<string, number> = {};
+    // Null-prototype map so a crafted share-link with a label that
+    // collides with a built-in (`__proto__`, `constructor`, etc.)
+    // can't poison the prototype chain or shadow Object methods on
+    // the decoded result. Same defense as Object.hasOwn elsewhere
+    // in this file.
+    const entries: Record<string, number> = Object.create(null);
     for (const pair of o.split(',')) {
       const idx = pair.indexOf(':');
       if (idx <= 0) continue;

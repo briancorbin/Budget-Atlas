@@ -18,7 +18,11 @@ import {
   geoGranularityFor,
   smoothNationalQuintile,
   QUINTILE_MEANS_2024_BEFORE_TAX,
+  SIZE_ALLCU_SPENDING,
+  SIZE_BASELINE_ALLCU,
+  cuSizeBucket,
 } from './cex';
+import type { CUSize } from './cex';
 import type { StateCode } from '@/types';
 
 const ALL_STATES: StateCode[] = [
@@ -601,5 +605,120 @@ describe('cexLineItemSpendingForCity (city-aware city → MSA → division → r
       regionAllCU: 0,
     });
     expect(granularity).toBe(null);
+  });
+});
+
+describe('cuSizeBucket', () => {
+  it('maps household sizes 1–5+ to the BLS Table 1400 columns', () => {
+    expect(cuSizeBucket(1)).toBe('p1');
+    expect(cuSizeBucket(2)).toBe('p2');
+    expect(cuSizeBucket(3)).toBe('p3');
+    expect(cuSizeBucket(4)).toBe('p4');
+    expect(cuSizeBucket(5)).toBe('p5plus');
+    expect(cuSizeBucket(6)).toBe('p5plus');
+    expect(cuSizeBucket(20)).toBe('p5plus');
+  });
+
+  it('clamps non-positive and fractional inputs', () => {
+    expect(cuSizeBucket(0)).toBe('p1');
+    expect(cuSizeBucket(-3)).toBe('p1');
+    expect(cuSizeBucket(2.7)).toBe('p2'); // floor to 2
+    expect(cuSizeBucket(4.99)).toBe('p4');
+  });
+});
+
+describe('SIZE_ALLCU_SPENDING', () => {
+  it('publishes a value for every line item × every size bucket', () => {
+    const sizes: CUSize[] = ['p1', 'p2', 'p3', 'p4', 'p5plus'];
+    for (const size of sizes) {
+      for (const item of BLS_CEX_LINE_ITEMS) {
+        expect(SIZE_ALLCU_SPENDING[size][item]).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('SIZE_BASELINE_ALLCU has every line item populated', () => {
+    for (const item of BLS_CEX_LINE_ITEMS) {
+      expect(SIZE_BASELINE_ALLCU[item]).toBeGreaterThan(0);
+    }
+  });
+
+  it('p1 spending is < p4 spending on diffuse household lines (real economies of scale)', () => {
+    // Food at home, apparel, gasoline — all should grow with household
+    // size in the published Table 1400 data.
+    expect(SIZE_ALLCU_SPENDING.p1.foodAtHome).toBeLessThan(SIZE_ALLCU_SPENDING.p4.foodAtHome);
+    expect(SIZE_ALLCU_SPENDING.p1.apparel).toBeLessThan(SIZE_ALLCU_SPENDING.p4.apparel);
+    expect(SIZE_ALLCU_SPENDING.p1.gasoline).toBeLessThan(SIZE_ALLCU_SPENDING.p4.gasoline);
+  });
+
+  it('matches the cross-vintage drift documented for SIZE_BASELINE_ALLCU vs NATIONAL_ALLCU_SPENDING (<4%)', () => {
+    // The SIZE table is 2024 single-year, the NATIONAL table is 2023-2024
+    // two-year. Published baselines agree to within ~4% on every line
+    // (vehicleOther and housekeepingSupplies are the wider lines, ~3.5%;
+    // most are well under 2%). Anything larger means a transcription
+    // error or a vintage mismatch that needs investigation. Document
+    // exact per-line drift with the script alongside `audit/data-sources/
+    // bls-cex/README.md` if this ever fails.
+    for (const item of BLS_CEX_LINE_ITEMS) {
+      const sizeBase = SIZE_BASELINE_ALLCU[item];
+      const nationalBase = NATIONAL_ALLCU_SPENDING[item];
+      const drift = Math.abs(sizeBase - nationalBase) / nationalBase;
+      expect(drift).toBeLessThan(0.04);
+    }
+  });
+});
+
+describe('blendCexSpending size factor', () => {
+  it('applies sizeFactor when both sizeAllCU and sizeBaselineAllCU are supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 600, // 1-person column
+      sizeBaselineAllCU: 1000, // All-CU baseline
+    });
+    // base = 1500 × (1000/1000) = 1500; size factor = 600/1000 = 0.6;
+    // final = 1500 × 0.6 = 900.
+    expect(out).toBe(900);
+  });
+
+  it('skips size factor when size inputs are omitted (legacy callers unchanged)', () => {
+    const withoutSize = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+    });
+    expect(withoutSize).toBe(1500);
+  });
+
+  it('returns 0 when sizeBaselineAllCU is 0 (no denominator)', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 600,
+      sizeBaselineAllCU: 0,
+    });
+    expect(out).toBe(0);
+  });
+
+  it('cexLineItemSpending: 1-person spending is less than 4-person at the same income/state', () => {
+    const oneP = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p1');
+    const fourP = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4');
+    expect(oneP).toBeLessThan(fourP);
+    // ratio should be roughly the SIZE_ALLCU ratio for foodAtHome
+    const expectedRatio = SIZE_ALLCU_SPENDING.p1.foodAtHome / SIZE_ALLCU_SPENDING.p4.foodAtHome;
+    const actualRatio = oneP / fourP;
+    expect(Math.abs(actualRatio - expectedRatio)).toBeLessThan(0.01);
+  });
+
+  it('cexLineItemSpending without cuSize returns the legacy "average CU" value', () => {
+    const legacy = cexLineItemSpending('CA', 80_000, 'foodAtHome');
+    const sized = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p1');
+    // The legacy path returns the All-CU value; sized=p1 returns ~55% of that.
+    expect(legacy).toBeGreaterThan(sized);
   });
 });

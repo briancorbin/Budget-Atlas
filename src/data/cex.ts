@@ -263,6 +263,38 @@ export const CITY_TO_MSA: Readonly<Partial<Record<string, BLSMSA>>> = {
 export type IncomeQuintile = 'q1' | 'q2' | 'q3' | 'q4' | 'q5';
 
 /**
+ * Consumer-unit size buckets, mirroring BLS CEX Table 1400's published
+ * columns (1 person / 2-person / 3-person / 4-person / 5-or-more people).
+ * BLS caps the published detail at 5+; households of any size ≥5 share
+ * the `p5plus` row.
+ *
+ * Used as the third axis in the synthetic blend (alongside region/division
+ * and income quintile). A 1-person household spends roughly 55% of an
+ * "average CU" on most CEX-anchored lines; a 4-person household spends
+ * roughly 140%. Without size scaling the model produces a single number
+ * regardless of how many people are in the household — this type is the
+ * input to fixing that bias (see `SIZE_ALLCU_SPENDING` and
+ * `blendCexSpending` for the implementation).
+ */
+export type CUSize = 'p1' | 'p2' | 'p3' | 'p4' | 'p5plus';
+
+/**
+ * Map a household's headcount (`adults + kids`) to a CEX size bucket.
+ * Households ≥5 people clamp to `p5plus` (the data has no further detail).
+ * Households <1 (which shouldn't occur from real input) clamp to `p1` —
+ * the published table starts at 1 person and we extrapolate down rather
+ * than up.
+ */
+export function cuSizeBucket(householdSize: number): CUSize {
+  const n = Math.max(1, Math.floor(householdSize));
+  if (n <= 1) return 'p1';
+  if (n === 2) return 'p2';
+  if (n === 3) return 'p3';
+  if (n === 4) return 'p4';
+  return 'p5plus';
+}
+
+/**
  * Upper-bound household gross-income thresholds (annual) defining each
  * quintile boundary. Source: BLS CEX 2024 single-year Table 1101, "Lower
  * limit" row. BLS publishes the quintile floors (e.g. q2 starts at
@@ -462,8 +494,10 @@ export const NATIONAL_ALLCU_SPENDING: LineItemSpending = {
  * nationalAllCU` is computed entirely against 2023-2024, so it stays
  * internally consistent. The 2024 quintile shape is then multiplied
  * against that geo factor; differences between the 2024 single-year
- * and 2023-2024 two-year national-CU baselines are <2% on every line
- * item we consume, so the cross-vintage product is defensible.
+ * and 2023-2024 two-year national-CU baselines are <4% on every line
+ * item we consume (most <2%; vehicleOther ~3.7% and housekeepingSupplies
+ * ~3.4% are the wider gaps), so the cross-vintage product is defensible.
+ * The drift bound is asserted by `cex.test.ts`.
  *
  * Education shows q1 > q2 (q1 spends $828 vs q2 $407) — not a data
  * error. q1 includes full-time students living off loans/family who
@@ -1130,6 +1164,147 @@ export const MSA_ALLCU_SPENDING: Readonly<Record<BLSMSA, Partial<LineItemSpendin
 // to avoid pulling the full `SOURCES` registry into cex.ts's import graph
 // when this file gets wired into the budget compute path.
 
+/**
+ * Per-CU-size all-CU annual spending. Carries the household-size shape
+ * in the blend: `SIZE_ALLCU_SPENDING[size][item] / SIZE_BASELINE_ALLCU[item]`
+ * is the size factor.
+ *
+ * Source: BLS CEX 2024 single-year, Table 1400 (Size of consumer unit).
+ *
+ * Vintage note: like `NATIONAL_QUINTILE_SPENDING`, this is 2024 single-
+ * year while the geographic tables are 2023-2024 two-year averages. The
+ * factor below is self-normalized within Table 1400 (numerator and
+ * denominator both 2024 single-year), so the size factor stays internally
+ * consistent. Combining with the 2y geo factor and the 1y quintile value
+ * is the same cross-vintage product the geo blend already accepts; the
+ * documented <2% national-CU drift between vintages applies.
+ *
+ * The Pets / Reading / Tobacco / Cash-contributions lines BLS publishes
+ * in Table 1400 are intentionally not consumed (same scope as the rest
+ * of `BLSCEXLineItem`).
+ *
+ * `householdOperations` is reassembled from "Personal services" +
+ * "Other household expenses" (the two CEX sublines) — same convention
+ * used elsewhere in this file for composite items.
+ */
+export const SIZE_ALLCU_SPENDING: Readonly<Record<CUSize, LineItemSpending>> = {
+  p1: {
+    foodAtHome: 3395,
+    foodAway: 2249,
+    utilitiesElectricGas: 1597, // 226 + 1320 + 51
+    utilitiesWaterPublic: 532,
+    gasoline: 1226,
+    vehiclePurchase: 2490,
+    vehicleOther: 2383,
+    healthcareOOP: 1544, // 942 + 419 + 184
+    apparel: 1113,
+    entertainment: 2187,
+    personalCare: 619,
+    education: 818,
+    householdOperations: 1153, // 138 + 1015
+    housekeepingSupplies: 495,
+    furnishings: 1472,
+  },
+  p2: {
+    foodAtHome: 6088,
+    foodAway: 4070,
+    utilitiesElectricGas: 2540,
+    utilitiesWaterPublic: 846,
+    gasoline: 2329,
+    vehiclePurchase: 5820,
+    vehicleOther: 4282,
+    healthcareOOP: 2390,
+    apparel: 1994,
+    entertainment: 3933,
+    personalCare: 1023,
+    education: 1133,
+    householdOperations: 1624, // 150 + 1474 (split per Table 1400)
+    housekeepingSupplies: 971,
+    furnishings: 2674,
+  },
+  p3: {
+    foodAtHome: 7597,
+    foodAway: 4609,
+    utilitiesElectricGas: 2843,
+    utilitiesWaterPublic: 972,
+    gasoline: 2825,
+    vehiclePurchase: 6444,
+    vehicleOther: 4903,
+    healthcareOOP: 2156,
+    apparel: 2404,
+    entertainment: 4091,
+    personalCare: 1188,
+    education: 2585,
+    householdOperations: 2265, // 860 + 1405
+    housekeepingSupplies: 1067,
+    furnishings: 2976,
+  },
+  p4: {
+    foodAtHome: 8697,
+    foodAway: 5847,
+    utilitiesElectricGas: 3109,
+    utilitiesWaterPublic: 1040,
+    gasoline: 3512,
+    vehiclePurchase: 8022,
+    vehicleOther: 6136,
+    healthcareOOP: 2765,
+    apparel: 2653,
+    entertainment: 4995,
+    personalCare: 1347,
+    education: 2668,
+    householdOperations: 3523, // 1696 + 1827
+    housekeepingSupplies: 1082,
+    furnishings: 2971,
+  },
+  p5plus: {
+    foodAtHome: 10274,
+    foodAway: 5331,
+    utilitiesElectricGas: 3360,
+    utilitiesWaterPublic: 1174,
+    gasoline: 4335,
+    vehiclePurchase: 7418,
+    vehicleOther: 6083,
+    healthcareOOP: 2345,
+    apparel: 3358,
+    entertainment: 4416,
+    personalCare: 1144,
+    education: 2458,
+    householdOperations: 2758, // 1239 + 1519
+    housekeepingSupplies: 1197,
+    furnishings: 2884,
+  },
+};
+
+/**
+ * Table 1400's "All consumer units" column — the denominator for the
+ * size factor. Kept within the same table as `SIZE_ALLCU_SPENDING` so
+ * the per-leaf factor (sizeAllCU[size]/sizeBaseline) self-normalizes;
+ * see the vintage note on `SIZE_ALLCU_SPENDING`.
+ *
+ * Differs from `NATIONAL_ALLCU_SPENDING` by <4% on every line (most
+ * <2%; vehicleOther ~3.7% and housekeepingSupplies ~3.4% are the
+ * wider gaps) — the 2024 single-year vs. 2023-2024 two-year baseline
+ * drift documented on `NATIONAL_QUINTILE_SPENDING`. The cross-vintage
+ * drift bound is asserted by `cex.test.ts`.
+ */
+export const SIZE_BASELINE_ALLCU: LineItemSpending = {
+  foodAtHome: 6224,
+  foodAway: 3945,
+  utilitiesElectricGas: 2451,
+  utilitiesWaterPublic: 826,
+  gasoline: 2411,
+  vehiclePurchase: 5337,
+  vehicleOther: 4206,
+  healthcareOOP: 2143, // matches NATIONAL_ALLCU within rounding
+  apparel: 2001,
+  entertainment: 3609,
+  personalCare: 978,
+  education: 1569,
+  householdOperations: 1921,
+  housekeepingSupplies: 877,
+  furnishings: 2414,
+};
+
 // ─── The synthetic blend ─────────────────────────────────────────────────
 
 /**
@@ -1187,19 +1362,28 @@ export function smoothNationalQuintile(
  * `cexLineItemSpending` and `cexLineItemSpendingForCity` below are the
  * thin shims that pull the constants.
  *
- *     spending = quintileShape × geoFactor
+ *     spending = quintileShape × geoFactor × sizeFactor
  *     quintileShape = nationalQuintile
  *     geoFactor     = geoAllCU / nationalAllCU
+ *     sizeFactor    = sizeAllCU / sizeBaselineAllCU      (new — issue #128)
  *
  * `geoAllCU` is the most-specific geographic average available — MSA if
  * provided and non-zero, else division if non-zero/non-undefined, else
  * region. `msaAllCU` and `divisionAllCU` being `undefined` is the
  * expected fallback signal, not an error.
  *
+ * The size factor is opt-in: callers omit `sizeAllCU`/`sizeBaselineAllCU`
+ * when they want the legacy "average CU" behavior. A 1-person household
+ * gets ~0.55× scaling on diffuse lines; a 4-person household gets ~1.40×.
+ * Honesty caveat: the size axis is treated as independent of income and
+ * geography (synthetic-blend independence assumption). Documented per-
+ * leaf in `EXPENSE_SOURCE` descriptions.
+ *
  * Returns 0 when:
  *   - `nationalAllCU` is 0 (no denominator), or
  *   - `nationalQuintile` is 0 (income axis not populated for this cell), or
- *   - every geographic level (MSA, division, region) is missing or 0.
+ *   - every geographic level (MSA, division, region) is missing or 0, or
+ *   - size scaling was requested and `sizeBaselineAllCU` is 0 (no denom).
  */
 export function blendCexSpending(inputs: {
   nationalAllCU: number;
@@ -1207,8 +1391,18 @@ export function blendCexSpending(inputs: {
   msaAllCU?: number | undefined;
   divisionAllCU: number | undefined;
   regionAllCU: number;
+  sizeAllCU?: number | undefined;
+  sizeBaselineAllCU?: number | undefined;
 }): number {
-  const { nationalAllCU, nationalQuintile, msaAllCU, divisionAllCU, regionAllCU } = inputs;
+  const {
+    nationalAllCU,
+    nationalQuintile,
+    msaAllCU,
+    divisionAllCU,
+    regionAllCU,
+    sizeAllCU,
+    sizeBaselineAllCU,
+  } = inputs;
   if (nationalAllCU === 0) return 0;
   if (nationalQuintile === 0) return 0;
   let geoAllCU: number;
@@ -1216,7 +1410,15 @@ export function blendCexSpending(inputs: {
   else if (divisionAllCU !== undefined && divisionAllCU > 0) geoAllCU = divisionAllCU;
   else geoAllCU = regionAllCU;
   if (geoAllCU === 0) return 0;
-  return nationalQuintile * (geoAllCU / nationalAllCU);
+  const base = nationalQuintile * (geoAllCU / nationalAllCU);
+  // Size factor is opt-in. Pre-#128 callers (or callers covering exempt
+  // leaves like rent/premium/childcare) skip it by omitting the size
+  // inputs.
+  if (sizeAllCU !== undefined && sizeBaselineAllCU !== undefined) {
+    if (sizeBaselineAllCU === 0) return 0;
+    return base * (sizeAllCU / sizeBaselineAllCU);
+  }
+  return base;
 }
 
 /**
@@ -1275,6 +1477,7 @@ export function cexLineItemSpending(
   state: StateCode,
   grossIncome: number,
   item: BLSCEXLineItem,
+  cuSize?: CUSize,
 ): number {
   const region = stateToRegion(state);
   const division = STATE_TO_DIVISION[state];
@@ -1283,6 +1486,8 @@ export function cexLineItemSpending(
     nationalQuintile: smoothNationalQuintile(grossIncome, QUINTILE_VECTORS[item]),
     divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
+    sizeAllCU: cuSize ? SIZE_ALLCU_SPENDING[cuSize][item] : undefined,
+    sizeBaselineAllCU: cuSize ? SIZE_BASELINE_ALLCU[item] : undefined,
   });
 }
 
@@ -1302,6 +1507,7 @@ export function cexLineItemSpendingForCity(
   state: StateCode,
   grossIncome: number,
   item: BLSCEXLineItem,
+  cuSize?: CUSize,
 ): { spending: number; granularity: GeoGranularity | null } {
   const region = stateToRegion(state);
   const division = STATE_TO_DIVISION[state];
@@ -1313,17 +1519,27 @@ export function cexLineItemSpendingForCity(
     msaAllCU,
     divisionAllCU: DIVISION_ALLCU_SPENDING[division][item],
     regionAllCU: REGION_ALLCU_SPENDING[region][item],
+    sizeAllCU: cuSize ? SIZE_ALLCU_SPENDING[cuSize][item] : undefined,
+    sizeBaselineAllCU: cuSize ? SIZE_BASELINE_ALLCU[item] : undefined,
   };
   const spending = blendCexSpending(inputs);
   const granularity = spending === 0 ? null : geoGranularityFor(inputs);
   return { spending, granularity };
 }
 
-/** Convenience: full per-line-item profile for a (state × income) cell. */
-export function cexProfile(state: StateCode, grossIncome: number): LineItemSpending {
+/**
+ * Convenience: full per-line-item profile for a (state × income × size)
+ * cell. `cuSize` is optional — omit for "average CU" behavior, supply
+ * for size-scaled output.
+ */
+export function cexProfile(
+  state: StateCode,
+  grossIncome: number,
+  cuSize?: CUSize,
+): LineItemSpending {
   const out = {} as Record<BLSCEXLineItem, number>;
   for (const item of BLS_CEX_LINE_ITEMS) {
-    out[item] = cexLineItemSpending(state, grossIncome, item);
+    out[item] = cexLineItemSpending(state, grossIncome, item, cuSize);
   }
   return out;
 }

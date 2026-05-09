@@ -130,6 +130,16 @@ const RAW_SOURCES = {
     addedBy: 'briancorbin',
     addedAt: '2026-05-08',
   },
+  'bls-cex-size-2024': {
+    label: 'BLS CEX 2024 — Size of consumer unit (Table 1400)',
+    url: 'https://www.bls.gov/cex/tables/calendar-year/mean.htm',
+    // Single-year 2024 vintage; source for the per-CU-size scaling
+    // axis (1-person / 2 / 3 / 4 / 5+) used by `SIZE_ALLCU_SPENDING`.
+    date: '2024',
+    tier: 'primary',
+    addedBy: 'briancorbin',
+    addedAt: '2026-05-08',
+  },
   'care-com-childcare': {
     label: 'Care.com Cost of Care Report',
     url: 'https://www.care.com/c/cost-of-care-report/',

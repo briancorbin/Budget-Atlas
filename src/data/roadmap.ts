@@ -367,6 +367,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       "Use the BLS demographic data we already mirror under audit/data-sources/bls-cex/2024 (race, age, education, occupation, household composition, housing tenure) to show where the user's income sits (quintile + percentile rank), how households at the same income spend differently across demographic cuts, and side-by-side geographic comparisons. The line-item schema (#131) opened the door; this puts the rest of the BLS data we already host to work.",
   },
+  {
+    id: 209,
+    title: 'CU-size scaling for CEX lines',
+    category: 'Cost of living',
+    status: 'shipped',
+    shippedAt: '2026-05-08',
+    summary:
+      'Every CEX-anchored line now scales by household size (1p / 2p / 3p / 4p / 5p+) using BLS Table 1400. Previously the model used "average CU" (~2.5 people) values regardless of actual household size — overstating singles by ~1.8× and understating families of 4 by ~0.7×. Adds a third axis to the synthetic blend (alongside region/division and income quintile).',
+  },
 ];
 
 /**

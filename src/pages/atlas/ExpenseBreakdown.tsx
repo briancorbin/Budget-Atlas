@@ -11,6 +11,7 @@ import {
   compositionBucket,
   blendCexSpendingTrace,
   type BLSCEXLineItem,
+  type CompositionType,
 } from '@/data/cex';
 
 // Per-axis cell labels are inlined into each trace row directly (see
@@ -65,7 +66,32 @@ const LEAF_TO_CEX_ITEM: Readonly<Record<string, BLSCEXLineItem>> = {
  * Values are rendered with `fmt` so the popover reads in the same
  * currency-formatted way as the inline budget.
  */
-function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifestyle): ReactNode {
+/**
+ * Per-composition human-readable label for the Childcare tooltip.
+ * Renders the household's CEX Table 1502 composition column in plain
+ * English ("married couple, oldest child <6") rather than the internal
+ * `CompositionType` key. Typed against `CompositionType` so adding a
+ * new composition bucket in cex.ts is caught by the compiler here.
+ */
+const CHILDCARE_BLS_DESCRIPTION: Readonly<Record<CompositionType, string>> = {
+  marriedKidsU6: 'married couple, oldest child <6',
+  marriedKids617: 'married couple, oldest child 6–17',
+  marriedKids18p: 'married couple, adult kids',
+  otherMarried: 'multigenerational',
+  singleParent: 'single parent',
+  singleOrOther: 'single person',
+  marriedNoKids: 'married couple, no kids',
+};
+
+function calcExplanation(
+  label: string,
+  result: BudgetResult,
+  lifestyle: Lifestyle,
+  /** When true (default), include the lifestyle-elasticity step. Set
+   *  false for the BLS-baseline tooltip, which describes the pre-
+   *  lifestyle blend only. */
+  includeLifestyle = true,
+): ReactNode {
   const shipped = result.expenses[label] ?? 0;
   const note = result.expenseModelNotes[label];
   const cexItem = LEAF_TO_CEX_ITEM[label];
@@ -89,6 +115,55 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
       {children}
     </div>
   );
+
+  // Childcare special-case — Table 1502 reassembly per composition.
+  // Childcare doesn't have a single CEX line item (it's the
+  // "Personal services" subline delta vs married-no-kids), so it
+  // doesn't appear in `LEAF_TO_CEX_ITEM` and the generic CEX trace
+  // path below doesn't apply. Without this branch the generic
+  // specialized-source fallback would surface only the first sentence
+  // of the EXPENSE_SOURCE description and stop at the first period —
+  // which lands inside "vs." (abbreviation), cutting the explanation.
+  if (label === 'Childcare') {
+    const composition = compositionBucket(
+      result.adults,
+      Math.max(0, result.householdSize - result.adults),
+    );
+    const compDesc = CHILDCARE_BLS_DESCRIPTION[composition] ?? composition;
+    const kids = Math.max(0, result.householdSize - result.adults);
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          Childcare uses BLS CEX Table 1502 "Personal services" subline, computed as the spending
+          delta between your composition (<strong>{compDesc}</strong>) and married-no-kids
+          households. This represents what households like yours actually spend on childcare on
+          average — net of free / family / community / CCDF-subsidized care, not private-market
+          full-time center prices.
+          <div
+            style={{
+              marginTop: 6,
+              padding: '6px 8px',
+              background: T.bgAlt,
+              borderRadius: 2,
+              fontFamily: fonts.mono,
+              fontSize: rem(11),
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>{compDesc} →</span>
+            <span style={{ color: T.ink }}>{fmt(shipped)}/mo</span>
+          </div>
+          {kids === 0 && (
+            <div style={{ marginTop: 4, fontStyle: 'italic', color: T.inkMuted }}>
+              No kids modeled, so the line is $0.
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 
   // Healthcare special-case — mixed source. The cexBaseline only
   // exposes the CEX out-of-pocket portion; the Atlas-shipped value
@@ -305,17 +380,19 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
     ) : null;
     return (
       <>
-        <Header>How this is calculated</Header>
+        <Header>{includeLifestyle ? 'How this is calculated' : 'BLS baseline'}</Header>
         {traceBlock ?? (
           <div style={{ color: T.inkSoft }}>
             BLS baseline at your region · quintile · CU size · family-comp blend:{' '}
             <strong>{fmt(baseline)}</strong>
           </div>
         )}
-        <div style={{ color: T.inkSoft, marginTop: 6 }}>
-          {elasticityCopy}
-          <br />= shipped <strong>{fmt(shipped)}</strong>
-        </div>
+        {includeLifestyle && (
+          <div style={{ color: T.inkSoft, marginTop: 6 }}>
+            {elasticityCopy}
+            <br />= shipped <strong>{fmt(shipped)}</strong>
+          </div>
+        )}
         {utilitiesEiaNote}
       </>
     );
@@ -330,7 +407,8 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
       <>
         <Header>How this is calculated</Header>
         <div style={{ color: T.inkSoft }}>
-          Sourced from <strong>{src.label}</strong>. {src.description.split('.')[0]}.
+          Sourced from <strong>{src.label}</strong>.{' '}
+          {src.description.match(/^.*?\.(?=\s+[A-Z]|$)/)?.[0] ?? src.description}
         </div>
       </>
     );
@@ -1462,29 +1540,34 @@ export function ExpenseBreakdown({
                                           {!overrideShown && showBaseline && (
                                             <HoverGloss
                                               gloss={
-                                                <>
-                                                  <div
-                                                    style={{
-                                                      fontSize: rem(10),
-                                                      letterSpacing: '0.1em',
-                                                      textTransform: 'uppercase',
-                                                      color: T.accent,
-                                                      fontWeight: 600,
-                                                      marginBottom: 4,
-                                                    }}
-                                                  >
-                                                    BLS baseline
-                                                  </div>
-                                                  <div style={{ color: T.inkSoft }}>
-                                                    What households at your income / region / size /
-                                                    family composition spend on this line on average
-                                                    — before the model layers lifestyle elasticity
-                                                    or specialized-source overrides on top. The
-                                                    Atlas-shipped value adjusts this by the per-line
-                                                    elasticity (and swaps in HUD/Zillow/Care.com/KFF
-                                                    for specialized lines).
-                                                  </div>
-                                                </>
+                                                calcExplanation(
+                                                  line.label,
+                                                  result,
+                                                  lifestyle,
+                                                  /* includeLifestyle */ false,
+                                                ) ?? (
+                                                  <>
+                                                    <div
+                                                      style={{
+                                                        fontSize: rem(10),
+                                                        letterSpacing: '0.1em',
+                                                        textTransform: 'uppercase',
+                                                        color: T.accent,
+                                                        fontWeight: 600,
+                                                        marginBottom: 4,
+                                                      }}
+                                                    >
+                                                      BLS baseline
+                                                    </div>
+                                                    <div style={{ color: T.inkSoft }}>
+                                                      What households at your income / region / size
+                                                      / family composition spend on this line on
+                                                      average — before the model layers lifestyle
+                                                      elasticity or specialized-source overrides on
+                                                      top.
+                                                    </div>
+                                                  </>
+                                                )
                                               }
                                             >
                                               <span style={{ color: T.inkMuted }}>

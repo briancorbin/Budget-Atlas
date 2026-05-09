@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 232,
+    title: 'Calc-tooltip parity',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "Two related fixes. (1) Childcare's calc tooltip was falling through to the generic specialized-source branch and getting truncated mid-sentence at the period in 'vs.' (the abbreviation). Added a Childcare special-case in calcExplanation that explains the Table 1502 reassembly — composition lookup with the actual per-composition value displayed. (2) The BLS-baseline tooltip on the strikethrough value was generic copy. Now reuses calcExplanation with `includeLifestyle=false` to show the actual numerical trace (q-anchor → smoothing → geo → size → comp = baseline) — matches the parity of the shipped-value tooltip without the lifestyle row.",
+  },
+  {
     id: 231,
     title: 'Childcare default → BLS Table 1502',
     category: 'Cost of living',

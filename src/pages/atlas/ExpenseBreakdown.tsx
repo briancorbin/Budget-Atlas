@@ -296,79 +296,80 @@ function calcExplanation(
     // the label fills the row, and rows look like 2-3 visual lines for
     // one logical step. Anchor + baseline rows leave the multiplier
     // column blank — they're endpoints, not multipliers.
-    const traceBlock = trace ? (() => {
-      const afterGeo = trace.nationalQuintile * trace.geoFactor;
-      const afterSize = afterGeo * trace.sizeFactor;
-      const showSmoothing = Math.abs(trace.quintileInterpolationFactor - 1) > 0.001;
-      const showMismatch = trace.quintileAnchor.quintile !== result.incomeQuintile;
-      // Single grid container for the entire trace — every row's cells
-      // are direct grid children, so the three columns size once and
-      // align across all rows. Per-row wrappers (the previous shape)
-      // each created their own grid context and column 2 sized
-      // independently per row, producing visible misalignment.
-      const multCell: React.CSSProperties = {
-        textAlign: 'right',
-        fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap',
-      };
-      const valCell: React.CSSProperties = {
-        textAlign: 'right',
-        color: T.ink,
-        fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap',
-      };
-      // Full-width separator pseudo-row between sections. Spans all 3
-      // columns as a single continuous rule (an earlier per-cell border
-      // approach left orphan line segments stranded in the empty
-      // middle column, broken up by the grid column-gap).
-      const separator: React.CSSProperties = {
-        gridColumn: '1 / -1',
-        height: 1,
-        background: T.border,
-        margin: '4px 0 2px',
-      };
-      const fullSpan: React.CSSProperties = { gridColumn: '1 / -1' };
-      return (
-        <div
-          style={{
-            marginTop: 6,
-            padding: '8px 10px',
-            background: T.bgAlt,
-            borderRadius: 2,
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 64px',
-            columnGap: 8,
-            rowGap: 2,
-            alignItems: 'baseline',
-            fontSize: rem(11),
-            fontFamily: fonts.mono,
-            color: T.inkSoft,
-          }}
-        >
-          {/* Anchor row — the starting reference. Bold value; full-width
+    const traceBlock = trace
+      ? (() => {
+          const afterGeo = trace.nationalQuintile * trace.geoFactor;
+          const afterSize = afterGeo * trace.sizeFactor;
+          const showSmoothing = Math.abs(trace.quintileInterpolationFactor - 1) > 0.001;
+          const showMismatch = trace.quintileAnchor.quintile !== result.incomeQuintile;
+          // Single grid container for the entire trace — every row's cells
+          // are direct grid children, so the three columns size once and
+          // align across all rows. Per-row wrappers (the previous shape)
+          // each created their own grid context and column 2 sized
+          // independently per row, producing visible misalignment.
+          const multCell: React.CSSProperties = {
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          const valCell: React.CSSProperties = {
+            textAlign: 'right',
+            color: T.ink,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          // Full-width separator pseudo-row between sections. Spans all 3
+          // columns as a single continuous rule (an earlier per-cell border
+          // approach left orphan line segments stranded in the empty
+          // middle column, broken up by the grid column-gap).
+          const separator: React.CSSProperties = {
+            gridColumn: '1 / -1',
+            height: 1,
+            background: T.border,
+            margin: '4px 0 2px',
+          };
+          const fullSpan: React.CSSProperties = { gridColumn: '1 / -1' };
+          return (
+            <div
+              style={{
+                marginTop: 6,
+                padding: '8px 10px',
+                background: T.bgAlt,
+                borderRadius: 2,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 64px',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
+              }}
+            >
+              {/* Anchor row — the starting reference. Bold value; full-width
               separator below marks it off from the multiplier rows. */}
-          <span style={{ color: T.ink }}>
-            {trace.quintileAnchor.quintile} anchor (~$
-            {(trace.quintileAnchor.mean / 1000).toFixed(0)}K/yr mean)
-          </span>
-          <span style={multCell} />
-          <span style={{ ...valCell, fontWeight: 600 }}>
-            {fmt(trace.quintileAnchor.value / 12)}/mo
-          </span>
-          <span style={separator} />
+              <span style={{ color: T.ink }}>
+                {trace.quintileAnchor.quintile} anchor (~$
+                {(trace.quintileAnchor.mean / 1000).toFixed(0)}K/yr mean)
+              </span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>
+                {fmt(trace.quintileAnchor.value / 12)}/mo
+              </span>
+              <span style={separator} />
 
-          {/* Smoothing row — only show when interpolation actually moved
+              {/* Smoothing row — only show when interpolation actually moved
               the value (income sits between two quintile means; clamping
               to q1 / q5 yields factor = 1.00 and adds nothing useful). */}
-          {showSmoothing && (
-            <>
-              <span>× quintile-curve smoothing (your income)</span>
-              <span style={multCell}>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
-              <span style={valCell}>{fmt(trace.nationalQuintile / 12)}/mo</span>
-            </>
-          )}
+              {showSmoothing && (
+                <>
+                  <span>× quintile-curve smoothing (your income)</span>
+                  <span style={multCell}>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
+                  <span style={valCell}>{fmt(trace.nationalQuintile / 12)}/mo</span>
+                </>
+              )}
 
-          {/* Anchor-vs-quintile mismatch note. Two definitions of "your
+              {/* Anchor-vs-quintile mismatch note. Two definitions of "your
               quintile" don't perfectly align: the floor-based quintile
               (used by the IncomePosition thermometer) puts a household
               at $60K in q3, but the smoothing anchors at quintile MEANS,
@@ -376,49 +377,48 @@ function calcExplanation(
               up. Surface this explicitly when they differ — otherwise
               readers wonder why the trace says "q2 anchor" while
               elsewhere the household is labeled q3. */}
-          {showMismatch && (
-            <span
-              style={{
-                ...fullSpan,
-                fontSize: rem(10),
-                color: T.inkMuted,
-                fontStyle: 'italic',
-                fontFamily: fonts.body,
-                paddingTop: 2,
-                lineHeight: 1.4,
-              }}
-            >
-              You're in {result.incomeQuintile} by floor, but anchored at{' '}
-              {trace.quintileAnchor.quintile} because your income is below{' '}
-              {result.incomeQuintile}'s mean — interpolating upward toward it.
-            </span>
-          )}
+              {showMismatch && (
+                <span
+                  style={{
+                    ...fullSpan,
+                    fontSize: rem(10),
+                    color: T.inkMuted,
+                    fontStyle: 'italic',
+                    fontFamily: fonts.body,
+                    paddingTop: 2,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  You're in {result.incomeQuintile} by floor, but anchored at{' '}
+                  {trace.quintileAnchor.quintile} because your income is below{' '}
+                  {result.incomeQuintile}'s mean — interpolating upward toward it.
+                </span>
+              )}
 
-          <span>
-            × geo ({region}, {trace.geoCut})
-          </span>
-          <span style={multCell}>{trace.geoFactor.toFixed(2)}×</span>
-          <span style={valCell}>{fmt(afterGeo / 12)}/mo</span>
+              <span>
+                × geo ({region}, {trace.geoCut})
+              </span>
+              <span style={multCell}>{trace.geoFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterGeo / 12)}/mo</span>
 
-          <span>× size ({sizeLabelShort})</span>
-          <span style={multCell}>{trace.sizeFactor.toFixed(2)}×</span>
-          <span style={valCell}>{fmt(afterSize / 12)}/mo</span>
+              <span>× size ({sizeLabelShort})</span>
+              <span style={multCell}>{trace.sizeFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterSize / 12)}/mo</span>
 
-          <span>× family-comp ({compLabelShort})</span>
-          <span style={multCell}>{trace.compositionFactor.toFixed(2)}×</span>
-          <span style={valCell}>{fmt(trace.finalAnnual / 12)}/mo</span>
+              <span>× family-comp ({compLabelShort})</span>
+              <span style={multCell}>{trace.compositionFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(trace.finalAnnual / 12)}/mo</span>
 
-          {/* Baseline row — full-width separator above marks the
+              {/* Baseline row — full-width separator above marks the
               conclusion of the data-blend stage. */}
-          <span style={separator} />
-          <span style={{ color: T.ink, fontWeight: 600 }}>= BLS baseline</span>
-          <span style={multCell} />
-          <span style={{ ...valCell, fontWeight: 600 }}>
-            {fmt(trace.finalAnnual / 12)}/mo
-          </span>
-        </div>
-      );
-    })() : null;
+              <span style={separator} />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= BLS baseline</span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>{fmt(trace.finalAnnual / 12)}/mo</span>
+            </div>
+          );
+        })()
+      : null;
     return (
       <>
         <Header>{includeLifestyle ? 'How this is calculated' : 'BLS baseline'}</Header>
@@ -428,74 +428,75 @@ function calcExplanation(
             <strong>{fmt(baseline)}</strong>
           </div>
         )}
-        {includeLifestyle && (elasticity === 0 ? (
-          <div style={{ color: T.inkSoft, marginTop: 6 }}>
-            not modulated by lifestyle dial (config-driven)
-            <br />= Atlas estimate <strong>{fmt(shipped)}</strong>
-          </div>
-        ) : (
-          // Single grid for lifestyle + Atlas-estimate rows so the
-          // multiplier and value columns line up with each other
-          // (mirroring the trace block above). Kept as its own grid —
-          // not merged into the trace block — because this is a
-          // separate stage (user dial, not data blend) and the visual
-          // break helps signal that.
-          <div
-            style={{
-              marginTop: 6,
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 64px',
-              columnGap: 8,
-              rowGap: 2,
-              alignItems: 'baseline',
-              fontSize: rem(11),
-              fontFamily: fonts.mono,
-              color: T.inkSoft,
-            }}
-          >
-            <span>{lifestyleRowLabel}</span>
-            <span
+        {includeLifestyle &&
+          (elasticity === 0 ? (
+            <div style={{ color: T.inkSoft, marginTop: 6 }}>
+              not modulated by lifestyle dial (config-driven)
+              <br />= Atlas estimate <strong>{fmt(shipped)}</strong>
+            </div>
+          ) : (
+            // Single grid for lifestyle + Atlas-estimate rows so the
+            // multiplier and value columns line up with each other
+            // (mirroring the trace block above). Kept as its own grid —
+            // not merged into the trace block — because this is a
+            // separate stage (user dial, not data blend) and the visual
+            // break helps signal that.
+            <div
               style={{
-                textAlign: 'right',
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
+                marginTop: 6,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 64px',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
               }}
             >
-              {factor.toFixed(2)}×
-            </span>
-            <span
-              style={{
-                textAlign: 'right',
-                color: T.ink,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {fmt(shipped)}/mo
-            </span>
-            <span
-              style={{
-                gridColumn: '1 / -1',
-                height: 1,
-                background: T.border,
-                margin: '4px 0 2px',
-              }}
-            />
-            <span style={{ color: T.ink, fontWeight: 600 }}>= Atlas estimate</span>
-            <span />
-            <span
-              style={{
-                textAlign: 'right',
-                color: T.ink,
-                fontWeight: 600,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {fmt(shipped)}/mo
-            </span>
-          </div>
-        ))}
+              <span>{lifestyleRowLabel}</span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {factor.toFixed(2)}×
+              </span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+              <span
+                style={{
+                  gridColumn: '1 / -1',
+                  height: 1,
+                  background: T.border,
+                  margin: '4px 0 2px',
+                }}
+              />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= Atlas estimate</span>
+              <span />
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+            </div>
+          ))}
         {utilitiesEiaNote}
       </>
     );

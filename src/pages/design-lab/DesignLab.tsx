@@ -5572,7 +5572,12 @@ interface LadderStep {
 // slight bump, 3-person CU, married + kids 6-17.
 const SAMPLE_LADDER: ReadonlyArray<LadderStep> = [
   { label: 'q3 anchor', multiplier: 1, monthly: 100, cell: 'national, ~$84K mean' },
-  { label: '× quintile-curve smoothing', multiplier: 1.083, monthly: 108, cell: 'interp toward q4' },
+  {
+    label: '× quintile-curve smoothing',
+    multiplier: 1.083,
+    monthly: 108,
+    cell: 'interp toward q4',
+  },
   { label: '× geo factor', multiplier: 1.05, monthly: 114, cell: 'Midwest division' },
   { label: '× CU-size factor', multiplier: 1.2, monthly: 137, cell: '3-person CU' },
   { label: '× family-comp factor', multiplier: 0.95, monthly: 130, cell: 'married, oldest 6–17' },
@@ -5741,18 +5746,14 @@ function LadderV3() {
         {SAMPLE_LADDER.slice(0, -2).map((s, i) => {
           const isAnchor = i === 0;
           return (
-            <div
-              key={i}
-              style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}
-            >
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <span>
                 {s.label}
-                {s.cell && (
-                  <span style={{ color: T.inkMuted }}> · {s.cell}</span>
-                )}
+                {s.cell && <span style={{ color: T.inkMuted }}> · {s.cell}</span>}
               </span>
               <span style={{ color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
-                {!isAnchor && `${s.multiplier.toFixed(2)}× → `}${s.monthly}/mo
+                {!isAnchor && `${s.multiplier.toFixed(2)}× → `}
+                {`$${s.monthly}/mo`}
               </span>
             </div>
           );
@@ -6382,9 +6383,7 @@ function LadderV1() {
               }}
             >
               {s.label}
-              {s.cell && (
-                <div style={{ fontSize: rem(10), color: T.inkMuted }}>{s.cell}</div>
-              )}
+              {s.cell && <div style={{ fontSize: rem(10), color: T.inkMuted }}>{s.cell}</div>}
             </div>
             <div
               style={{
@@ -6415,11 +6414,7 @@ function LadderV1() {
                   left: -1,
                   bottom: -1,
                   width: `calc(${widthPct}% + 2px)`,
-                  background: isBaseline
-                    ? T.ink
-                    : isAnchor
-                      ? 'rgba(0,0,0,0.45)'
-                      : T.accent,
+                  background: isBaseline ? T.ink : isAnchor ? 'rgba(0,0,0,0.45)' : T.accent,
                   opacity: isBaseline ? 1 : 0.85,
                 }}
               />
@@ -6459,12 +6454,7 @@ function LadderV2() {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
             <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
-            <XAxis
-              dataKey="idx"
-              hide
-              type="number"
-              domain={[0, SAMPLE_LADDER.length - 1]}
-            />
+            <XAxis dataKey="idx" hide type="number" domain={[0, SAMPLE_LADDER.length - 1]} />
             <YAxis
               tick={{ fontSize: 10, fill: T.inkMuted }}
               tickFormatter={(v) => `$${v}`}
@@ -6526,7 +6516,10 @@ function LadderV2() {
               color: s.label === 'BLS baseline' ? T.ink : T.inkMuted,
             }}
           >
-            {s.label.replace(/^× /, '').replace(' factor', '').replace('-curve smoothing', ' smooth')}
+            {s.label
+              .replace(/^× /, '')
+              .replace(' factor', '')
+              .replace('-curve smoothing', ' smooth')}
           </span>
         ))}
       </div>

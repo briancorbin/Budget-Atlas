@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
-import { SectionTitle } from '@/components/ui';
+import { SectionTitle, HoverGloss } from '@/components/ui';
 import { EXPENSE_SOURCE, type ExpenseSource } from '@/lib/budget';
 import type { BLSCEXLineItem } from '@/data/cex';
 
@@ -1061,21 +1061,47 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                         division: 'div.',
                                         region: 'region',
                                       } as const;
+                                      const explainByG = {
+                                        msa: 'BLS published this line at the Metropolitan Statistical Area level — your specific metro. Most precise CEX cut available.',
+                                        division:
+                                          "BLS doesn't break this line out at the MSA level for our schema, so the blend fell through to the 9-division Census cut (e.g. Pacific, Mid-Atlantic). Less specific than MSA but still regional.",
+                                        region:
+                                          'BLS suppresses this line at MSA + division for our schema, so the blend fell through to the 4-region cut (Northeast / Midwest / South / West). Least specific level.',
+                                      } as const;
                                       return (
-                                        <span
-                                          style={{
-                                            fontSize: rem(9),
-                                            letterSpacing: '0.06em',
-                                            textTransform: 'uppercase',
-                                            color: T.inkMuted,
-                                            border: `1px solid ${T.border}`,
-                                            padding: '0 4px',
-                                            borderRadius: 2,
-                                          }}
-                                          title={`Geographic granularity used for this BLS lookup: ${granularity}. Most-specific = MSA; falls back to division then region.`}
+                                        <HoverGloss
+                                          gloss={
+                                            <>
+                                              <div
+                                                style={{
+                                                  fontSize: rem(10),
+                                                  letterSpacing: '0.1em',
+                                                  textTransform: 'uppercase',
+                                                  color: T.accent,
+                                                  fontWeight: 600,
+                                                  marginBottom: 4,
+                                                }}
+                                              >
+                                                Geographic granularity · {granularity}
+                                              </div>
+                                              <div style={{ color: T.inkSoft }}>
+                                                {explainByG[granularity]}
+                                              </div>
+                                            </>
+                                          }
                                         >
-                                          {labelByG[granularity]}
-                                        </span>
+                                          <span
+                                            style={{
+                                              fontSize: rem(9),
+                                              letterSpacing: '0.06em',
+                                              textTransform: 'uppercase',
+                                              color: T.inkMuted,
+                                              padding: '0 2px',
+                                            }}
+                                          >
+                                            {labelByG[granularity]}
+                                          </span>
+                                        </HoverGloss>
                                       );
                                     })()}
                                   </span>
@@ -1124,12 +1150,37 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                             </>
                                           )}
                                           {!overrideShown && showBaseline && (
-                                            <span
-                                              style={{ color: T.inkMuted }}
-                                              title={`BLS baseline at your income/region/size/composition cell — before any model layering. The Atlas shipped value applies the per-leaf adjustments that fit this household: lifestyle elasticity for CEX-anchored leaves, plus specialized-source overrides where they apply (KFF premium for Healthcare; per-city values for Housing/Childcare/Transit) and any benefits offsets you've claimed (SNAP, Medicaid, CHIP).`}
+                                            <HoverGloss
+                                              gloss={
+                                                <>
+                                                  <div
+                                                    style={{
+                                                      fontSize: rem(10),
+                                                      letterSpacing: '0.1em',
+                                                      textTransform: 'uppercase',
+                                                      color: T.accent,
+                                                      fontWeight: 600,
+                                                      marginBottom: 4,
+                                                    }}
+                                                  >
+                                                    BLS baseline
+                                                  </div>
+                                                  <div style={{ color: T.inkSoft }}>
+                                                    What households at your income / region / size /
+                                                    family composition spend on this line on average
+                                                    — before the model layers lifestyle elasticity
+                                                    or specialized-source overrides on top. The
+                                                    Atlas-shipped value adjusts this by the per-line
+                                                    elasticity (and swaps in HUD/Zillow/Care.com/KFF
+                                                    for specialized lines).
+                                                  </div>
+                                                </>
+                                              }
                                             >
-                                              {fmt(baseline!)}
-                                            </span>
+                                              <span style={{ color: T.inkMuted }}>
+                                                {fmt(baseline!)}
+                                              </span>
+                                            </HoverGloss>
                                           )}
                                           {!overrideShown && showBaseline && (
                                             <span style={{ color: T.inkMuted }}>→</span>

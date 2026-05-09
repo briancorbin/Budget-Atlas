@@ -1,0 +1,32 @@
+{
+  // Cloudflare Workers configuration for the Marginalia subdomain.
+  // Source of truth — overrides dashboard config on every deploy.
+  // https://developers.cloudflare.com/workers/wrangler/configuration/
+  //
+  // Marginalia is a static-assets-only deployment (no Worker code) — the
+  // Atlas's wrangler.jsonc at the repo root has a `main` worker handling
+  // /api/* for the audit backend, but Marginalia is just a static SPA.
+  //
+  // Workers Builds is configured with Root directory: `marginalia`, which
+  // makes wrangler resolve this file at deploy time and read
+  // `assets.directory` relative to this directory (so `./dist` =
+  // `marginalia/dist`).
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "marginalia",
+  "compatibility_date": "2026-05-09",
+  "assets": {
+    "directory": "./dist",
+    // SPA fallback — equivalent to the public/_redirects rule, but native
+    // to Workers Static Assets. Both are kept; either alone would work.
+    "not_found_handling": "single-page-application",
+  },
+  // Don't expose the *.workers.dev preview URL — production traffic should
+  // go through marginalia.thebudgetatlas.com (custom domain configured in
+  // the dashboard, since the dashboard already owns the DNS for the apex).
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true },
+  },
+}

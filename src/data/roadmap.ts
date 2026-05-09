@@ -396,7 +396,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 212,
-    title: 'Leaf restructure — 25 leaves up from 19',
+    title: 'Leaf restructure — 26 leaves up from 19',
     category: 'Cost of living',
     status: 'shipped',
     shippedAt: '2026-05-08',

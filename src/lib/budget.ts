@@ -196,8 +196,10 @@ export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
  *     life-stage; the dial doesn't move it).
  *
  * Non-CEX leaves (rent, healthcare premium, childcare, transit pass,
- * insurance, phone & internet) don't pass through this map — they
- * stay at 1.0× implicitly. The previous ±10% on baseRent is removed:
+ * home internet, renters insurance) don't pass through this map and
+ * stay at 1.0× implicitly. Cell service and Life & disability
+ * insurance ARE now CEX-anchored (see the leaf restructure) and DO
+ * pass through this map at their respective elasticities. The previous ±10% on baseRent is removed:
  * within a given city × bedroom config, "modest" means choosing fewer
  * bedrooms (a different config), not paying less for the same unit.
  * Bedroom-driven housing-footprint preferences are roadmap #16.
@@ -417,7 +419,12 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const quintile = quintileFromIncome(totalIncome);
   const cuSize = cuSizeBucket(householdSize);
   const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
-  const cexMonthly = (item: BLSCEXLineItem): number => {
+  // Pre-elasticity monthly value (raw blended baseline / 12). Used by
+  // residual computations that need to subtract one CEX subline from
+  // another with the SAME elasticity tier — applying elasticity before
+  // subtraction would distort the residual when the subline and parent
+  // use different elasticities.
+  const cexMonthlyBaseline = (item: BLSCEXLineItem): number => {
     const { spending, granularity } = cexLineItemSpendingForCity(
       city,
       cityData.state,
@@ -426,8 +433,10 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       cuSize,
     );
     if (granularity) cexGranularity[item] = granularity;
-    return (spending / 12) * lifestyleMultFor(item);
+    return spending / 12;
   };
+  const cexMonthly = (item: BLSCEXLineItem): number =>
+    cexMonthlyBaseline(item) * lifestyleMultFor(item);
 
   // Housing footprint — sourced and editorial parts both flagged:
   //   solo, no kids        → 1BR  (HUD occupancy: 1 person fits a 1BR)
@@ -492,13 +501,25 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // computed as `vehicleOther - vehicleInsurance - vehicleMaintRepair`
   // so that totals reconcile with the parent CEX line.
   const gasolineBls = cexMonthly('gasoline');
-  const vehicleOtherBls = cexMonthly('vehicleOther');
-  const vehicleInsuranceBls = cexMonthly('vehicleInsurance');
-  const vehicleMaintRepairBls = cexMonthly('vehicleMaintRepair');
-  const vehicleOtherResidualBls = Math.max(
+  // Compute the (vehicleOther - insurance - maint) residual at the
+  // pre-elasticity baseline so the subtraction isn't distorted by the
+  // different elasticity tiers (vehicleOther: 5%, vehicleInsurance:
+  // 0%, vehicleMaintRepair: 7%). Apply vehicleOther's elasticity once
+  // to the residual so the residual leaf still moves with the dial.
+  const vehicleOtherBaselineMonthly = cexMonthlyBaseline('vehicleOther');
+  const vehicleInsuranceBaselineMonthly = cexMonthlyBaseline('vehicleInsurance');
+  const vehicleMaintRepairBaselineMonthly = cexMonthlyBaseline('vehicleMaintRepair');
+  const vehicleOtherResidualBaseline = Math.max(
     0,
-    vehicleOtherBls - vehicleInsuranceBls - vehicleMaintRepairBls,
+    vehicleOtherBaselineMonthly -
+      vehicleInsuranceBaselineMonthly -
+      vehicleMaintRepairBaselineMonthly,
   );
+  const vehicleInsuranceBls =
+    vehicleInsuranceBaselineMonthly * lifestyleMultFor('vehicleInsurance');
+  const vehicleMaintRepairBls =
+    vehicleMaintRepairBaselineMonthly * lifestyleMultFor('vehicleMaintRepair');
+  const vehicleOtherResidualBls = vehicleOtherResidualBaseline * lifestyleMultFor('vehicleOther');
   const vehiclePurchaseBls = cexMonthly('vehiclePurchase');
   const gasoline = usesTransit ? 0 : gasolineBls;
   const vehicleInsurance = usesTransit ? 0 : vehicleInsuranceBls;
@@ -544,9 +565,18 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // CEX subline of "Pets, toys, hobbies, and playground equipment" —
   // we only subtract the Pets cell (toys/hobbies/playground stay in
   // Entertainment).
-  const petsBls = cexMonthly('pets');
-  const entertainment = Math.max(0, cexMonthly('entertainment') - petsBls);
-  const pets = petsBls;
+  // Same pre-elasticity-subtraction pattern as vehicleOther: the
+  // entertainment rollup includes pets, but pets gets surfaced as its
+  // own leaf with its own elasticity tier (15% vs entertainment's 25%).
+  // Subtract at the baseline, then apply each leaf's own elasticity.
+  const entertainmentBaselineMonthly = cexMonthlyBaseline('entertainment');
+  const petsBaselineMonthly = cexMonthlyBaseline('pets');
+  const entertainmentResidualBaseline = Math.max(
+    0,
+    entertainmentBaselineMonthly - petsBaselineMonthly,
+  );
+  const entertainment = entertainmentResidualBaseline * lifestyleMultFor('entertainment');
+  const pets = petsBaselineMonthly * lifestyleMultFor('pets');
   const personalCare = cexMonthly('personalCare');
   const education = cexMonthly('education');
   const householdOperations = cexMonthly('householdOperations');

@@ -27,8 +27,10 @@
  * Status:
  *   - Geographic data populated from BLS CEX 2023-2024 two-year-average
  *     tables — national all-CU, 4 regions, 9 divisions, and 22 selected
- *     MSAs (12 of 15 line items per MSA; the three composite-utilities/
- *     healthcare fields aren't broken out at the MSA level by BLS).
+ *     MSAs. The MSA tables publish ~12 of the schema's 22 line items
+ *     (the composite-utilities / healthcare-OOP fields and the new
+ *     sublines aren't broken out at MSA level); the rest fall through
+ *     to division.
  *   - Income-quintile data populated from BLS CEX 2024 single-year
  *     Table 1101.
  *   - `cexLineItemSpending(state, ...)` returns real numbers via the
@@ -1343,12 +1345,14 @@ export const MSA_ALLCU_SPENDING: Readonly<Record<BLSMSA, Partial<LineItemSpendin
  * denominator both 2024 single-year), so the size factor stays internally
  * consistent. Combining with the 2y geo factor and the 1y quintile value
  * is the same cross-vintage product the geo blend already accepts; the
- * documented <4% national-CU drift between vintages applies (bound
- * tested in cex.test.ts; widened from <2% as more lines were measured).
+ * documented <6% national-CU drift between vintages applies (most
+ * lines <2%; vehicleInsurance ~5.8% is the outlier).
  *
- * The Pets / Reading / Tobacco / Cash-contributions lines BLS publishes
- * in Table 1400 are intentionally not consumed (same scope as the rest
- * of `BLSCEXLineItem`).
+ * The Reading / Tobacco / Cash-contributions lines BLS publishes in
+ * Table 1400 are intentionally not consumed (same scope as the rest
+ * of `BLSCEXLineItem`). Pets WAS in this excluded list previously;
+ * with the leaf restructure, pets is now surfaced as its own
+ * `BLSCEXLineItem` and pulled from Table 1400.
  *
  * `householdOperations` is reassembled from "Personal services" +
  * "Other household expenses" (the two CEX sublines) — same convention

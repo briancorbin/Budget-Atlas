@@ -1082,7 +1082,7 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                                   marginBottom: 4,
                                                 }}
                                               >
-                                                Geographic granularity · {granularity}
+                                                Geographic granularity · {labelByG[granularity]}
                                               </div>
                                               <div style={{ color: T.inkSoft }}>
                                                 {explainByG[granularity]}

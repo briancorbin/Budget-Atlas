@@ -451,7 +451,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
     status: 'shipped',
     shippedAt: '2026-05-09',
     summary:
-      'Recalibrated LIFESTYLE_ELASTICITY values against actual CEX q5/q1 spreads per line, with volume/needs subtracted out so the dial captures only lifestyle-driven variance (a household with 2 cars naturally pays more vehicle insurance — that is volume, not lifestyle). Bumped 8 lines: foodAtHome 0.05→0.08, gasoline 0.05→0.07, vehicleMaintRepair 0.05→0.07, vehicleInsurance 0→0.05, lifeInsurance 0→0.05, personalCare 0.05→0.10, furnishings 0.15→0.20, householdOperations 0.15→0.20, pets 0.15→0.20. Detailed per-line justification in the LIFESTYLE_ELASTICITY docstring.',
+      'Recalibrated LIFESTYLE_ELASTICITY against CEX q5/q1 spreads per line, with volume/needs subtracted out so the dial captures only lifestyle-driven variance (q5/q1 vehicle-insurance ratio is mostly "high earners own more cars" — volume, not lifestyle). Bumped 9 lines: foodAtHome 0.05→0.08, gasoline 0.05→0.07, vehicleMaintRepair 0.05→0.07, vehicleInsurance 0→0.05, lifeInsurance 0→0.05, personalCare 0.05→0.10, furnishings/householdOperations/pets 0.15→0.20.',
   },
 ];
 

@@ -224,8 +224,12 @@ export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
  * Tiers (calibrated against CEX q5/q1 with volume/needs share
  * subtracted out — eyeballed, not formulaic):
  *
- *   Fixed (0%) — config-driven; dial doesn't move them. `education`
- *     is gated by school-choice (private vs public — different config).
+ *   Fixed (0%) — dial doesn't move them. `education` is fixed at 0%
+ *     because the lifestyle dial isn't the right axis for it: spending
+ *     is driven by life-stage / school-choice (private vs public,
+ *     part-time vs full-time). Surfacing those as a real input is
+ *     roadmap #3 (per-child age + school type); for now Education
+ *     flows from the BLS CEX baseline only.
  *
  *   Low (±5–8%) — bounded compression. Cheaper grocery store, cooler
  *     thermostat, less driving, generic brands. Real but small.
@@ -244,7 +248,7 @@ export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
  */
 export const LIFESTYLE_ELASTICITY: Record<BLSCEXLineItem, number> = {
   // Fixed (0%) — config-driven
-  education: 0, // private vs public is a school-choice config decision
+  education: 0, // life-stage / school-choice driven (roadmap #3), not a dial axis
 
   // Low (±5–8%) — bounded compression
   utilitiesElectricGas: 0.05, // q5/q1 2.1× — mostly home size; thermostat ~5%
@@ -384,8 +388,9 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // rent for being modest); insurance premiums are contractually fixed;
   // childcare is per-kid not per-lifestyle. Those leaves don't pass
   // through this map (they get applied as 1.0× implicitly). Education
-  // is keyed here at 0% because it's driven by the school-choice config
-  // (private vs public), not the dial.
+  // is keyed here at 0% because it's life-stage / school-choice driven
+  // (per-child age + private vs public), not a lifestyle-dial knob —
+  // those inputs are roadmap #3.
   //
   // Tier discipline:
   //   Low (±5%) — demand-driven, bounded compression: utilities, food at

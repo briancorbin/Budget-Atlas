@@ -21,7 +21,7 @@ const CU_SIZE_LABEL: Record<CUSize, string> = {
   p2: '2-person',
   p3: '3-person',
   p4: '4-person',
-  p5plus: '5+ person',
+  p5plus: '5+ people',
 };
 
 const COMP_LABEL: Record<CompositionType, string> = {

@@ -18,10 +18,12 @@ import {
  * Keys are the labels used in `BudgetResult.expenses` — granular sub-
  * lines, not rolled-up parents. Food and transportation get split into
  * their constituent lines so each one lands cleanly in 'essential' or
- * 'lifestyle': 'Food at home' is essential, 'Food away' is lifestyle;
- * 'Transit' / 'Gasoline' / 'Vehicle (insurance & maint.)' are essential,
- * 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown component
- * groups these under "Mixed" rollups in the UI when both kinds appear.
+ * 'lifestyle': 'Food at home' is essential, 'Food away' / 'Alcohol'
+ * are lifestyle; 'Transit' / 'Gasoline' / 'Vehicle insurance' /
+ * 'Vehicle maintenance & repair' / 'Vehicle (other expenses)' are
+ * essential, 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown
+ * component groups these under "Mixed" rollups in the UI when both
+ * kinds appear.
  *
  * Apparel and Personal Care are gray-zone (the BLS lines bundle
  * essentials with discretionary), filed as lifestyle because the
@@ -282,6 +284,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     lifestyle,
     tenure = 'renter',
     claimedBenefits,
+    overrides,
   } = input;
   const cityData = getCityData(city);
   const stateData = STATES[cityData.state];
@@ -670,38 +673,114 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // when present (tuition, school fees). vehicleOther (insurance,
   // registration, maintenance) is essential. Per-line user override is
   // roadmap #5.
-  const essentialExpenses =
-    housing +
-    mortgagePI +
-    propertyTax +
-    homeownersInsurance +
-    homeMaintenance +
-    utilities +
-    foodAtHomeAfterBenefits +
-    transitCost +
-    gasoline +
-    vehicleInsurance +
-    vehicleMaintRepair +
-    vehicleOtherResidual +
-    healthcareAfterBenefits +
-    childcare +
-    cellService +
-    homeInternet +
-    rentersInsurance +
-    lifeInsurance +
-    education +
-    housekeepingSupplies;
-  const lifestyleExpenses =
-    foodAway +
-    alcohol +
-    vehiclePurchase +
-    apparel +
-    entertainment +
-    pets +
-    personalCare +
-    householdOperations +
-    furnishings +
-    travelLodging;
+  // Build the per-leaf expenses map up-front so user overrides (PR10)
+  // and category-driven sums share a single source of truth. If any
+  // override matches a leaf, clamp negative values to 0 and replace
+  // the computed value; non-overridden leaves keep the model's value.
+  const computedExpenses: Record<string, number> = {
+    Housing: housing,
+    'Mortgage P&I': mortgagePI,
+    'Property tax': propertyTax,
+    'Homeowners insurance': homeownersInsurance,
+    'Maintenance & repairs': homeMaintenance,
+    Utilities: utilities,
+    'Cell service': cellService,
+    'Home internet': homeInternet,
+    'Renters insurance': rentersInsurance,
+    'Life & disability insurance': lifeInsurance,
+    'Housekeeping Supplies': housekeepingSupplies,
+    Healthcare: healthcareAfterBenefits,
+    Childcare: childcare,
+    Education: education,
+    'Food at home': foodAtHomeAfterBenefits,
+    'Food away': foodAway,
+    Alcohol: alcohol,
+    Transit: transitCost,
+    Gasoline: gasoline,
+    'Vehicle insurance': vehicleInsurance,
+    'Vehicle maintenance & repair': vehicleMaintRepair,
+    'Vehicle (other expenses)': vehicleOtherResidual,
+    'Vehicle (purchase)': vehiclePurchase,
+    Apparel: apparel,
+    Entertainment: entertainment,
+    Pets: pets,
+    'Personal Care': personalCare,
+    'Household Operations': householdOperations,
+    Furnishings: furnishings,
+    'Travel & lodging': travelLodging,
+  };
+
+  // Apply user overrides — layer 4 of the precedence stack (after BLS
+  // baseline / lifestyle elasticity / source override). Toggling the
+  // dial re-runs computeBudget which re-computes the layers below; the
+  // override layer just replaces the final value, so non-overridden
+  // leaves naturally re-modulate and overridden leaves stick.
+  //
+  // Two safety details:
+  //   - We only consider overrides whose key is an *own* property of
+  //     the computed expenses map (`Object.hasOwn`). A naive `key in
+  //     map` check walks the prototype chain, so a crafted share-link
+  //     payload with `__proto__` / `constructor` / `toString` etc.
+  //     would slip through. Own-property check + null-prototype output
+  //     map closes that.
+  //   - The override loop is a no-op fast path when `overrides` is
+  //     empty / undefined: we keep the computed map as-is and just
+  //     iterate it once for the essential/lifestyle sums. Avoids an
+  //     allocation in the cliff sweep where computeBudget runs
+  //     hundreds of times per render.
+  const overrideEntries = overrides ? Object.entries(overrides) : [];
+  const hasOverrides = overrideEntries.length > 0;
+  const appliedOverrides: Record<string, number> = {};
+  // Single pass: compute sums while applying overrides, no intermediate
+  // map allocation when there are no overrides.
+  let essentialExpenses = 0;
+  let lifestyleExpenses = 0;
+  // When overrides are present, build a per-leaf override-value lookup
+  // we can consult during the sum loop. Null-prototype map keeps
+  // prototype keys (e.g. `toString`) from acting as live entries.
+  const overrideMap: Record<string, number> = hasOverrides
+    ? Object.create(null)
+    : (null as unknown as Record<string, number>);
+  let anyOverrideMatched = false;
+  if (hasOverrides) {
+    for (const [label, value] of overrideEntries) {
+      if (Object.hasOwn(computedExpenses, label)) {
+        // Drop NaN / Infinity defensively. `Math.max(0, NaN)` is NaN
+        // and would propagate through the sum to break totalExpenses.
+        if (!Number.isFinite(value)) continue;
+        const clamped = Math.max(0, value);
+        overrideMap[label] = clamped;
+        appliedOverrides[label] = clamped;
+        anyOverrideMatched = true;
+      }
+    }
+  }
+  // Materialize the post-override expenses map for downstream consumers
+  // (UI, tests, share-link round-trip). When no override actually
+  // matched a real leaf we can hand back the computed map directly
+  // without copying — guards against the case where `overrides` is
+  // non-empty but only contains stale labels from an old share-link
+  // (no real leaf is overridden, no need to allocate a copy).
+  const expensesAfterOverrides: Record<string, number> = anyOverrideMatched
+    ? { ...computedExpenses, ...overrideMap }
+    : computedExpenses;
+  // Sum loop. Iterate the keys of the canonical map (`computedExpenses`)
+  // since that's the schema; consult `overrideMap` per key for the
+  // possibly-clamped value.
+  for (const label of Object.keys(computedExpenses)) {
+    const value =
+      anyOverrideMatched && label in overrideMap ? overrideMap[label] : computedExpenses[label];
+    if (EXPENSE_CATEGORY[label] === 'lifestyle') {
+      lifestyleExpenses += value;
+    } else {
+      // Default to essential when category isn't explicitly set (e.g.
+      // newly added leaves before EXPENSE_CATEGORY is updated). Keeps
+      // the model strict-essential-by-default and makes "did I forget
+      // to categorize this?" debuggable via a per-line $0 in lifestyle
+      // section.
+      essentialExpenses += value;
+    }
+  }
 
   const totalExpenses = essentialExpenses + lifestyleExpenses;
 
@@ -747,38 +826,8 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     // Vehicle (purchase) for a transit-only household). expenseModelNotes
     // below records why a $0 line is $0 so the UI can distinguish
     // "model assumed N/A" from "BLS itself returned 0."
-    expenses: {
-      Housing: housing,
-      'Mortgage P&I': mortgagePI,
-      'Property tax': propertyTax,
-      'Homeowners insurance': homeownersInsurance,
-      'Maintenance & repairs': homeMaintenance,
-      Utilities: utilities,
-      'Cell service': cellService,
-      'Home internet': homeInternet,
-      'Renters insurance': rentersInsurance,
-      'Life & disability insurance': lifeInsurance,
-      'Housekeeping Supplies': housekeepingSupplies,
-      Healthcare: healthcareAfterBenefits,
-      Childcare: childcare,
-      Education: education,
-      'Food at home': foodAtHomeAfterBenefits,
-      'Food away': foodAway,
-      Alcohol: alcohol,
-      Transit: transitCost,
-      Gasoline: gasoline,
-      'Vehicle insurance': vehicleInsurance,
-      'Vehicle maintenance & repair': vehicleMaintRepair,
-      'Vehicle (other expenses)': vehicleOtherResidual,
-      'Vehicle (purchase)': vehiclePurchase,
-      Apparel: apparel,
-      Entertainment: entertainment,
-      Pets: pets,
-      'Personal Care': personalCare,
-      'Household Operations': householdOperations,
-      Furnishings: furnishings,
-      'Travel & lodging': travelLodging,
-    },
+    expenses: expensesAfterOverrides,
+    appliedOverrides,
     expenseModelNotes: {
       // Vehicle/gasoline lines are forced to $0 for transit-only
       // households. BLS-derived values (`*Bls`) are preserved so the

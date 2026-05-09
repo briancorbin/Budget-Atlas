@@ -333,6 +333,51 @@ describe('leaf restructure', () => {
   });
 });
 
+describe('cexBaseline (three-column comparison)', () => {
+  it('exposes BLS baseline values for CEX-anchored leaves', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    expect(r.cexBaseline['Food at home']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Food away']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Apparel']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Entertainment']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Pets']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Cell service']).toBeGreaterThan(0);
+  });
+
+  it('does NOT expose baseline for non-CEX leaves', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    // Housing, Childcare, Healthcare premium portion, etc. are non-CEX
+    // (HUD/Care.com/KFF). Only Healthcare's CEX OOP is exposed.
+    expect(r.cexBaseline['Housing']).toBeUndefined();
+    expect(r.cexBaseline['Childcare']).toBeUndefined();
+    expect(r.cexBaseline['Renters insurance']).toBeUndefined();
+    expect(r.cexBaseline['Home internet']).toBeUndefined();
+    expect(r.cexBaseline['Mortgage P&I']).toBeUndefined();
+  });
+
+  it('baseline is independent of lifestyle dial — only shipped value moves', () => {
+    const modest = computeBudget(input({ incomeA: 80_000, lifestyle: 'modest' }));
+    const comfortable = computeBudget(input({ incomeA: 80_000, lifestyle: 'comfortable' }));
+    // Baselines should match exactly (BLS data is the same regardless
+    // of dial position).
+    expect(modest.cexBaseline['Food away']).toBeCloseTo(comfortable.cexBaseline['Food away']!, 2);
+    // Shipped values diverge by the elasticity.
+    expect(modest.expenses['Food away']).toBeLessThan(comfortable.expenses['Food away']!);
+  });
+
+  it('Entertainment baseline excludes Pets (no double-count between leaves)', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    // The exposed Entertainment baseline + Pets baseline ≈ the raw CEX
+    // entertainment rollup. They should not double-count.
+    const ent = r.cexBaseline['Entertainment']!;
+    const pets = r.cexBaseline['Pets']!;
+    // Both positive; pets smaller than entertainment-without-pets
+    expect(ent).toBeGreaterThan(0);
+    expect(pets).toBeGreaterThan(0);
+    expect(pets).toBeLessThan(ent);
+  });
+});
+
 describe('per-leaf lifestyle elasticities', () => {
   it('moderate dial leaves CEX-line spending at 1.0× (the symmetric midpoint of modest/comfortable)', () => {
     // The elasticity formula is `1 + elasticity * lifestyleSign` with

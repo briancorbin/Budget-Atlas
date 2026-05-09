@@ -960,20 +960,56 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                       gap: 6,
                                     }}
                                   >
-                                    {showComparison && note.modelValue !== null && (
-                                      <>
-                                        <span
-                                          style={{
-                                            color: T.inkMuted,
-                                            textDecoration: 'line-through',
-                                          }}
-                                        >
-                                          {fmt(note.modelValue)}
-                                        </span>
-                                        <span style={{ color: T.inkMuted }}>→</span>
-                                      </>
-                                    )}
-                                    <span style={{ color: T.ink }}>{fmt(line.value)}</span>
+                                    {(() => {
+                                      // Three-column comparison (#208):
+                                      //   BLS baseline | Atlas shipped | Your value
+                                      // BLS baseline is the empirical anchor at the user's
+                                      // quintile/region/size/composition cell, no elasticity,
+                                      // no source override. Atlas shipped is what the model
+                                      // computed (BLS × elasticity, with specialized-source
+                                      // overrides like HUD rent / KFF premium). Your value
+                                      // = override or shipped (overrides land in PR10).
+                                      // Collapse columns when numerically identical.
+                                      const baseline = result.cexBaseline[line.label];
+                                      const shipped = line.value;
+                                      const showBaseline =
+                                        baseline !== undefined &&
+                                        Math.abs(baseline - shipped) > 0.5;
+                                      // Override-driven comparison (transit-only, no-kids)
+                                      // takes precedence — it's the model-vs-shipped story
+                                      // we already had.
+                                      const overrideShown =
+                                        showComparison && note?.modelValue !== null;
+                                      return (
+                                        <>
+                                          {overrideShown && note?.modelValue != null && (
+                                            <>
+                                              <span
+                                                style={{
+                                                  color: T.inkMuted,
+                                                  textDecoration: 'line-through',
+                                                }}
+                                              >
+                                                {fmt(note.modelValue)}
+                                              </span>
+                                              <span style={{ color: T.inkMuted }}>→</span>
+                                            </>
+                                          )}
+                                          {!overrideShown && showBaseline && (
+                                            <span
+                                              style={{ color: T.inkMuted }}
+                                              title={`BLS baseline at your income/region/size/composition cell — before lifestyle modulation. Atlas shipped value adjusts this by the per-line elasticity.`}
+                                            >
+                                              {fmt(baseline!)}
+                                            </span>
+                                          )}
+                                          {!overrideShown && showBaseline && (
+                                            <span style={{ color: T.inkMuted }}>→</span>
+                                          )}
+                                          <span style={{ color: T.ink }}>{fmt(shipped)}</span>
+                                        </>
+                                      );
+                                    })()}
                                   </span>
                                 </div>
                                 {note && (

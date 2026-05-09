@@ -336,11 +336,12 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 208,
-    title: 'Per-line baseline comparison',
+    title: 'Three-column comparison: BLS / Atlas / You',
     category: 'UX & navigation',
-    status: 'planned',
+    status: 'shipped',
+    shippedAt: '2026-05-08',
     summary:
-      "For every expense line, show the income-quintile baseline ('average for your income') alongside the model's adjusted value ('after kids / city / lifestyle apply'), so personalization becomes visible — readers see what each input did to the number. Pairs naturally with #5 (lifestyle granularity).",
+      "Detail-view leaves now show the BLS baseline (raw CEX at the user's quintile/region/size/composition cell) alongside the Atlas-shipped value (BLS × elasticity, with specialized-source overrides for housing/healthcare/childcare). Collapses when numerically identical — moderate dial + no override = single value. Foundation for per-leaf user overrides (#5 / PR10).",
   },
   {
     id: 207,

@@ -274,6 +274,20 @@ export interface BudgetResult {
   cexProvenance: Readonly<Partial<Record<BLSCEXLineItem, GeoGranularity>>>;
   // Income quintile the household landed in, per BLS Table 1101 thresholds.
   incomeQuintile: 'q1' | 'q2' | 'q3' | 'q4' | 'q5';
+  /**
+   * Per-leaf BLS baseline value (monthly $, no lifestyle elasticity, no
+   * source override). Sparse — only populated for CEX-anchored leaves;
+   * leaves sourced entirely from non-CEX sources (Housing rent from HUD,
+   * Childcare from Care.com, healthcare premium from KFF, etc.) are
+   * absent here.
+   *
+   * Drives the "BLS baseline" column of the three-column comparison
+   * (#208) — the empirical anchor at the household's quintile / region /
+   * size / composition cell, before the model layers elasticity or
+   * specialized-source overrides on top. Always render alongside the
+   * shipped value; collapse when numerically identical.
+   */
+  cexBaseline: Readonly<Partial<Record<string, number>>>;
 }
 
 export type TaxBracket = readonly [number, number]; // [cap, rate]

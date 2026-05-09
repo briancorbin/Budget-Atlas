@@ -436,6 +436,10 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const cuSize = cuSizeBucket(householdSize);
   const composition = compositionBucket(adults, kids);
   const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
+  // Baseline cache — the BLS-only monthly value (no lifestyle mult,
+  // no source override) for each CEX-anchored line. Drives the
+  // "BLS baseline" column of the three-column comparison (#208).
+  const cexBaselineCache: Partial<Record<BLSCEXLineItem, number>> = {};
   const cexMonthly = (item: BLSCEXLineItem): number => {
     const { spending, granularity } = cexLineItemSpendingForCity(
       city,
@@ -446,6 +450,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       composition,
     );
     if (granularity) cexGranularity[item] = granularity;
+    cexBaselineCache[item] = spending / 12;
     return (spending / 12) * lifestyleMultFor(item);
   };
 
@@ -886,5 +891,46 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     stateData,
     cexProvenance: cexGranularity,
     incomeQuintile: quintile,
+    // Per-leaf BLS baseline — sparse map of display-label → monthly $ at
+    // the user's CEX cell, no lifestyle elasticity, no specialized-
+    // source override. Drives the "BLS baseline" column in the three-
+    // column comparison view. For composite leaves (Utilities, Vehicle
+    // (other expenses), Entertainment) we reconstruct the CEX rollup
+    // value from the individual sublines we cached. For mixed-source
+    // leaves (Healthcare = KFF premium + CEX OOP), we surface ONLY the
+    // CEX-baseline portion — the KFF premium is a non-CEX source and
+    // is not part of the "what BLS would say" anchor.
+    cexBaseline: {
+      Utilities:
+        (cexBaselineCache.utilitiesElectricGas ?? 0) + (cexBaselineCache.utilitiesWaterPublic ?? 0),
+      'Cell service': cexBaselineCache.cellularService,
+      'Life & disability insurance': cexBaselineCache.lifeInsurance,
+      'Housekeeping Supplies': cexBaselineCache.housekeepingSupplies,
+      Healthcare: cexBaselineCache.healthcareOOP,
+      Education: cexBaselineCache.education,
+      'Food at home': cexBaselineCache.foodAtHome,
+      'Food away': cexBaselineCache.foodAway,
+      Alcohol: cexBaselineCache.alcohol,
+      Gasoline: cexBaselineCache.gasoline,
+      'Vehicle insurance': cexBaselineCache.vehicleInsurance,
+      'Vehicle maintenance & repair': cexBaselineCache.vehicleMaintRepair,
+      'Vehicle (other expenses)': Math.max(
+        0,
+        (cexBaselineCache.vehicleOther ?? 0) -
+          (cexBaselineCache.vehicleInsurance ?? 0) -
+          (cexBaselineCache.vehicleMaintRepair ?? 0),
+      ),
+      'Vehicle (purchase)': cexBaselineCache.vehiclePurchase,
+      Apparel: cexBaselineCache.apparel,
+      Entertainment: Math.max(
+        0,
+        (cexBaselineCache.entertainment ?? 0) - (cexBaselineCache.pets ?? 0),
+      ),
+      Pets: cexBaselineCache.pets,
+      'Personal Care': cexBaselineCache.personalCare,
+      'Household Operations': cexBaselineCache.householdOperations,
+      Furnishings: cexBaselineCache.furnishings,
+      'Travel & lodging': cexBaselineCache.otherLodging,
+    },
   };
 }

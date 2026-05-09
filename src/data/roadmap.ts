@@ -387,7 +387,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 211,
-    title: 'Methodology callouts (homepage)',
+    title: 'Methodology callouts (explorer)',
     category: 'UX & navigation',
     status: 'shipped',
     shippedAt: '2026-05-08',

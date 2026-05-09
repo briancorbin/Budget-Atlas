@@ -587,12 +587,13 @@ export function CliffCurve({
                       tries to reach $0 gracefully as income rises. In states
                       using only the federal 130% gross-income floor, the
                       phase-out runs out of runway before income reaches the
-                      cutoff — residual benefit gets cliffed. States with BBCE
-                      (165%/185%/200%) give the phase-out enough runway for
-                      benefits to land at $0 naturally, eliminating the cliff. */}
+                      cutoff — residual benefit gets cliffed. BBCE expansion
+                      (165%/185%/200%) typically gives the phase-out enough
+                      runway to land at $0 before the cutoff, but very large
+                      households at the lowest BBCE tier (165%) can still see
+                      a small residual. The annotation softens accordingly. */}
                   {c.id === 'snap' &&
-                    snapIncomeLimitFpl(cityData.state) ===
-                      SNAP_GROSS_INCOME_LIMIT_FPL_FEDERAL && (
+                    snapIncomeLimitFpl(cityData.state) === SNAP_GROSS_INCOME_LIMIT_FPL_FEDERAL && (
                       <>
                         {' '}
                         <span
@@ -610,8 +611,10 @@ export function CliffCurve({
                           BBCE expansion. SNAP benefits phase out at 30% of net income, which
                           doesn't reach $0 by 130% FPL for multi-person households, so whatever
                           remains gets cliffed at the cutoff. States with Broad-Based Categorical
-                          Eligibility (165% / 185% / 200% FPL) give the phase-out enough runway to
-                          reach $0 naturally, eliminating this cliff.
+                          Eligibility (165% / 185% / 200% FPL) give the phase-out more runway and
+                          typically (especially at 185% / 200%) bring residual benefit to $0 before
+                          the cutoff, smoothing or eliminating the cliff. Larger households at the
+                          lowest BBCE tier (165%) can still see a small residual.
                         </span>
                       </>
                     )}

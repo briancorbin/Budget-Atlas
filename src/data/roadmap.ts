@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 233,
+    title: 'Sticky compact Customize bar',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      'The Customize panel now slides in as a compact bar at the top of the viewport once you scroll past the full panel — keep tweaking inputs without scrolling back up. Shows: income (number-only, no slider, no min-wage tag), partner +/- toggle, state+city, filing, kids, lifestyle. Skips: scenario picker, slider, rent/state-tax detail, tenure (already hidden). IntersectionObserver on a sentinel below the full panel gates visibility; transform-translateY transition. Added a `compact` prop to SearchableSelect so the pickers fit without clipping.',
+  },
+  {
     id: 232,
     title: 'Calc-tooltip parity',
     category: 'UX & navigation',

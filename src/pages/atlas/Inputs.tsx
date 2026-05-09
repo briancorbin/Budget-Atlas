@@ -424,3 +424,231 @@ export function CustomizePanel(s: InputsState) {
     </div>
   );
 }
+
+/**
+ * Compact sticky variant of CustomizePanel — shown after the full panel scrolls
+ * offscreen so users can keep tweaking inputs without scrolling back to the top.
+ *
+ * Deliberately omits: the "Load an example" scenario picker, the income range
+ * slider, the state-min-wage tag, the housing-tenure picker (already hidden in
+ * v1), and the rent/state-tax detail line under Location. The partner toggle
+ * is preserved as a compact +/- icon since dual-earner is a primary axis of
+ * the model.
+ */
+export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
+  const currentCity = getCityData(s.city);
+  const cityState = currentCity.state;
+
+  const stateOptions: SearchableOption<StateCode>[] = (Object.keys(STATES) as StateCode[])
+    .sort((a, b) => STATES[a].name.localeCompare(STATES[b].name))
+    .map((code) => ({ value: code, label: STATES[code].name, hint: code }));
+
+  const tierRank: Record<string, number> = {
+    'Very High': 0,
+    High: 1,
+    Moderate: 2,
+    Lower: 3,
+    'Very Low': 4,
+  };
+  const curatedInState = Object.entries(CITIES)
+    .filter(([, c]) => c.state === cityState)
+    .sort(
+      ([, a], [, b]) =>
+        (tierRank[a.tier] ?? 9) - (tierRank[b.tier] ?? 9) || a.name.localeCompare(b.name),
+    );
+  const localityOptions: SearchableOption<string>[] = [
+    ...curatedInState.map(([id, c]) => ({ value: id, label: c.name, hint: c.tier })),
+    { value: stateSlug(cityState), label: 'Statewide average', hint: 'approx.' },
+  ];
+
+  const onStateChange = (code: StateCode) => {
+    const firstCurated = Object.entries(CITIES).find(([, c]) => c.state === code);
+    s.setCity(firstCurated ? firstCurated[0] : stateSlug(code));
+  };
+
+  const compactInput = {
+    width: '100%',
+    padding: '6px 8px',
+    fontFamily: fonts.mono,
+    fontSize: rem(13),
+    background: T.bg,
+    border: `1px solid ${T.border}`,
+    color: T.ink,
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  };
+  const compactLabel = {
+    fontSize: rem(9),
+    color: T.inkSoft,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    display: 'block' as const,
+    marginBottom: 3,
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        background: T.surface,
+        borderBottom: `1px solid ${T.border}`,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        padding: '8px 16px',
+        transform: s.visible ? 'translateY(0)' : 'translateY(-100%)',
+        transition: 'transform 180ms ease-out',
+        pointerEvents: s.visible ? 'auto' : 'none',
+      }}
+      aria-hidden={!s.visible}
+    >
+      <div
+        style={{
+          maxWidth: 1240,
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ flex: '0 0 auto' }}>
+          <label style={compactLabel}>Income</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="number"
+              value={s.incomeA}
+              onChange={(e) => s.setIncomeA(+e.target.value)}
+              style={{ ...compactInput, width: 110 }}
+              aria-label={s.twoIncome ? 'Primary income' : 'Annual household income'}
+            />
+            {s.twoIncome && (
+              <input
+                type="number"
+                value={s.incomeB}
+                onChange={(e) => s.setIncomeB(+e.target.value)}
+                style={{ ...compactInput, width: 110 }}
+                aria-label="Partner income"
+              />
+            )}
+            <button
+              onClick={() => s.setTwoIncome(!s.twoIncome)}
+              title={s.twoIncome ? 'Remove partner income' : 'Add partner income'}
+              aria-label={s.twoIncome ? 'Remove partner income' : 'Add partner income'}
+              style={{
+                width: 28,
+                height: 30,
+                cursor: 'pointer',
+                background: s.twoIncome ? T.bgAlt : T.bg,
+                color: T.ink,
+                border: `1px solid ${T.border}`,
+                fontFamily: fonts.mono,
+                fontSize: rem(14),
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              {s.twoIncome ? '−' : '+'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ flex: '1 1 280px', minWidth: 220 }}>
+          <label style={compactLabel}>Location</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+            <SearchableSelect<StateCode>
+              value={cityState}
+              options={stateOptions}
+              onChange={onStateChange}
+              placeholder="State"
+              ariaLabel="State"
+              compact
+            />
+            <SearchableSelect<string>
+              value={s.city}
+              options={localityOptions}
+              onChange={s.setCity}
+              placeholder="City"
+              ariaLabel="City or statewide locality"
+              compact
+            />
+          </div>
+        </div>
+
+        <div style={{ flex: '0 1 180px', minWidth: 160 }}>
+          <label style={compactLabel}>Filing</label>
+          <SearchableSelect<FilingStatus>
+            value={s.filing}
+            options={[
+              { value: 'single', label: 'Single' },
+              { value: 'married', label: 'Married filing jointly', hint: 'MFJ' },
+              { value: 'head', label: 'Head of household', hint: 'HoH' },
+            ]}
+            onChange={s.setFiling}
+            placeholder="Filing status"
+            ariaLabel="Filing status"
+            compact
+          />
+        </div>
+
+        <div style={{ flex: '0 0 auto' }}>
+          <label style={compactLabel}>Kids</label>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {[0, 1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                onClick={() => s.setKids(n)}
+                style={{
+                  width: 28,
+                  padding: '6px 0',
+                  background: s.kids === n ? T.ink : T.bg,
+                  color: s.kids === n ? T.bg : T.ink,
+                  border: `1px solid ${s.kids === n ? T.ink : T.border}`,
+                  fontFamily: fonts.mono,
+                  fontSize: rem(12),
+                  cursor: 'pointer',
+                }}
+                aria-label={`${n}${n === 4 ? '+' : ''} children`}
+              >
+                {n}
+                {n === 4 ? '+' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ flex: '0 0 auto' }}>
+          <label style={compactLabel}>Lifestyle</label>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {(
+              [
+                ['modest', 'Modest'],
+                ['moderate', 'Moderate'],
+                ['comfortable', 'Comfortable'],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => s.setLifestyle(v)}
+                style={{
+                  padding: '6px 10px',
+                  background: s.lifestyle === v ? T.ink : T.bg,
+                  color: s.lifestyle === v ? T.bg : T.ink,
+                  border: `1px solid ${s.lifestyle === v ? T.ink : T.border}`,
+                  fontFamily: fonts.body,
+                  fontSize: rem(12),
+                  cursor: 'pointer',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

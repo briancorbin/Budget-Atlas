@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 234,
+    title: 'Tooltip: running $/mo per row',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "Multiplier rows in the blend-trace tooltip now carry the running monthly $ that emerges after each factor is applied (e.g. `1.20× → $137/mo`). Reader doesn't have to compound 1.08 × 1.05 × 1.20 × 0.95 mentally to see where the value lands at each step. Picked over six visual variants (bars, sparklines, deflection charts) in /design-lab — visual treatments either lied about the math (bars-as-composition, lines-as-continuity) or carried directional semantics that aren't actually present. Plain text won.",
+  },
+  {
     id: 233,
     title: 'Sticky compact Customize bar',
     category: 'UX & navigation',

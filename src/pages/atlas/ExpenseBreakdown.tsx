@@ -322,7 +322,10 @@ function calcExplanation(
         {Math.abs(trace.quintileInterpolationFactor - 1) > 0.005 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             <span>× quintile-curve smoothing (your income)</span>
-            <span>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
+            <span>
+              {trace.quintileInterpolationFactor.toFixed(2)}× → {fmt(trace.nationalQuintile / 12)}
+              /mo
+            </span>
           </div>
         )}
         {/* Anchor-vs-quintile mismatch note. Two definitions of "your
@@ -350,20 +353,39 @@ function calcExplanation(
             blend interpolates from {trace.quintileAnchor.quintile}'s mean upward.
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>
-            × geo ({region}, {trace.geoCut})
-          </span>
-          <span>{trace.geoFactor.toFixed(2)}×</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>× size ({sizeLabelShort})</span>
-          <span>{trace.sizeFactor.toFixed(2)}×</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>× family-comp ({compLabelShort})</span>
-          <span>{trace.compositionFactor.toFixed(2)}×</span>
-        </div>
+        {/* Running annual values per step. Compounding starts from the
+            smoothed national-quintile value and applies each axis factor
+            in turn — final value matches `trace.finalAnnual` by
+            construction. Surfaces the dollar trajectory so the reader
+            doesn't have to compound 1.05 × 1.20 × 0.95 in their head. */}
+        {(() => {
+          const afterGeo = trace.nationalQuintile * trace.geoFactor;
+          const afterSize = afterGeo * trace.sizeFactor;
+          return (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>
+                  × geo ({region}, {trace.geoCut})
+                </span>
+                <span>
+                  {trace.geoFactor.toFixed(2)}× → {fmt(afterGeo / 12)}/mo
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>× size ({sizeLabelShort})</span>
+                <span>
+                  {trace.sizeFactor.toFixed(2)}× → {fmt(afterSize / 12)}/mo
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>× family-comp ({compLabelShort})</span>
+                <span>
+                  {trace.compositionFactor.toFixed(2)}× → {fmt(trace.finalAnnual / 12)}/mo
+                </span>
+              </div>
+            </>
+          );
+        })()}
         <div
           style={{
             display: 'flex',

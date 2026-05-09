@@ -577,12 +577,18 @@ export function SearchableSelect<T extends string>({
           outline: 'none',
           boxSizing: 'border-box',
           // text-overflow: ellipsis only kicks in when the box also has
-          // overflow: hidden + white-space: nowrap. Without those the
-          // browser renders the input's overflow as horizontal scroll
-          // and never truncates with the ellipsis character.
-          textOverflow: 'ellipsis',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
+          // overflow: hidden + white-space: nowrap. Apply only in
+          // compact mode (sticky bar) where the picker button can't
+          // fit the full label. Full-width mode keeps default input
+          // overflow (horizontal scroll while typing) so users can see
+          // their query as they type.
+          ...(compact
+            ? {
+                textOverflow: 'ellipsis' as const,
+                overflow: 'hidden' as const,
+                whiteSpace: 'nowrap' as const,
+              }
+            : {}),
         }}
       />
       <span

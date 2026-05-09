@@ -869,6 +869,39 @@ describe('blendCexSpendingTrace', () => {
     expect(trace.finalAnnual).toBeCloseTo(spending, 6);
   });
 
+  it('exposes quintile anchor + interpolation factor; product reconstructs nationalQuintile', () => {
+    // $46K sits between q2 mean ($42,925) and q3 mean ($74,474).
+    const trace = blendCexSpendingTrace('cmh', 'OH', 46_000, 'foodAtHome', 'p3', 'singleParent');
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    expect(trace.quintileAnchor.quintile).toBe('q2');
+    expect(trace.quintileAnchor.value).toBeGreaterThan(0);
+    // anchor.value × interpolation factor should reconstruct the
+    // smoothed nationalQuintile value.
+    expect(trace.quintileAnchor.value * trace.quintileInterpolationFactor).toBeCloseTo(
+      trace.nationalQuintile,
+      6,
+    );
+    // Interpolation factor should be > 1 here because q3 spending on
+    // foodAtHome is higher than q2, and we're sliding upward.
+    expect(trace.quintileInterpolationFactor).toBeGreaterThan(1);
+  });
+
+  it('quintile interpolation factor is exactly 1.00 when income clamps to q5', () => {
+    const trace = blendCexSpendingTrace(
+      'cmh',
+      'OH',
+      500_000, // way above q5 mean
+      'foodAtHome',
+      'p3',
+      'singleParent',
+    );
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    expect(trace.quintileAnchor.quintile).toBe('q5');
+    expect(trace.quintileInterpolationFactor).toBeCloseTo(1.0, 6);
+  });
+
   it('records geo cut as MSA / division / region depending on data availability', () => {
     // NYC publishes foodAtHome at MSA level
     const nyc = blendCexSpendingTrace('nyc', 'NY', 80_000, 'foodAtHome', 'p2', 'marriedNoKids');

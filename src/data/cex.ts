@@ -2022,6 +2022,30 @@ export function cexLineItemSpendingForCity(
 export interface BlendTrace {
   /** National per-quintile spending, smoothed at the user's income. */
   nationalQuintile: number;
+  /**
+   * The lower-anchor quintile the smoothing started from (or the only
+   * anchor when the user's income clamps to q1 / q5). The reader can
+   * see the published BLS Table 1101 value at this anchor as the
+   * "honest" pre-interpolation baseline; `quintileInterpolationFactor`
+   * below is the smoothing adjustment that takes you to the user's
+   * actual income.
+   */
+  quintileAnchor: {
+    quintile: IncomeQuintile;
+    /** National mean income within the anchor quintile. */
+    mean: number;
+    /** Per-CU annual spending at the anchor quintile (pre-smoothing). */
+    value: number;
+  };
+  /**
+   * Smoothing factor: `nationalQuintile / quintileAnchor.value`. 1.00
+   * when the user's income equals the anchor mean OR clamps to q1/q5
+   * (no interpolation in those cases). Otherwise the linear-interp
+   * factor that traverses from the anchor toward the next quintile's
+   * value as user income moves between adjacent quintile means. The
+   * UI surfaces this as a separate multiplier row in the calc trace.
+   */
+  quintileInterpolationFactor: number;
   /** All-CU national value (denominator for geoFactor). */
   nationalAllCU: number;
   /** All-CU value at the most-specific geo level available. */
@@ -2068,6 +2092,34 @@ export function blendCexSpendingTrace(
   if (nationalAllCU === 0) return null;
   if (nationalQuintile === 0) return null;
 
+  // Smoothing trace: identify the lower anchor the user's income sits
+  // at (or above), then derive the interpolation factor that took us
+  // from anchor.value → smoothed nationalQuintile. Mirrors
+  // `smoothNationalQuintile`'s clamping + linear-interp logic.
+  const means = QUINTILE_MEANS_2024_BEFORE_TAX;
+  const order: readonly IncomeQuintile[] = ['q1', 'q2', 'q3', 'q4', 'q5'];
+  const x = Math.max(0, grossIncome);
+  let anchorQ: IncomeQuintile = 'q1';
+  if (x >= means.q5) {
+    anchorQ = 'q5';
+  } else if (x <= means.q1) {
+    anchorQ = 'q1';
+  } else {
+    for (let i = 0; i < order.length - 1; i++) {
+      if (x >= means[order[i]!] && x <= means[order[i + 1]!]) {
+        anchorQ = order[i]!;
+        break;
+      }
+    }
+  }
+  const anchorValue = QUINTILE_VECTORS[item][anchorQ];
+  const quintileInterpolationFactor = anchorValue === 0 ? 1 : nationalQuintile / anchorValue;
+  const quintileAnchor = {
+    quintile: anchorQ,
+    mean: means[anchorQ],
+    value: anchorValue,
+  };
+
   let geoAllCU: number;
   let geoCut: GeoGranularity | null;
   if (msaAllCU !== undefined && msaAllCU > 0) {
@@ -2098,6 +2150,8 @@ export function blendCexSpendingTrace(
 
   return {
     nationalQuintile,
+    quintileAnchor,
+    quintileInterpolationFactor,
     nationalAllCU,
     geoAllCU,
     geoCut,

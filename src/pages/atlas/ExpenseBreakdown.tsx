@@ -303,16 +303,26 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
     // (the cexItem branch); composite leaves like Utilities / Vehicle
     // (other expenses) where cexBaseline is reassembled across multiple
     // sublines fall through to the no-trace summary below.
-    const trace = cexItem
-      ? blendCexSpendingTrace(
-          result.cityId,
-          result.cityData.state,
-          result.grossIncome,
-          cexItem,
-          cuSize,
-          composition,
-        )
-      : null;
+    // Composite leaves (Utilities = electric/gas + water/public,
+    // Vehicle (other expenses) = residual minus insurance/maint,
+    // Entertainment = entertainment minus pets) reconstruct
+    // `cexBaseline[label]` from multiple CEX sublines in budget.ts.
+    // Tracing a single subline here would render a factor breakdown
+    // that doesn't multiply to the displayed `baseline`, so suppress
+    // the trace for those leaves and let the summary line stand on
+    // its own.
+    const COMPOSITE_LEAVES = new Set(['Utilities', 'Vehicle (other expenses)', 'Entertainment']);
+    const trace =
+      cexItem && !COMPOSITE_LEAVES.has(label)
+        ? blendCexSpendingTrace(
+            result.cityId,
+            result.cityData.state,
+            result.grossIncome,
+            cexItem,
+            cuSize,
+            composition,
+          )
+        : null;
     const traceBlock = trace ? (
       <div
         style={{
@@ -329,7 +339,7 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>q{result.incomeQuintile.slice(1)} national baseline</span>
+          <span>national baseline (income-smoothed)</span>
           <span style={{ color: T.ink }}>{fmt(trace.nationalQuintile / 12)}/mo</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>

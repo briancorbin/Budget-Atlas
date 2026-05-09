@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -354,12 +355,23 @@ export function HoverGloss({ children, gloss }: { children: ReactNode; gloss: Re
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
-  useEffect(() => {
+  // useLayoutEffect (vs useEffect) so the alignment is computed BEFORE
+  // the first painted frame — otherwise a right-edge trigger briefly
+  // shows a clipped tooltip on the very first render before flipping.
+  // Effective tooltip width is min(declared, 90vw) — the popover style
+  // caps at 90vw on narrow viewports, and on a small screen anchoring
+  // to the right edge could push the tooltip off the LEFT instead.
+  useLayoutEffect(() => {
     if (!open || !ref.current || typeof window === 'undefined') return;
     const triggerRect = ref.current.getBoundingClientRect();
+    const effectiveWidth = Math.min(HOVER_GLOSS_WIDTH, window.innerWidth * 0.9);
     const wouldOverflowRight =
-      triggerRect.left + HOVER_GLOSS_WIDTH + HOVER_GLOSS_VIEWPORT_MARGIN > window.innerWidth;
-    setHAlign(wouldOverflowRight ? 'right' : 'left');
+      triggerRect.left + effectiveWidth + HOVER_GLOSS_VIEWPORT_MARGIN > window.innerWidth;
+    // Only flip when the right-anchor variant would actually fit; on
+    // very narrow viewports neither anchor leaves room and the
+    // 90vw cap will handle horizontal containment via maxWidth.
+    const rightAnchorFits = triggerRect.right - effectiveWidth >= HOVER_GLOSS_VIEWPORT_MARGIN;
+    setHAlign(wouldOverflowRight && rightAnchorFits ? 'right' : 'left');
   }, [open]);
 
   return (

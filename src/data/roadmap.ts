@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 224,
+    title: 'Utilities tooltip: EIA context',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "Utilities is mixed-tier (BLS CEX rollup + EIA state-level electricity context — blue dot in the legend) but the calc tooltip was only surfacing the CEX side. Added an EIA addendum so the tooltip closes the loop: your state pays X¢/kWh vs national avg Y¢/kWh, ±Z%. Surfaced as editorial context only; the leaf dollar amount stays CEX-driven so the blend's regional signal isn't double-counted.",
+  },
+  {
     id: 223,
     title: 'Hide tenure UI + Healthcare tooltip',
     category: 'UX & navigation',

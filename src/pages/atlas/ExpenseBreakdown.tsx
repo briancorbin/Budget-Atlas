@@ -202,7 +202,28 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
     const elasticityCopy =
       elasticity === 0
         ? 'not modulated by lifestyle dial (config-driven)'
-        : `Lifestyle multiplier: ${factor.toFixed(2)} (${factor >= 1 ? '+' : ''}${((factor - 1) * 100).toFixed(0)}% — ${dialName} dial, ±${(elasticity * 100).toFixed(0)}% per-leaf elasticity)`;
+        : `× lifestyle ${dialSign === 0 ? '1.00' : (factor >= 1 ? '+' : '') + ((factor - 1) * 100).toFixed(0) + '%'} (${dialName} dial, ±${(elasticity * 100).toFixed(0)}% per-leaf elasticity)`;
+    // Utilities is mixed-tier (CEX rollup + EIA state-level
+    // electricity context). The dollar amount comes from CEX, but
+    // the EIA context is editorial signal: "your state pays X%
+    // above/below the national average residential electricity
+    // price." Surface that here so the blue (mixed) dot's tooltip
+    // explains both source contributions.
+    const utilitiesEiaNote =
+      label === 'Utilities' ? (
+        <div style={{ color: T.inkMuted, marginTop: 6, fontSize: rem(11) }}>
+          Plus EIA state context: your state pays{' '}
+          <strong>{result.electricityContext.stateCentsPerKwh.toFixed(1)}¢/kWh</strong> for
+          residential electricity vs. a national average of{' '}
+          {result.electricityContext.nationalAvgCentsPerKwh.toFixed(1)}¢/kWh —{' '}
+          {`${result.electricityContext.stateVsNationalFactor * 100 - 100 >= 0 ? '+' : ''}${(
+            result.electricityContext.stateVsNationalFactor * 100 -
+            100
+          ).toFixed(0)}%`}
+          . Surfaced as editorial context only; the leaf dollar amount stays CEX-driven so the
+          blend's regional signal isn't double-counted.
+        </div>
+      ) : null;
     return (
       <>
         <Header>How this is calculated</Header>
@@ -217,6 +238,7 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
             </>
           )}
         </div>
+        {utilitiesEiaNote}
       </>
     );
   }

@@ -243,6 +243,34 @@ describe('computeBudget — pinned regressions', () => {
   });
 });
 
+describe('tenure axis', () => {
+  it('default tenure is renter — Housing populates, owner leaves are $0', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    expect(r.expenses.Housing).toBeGreaterThan(0);
+    expect(r.expenses['Renters insurance']).toBeGreaterThan(0);
+    expect(r.expenses['Mortgage P&I']).toBe(0);
+    expect(r.expenses['Property tax']).toBe(0);
+    expect(r.expenses['Homeowners insurance']).toBe(0);
+    expect(r.expenses['Maintenance & repairs']).toBe(0);
+  });
+
+  it("tenure='owner-mortgage' — Housing zeros, owner-only $0 placeholders show with model-note reasons", () => {
+    const r = computeBudget(input({ incomeA: 80_000, tenure: 'owner-mortgage' }));
+    expect(r.expenses.Housing).toBe(0);
+    expect(r.expenses['Renters insurance']).toBe(0);
+    // Owner leaves stay at $0 placeholder until roadmap #13 fills the
+    // mortgage math; the model-notes explain why.
+    expect(r.expenseModelNotes['Housing']?.reason).toMatch(/owns/i);
+    expect(r.expenseModelNotes['Mortgage P&I']?.reason).toMatch(/placeholder|#13/i);
+  });
+
+  it("tenure='owner-no-mortgage' — Mortgage P&I has 'paid off' reason; rent zeros", () => {
+    const r = computeBudget(input({ incomeA: 80_000, tenure: 'owner-no-mortgage' }));
+    expect(r.expenses.Housing).toBe(0);
+    expect(r.expenseModelNotes['Mortgage P&I']?.reason).toMatch(/paid off/i);
+  });
+});
+
 describe('leaf restructure', () => {
   it('exposes the new split leaves and surfaced sublines', () => {
     const r = computeBudget(input({ kids: 2, filing: 'head', incomeA: 80_000 }));

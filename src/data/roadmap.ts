@@ -403,6 +403,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'Split Phone & Internet → Cell + Home internet; Insurance → Renters + Life/disability; Vehicle (ins+maint) → Vehicle insurance + Vehicle maintenance & repair + Vehicle (other expenses). Surfaced Alcohol, Pets, and Travel & lodging as their own leaves. Added 7 new BLSCEXLineItem schema entries (cellularService, lifeInsurance, vehicleInsurance, vehicleMaintRepair, alcohol, otherLodging, pets) extracted from Tables 1101 / 1800 / 2700 / 1400. Cross-vintage drift bound widened <4% → <6% to accommodate vehicleInsurance (~5.8%, real economic drift in 2024).',
   },
+  {
+    id: 213,
+    title: 'Tenure axis (renter / owner-with-mortgage / owner-no-mortgage)',
+    category: 'Household detail',
+    status: 'shipped',
+    shippedAt: '2026-05-08',
+    summary:
+      "Added a `tenure` field to BudgetInput, defaulting to 'renter' (existing behavior). Owner-with-mortgage and owner-without-mortgage are real third paths the model now recognizes. Owner-only leaves (Mortgage P&I, Property tax, Homeowners insurance, Maintenance & repairs) are exposed as $0 placeholders with model-note reasons — actual mortgage math lands with roadmap #13. Stops the model from silently assuming everyone rents.",
+  },
 ];
 
 /**

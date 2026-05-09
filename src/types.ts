@@ -125,6 +125,25 @@ export interface Scenario {
   takeaway: string;
 }
 
+/**
+ * Housing tenure. Controls which housing-related leaves apply.
+ *
+ *   'renter'            → Rent + Renters insurance leaves populate;
+ *                         owner leaves are $0.
+ *   'owner-mortgage'    → Mortgage P&I + Property tax + HO insurance +
+ *                         Maintenance leaves populate; rent + renters
+ *                         insurance are $0. (Mortgage math itself is
+ *                         roadmap #13 — for v1 these leaves all stay
+ *                         at $0 placeholder until the math lands.)
+ *   'owner-no-mortgage' → Property tax + HO insurance + Maintenance
+ *                         populate; mortgage P&I + rent + renters
+ *                         insurance are $0. (Paid-off retirees, gen.
+ *                         wealth — a real third path the model now
+ *                         acknowledges even before the mortgage math
+ *                         ships.)
+ */
+export type HousingTenure = 'renter' | 'owner-mortgage' | 'owner-no-mortgage';
+
 export interface BudgetInput {
   incomeA: number;
   incomeB?: number;
@@ -138,6 +157,11 @@ export interface BudgetInput {
   city: string;
   kids: number;
   lifestyle: Lifestyle;
+  /**
+   * Housing tenure. Defaults to 'renter' when omitted (the legacy
+   * behavior — every existing scenario assumed renting).
+   */
+  tenure?: HousingTenure;
   /**
    * Set of benefit program IDs the household is claiming. Eligibility is
    * computed separately; this only controls whether the program's effect

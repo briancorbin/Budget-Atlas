@@ -72,7 +72,31 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
     label: 'RentCafe / Zillow',
     tier: 'commercial',
     description:
-      "City-specific median rents, hand-curated per city in src/data/cities.ts. RentCafe and Zillow publish monthly market data; values are rounded to the nearest $50–100. 1BR for solo / couple-no-kids, 3BR for any household with kids. Replaces BLS's 'Shelter' line, which is averaged across owners and renters and isn't useful as a renter-specific number.",
+      "City-specific median rents, hand-curated per city in src/data/cities.ts. RentCafe and Zillow publish monthly market data; values are rounded to the nearest $50–100. 1BR for solo / couple-no-kids, 3BR for any household with kids. Replaces BLS's 'Shelter' line, which is averaged across owners and renters and isn't useful as a renter-specific number. Only populates when tenure is 'renter'; owners see $0 here.",
+  },
+  'Mortgage P&I': {
+    label: 'Roadmap #13 (placeholder)',
+    tier: 'none',
+    description:
+      'Mortgage principal + interest. Currently a $0 placeholder — the actual mortgage math (purchase price, down payment, rate, term) lands with roadmap #13 (homeownership). The leaf is exposed now so tenure-aware households read honestly even before the math ships.',
+  },
+  'Property tax': {
+    label: 'Roadmap #13 (placeholder)',
+    tier: 'none',
+    description:
+      'Annual property tax / 12. State-level effective rates vary enormously (TX ~1.6%, NJ ~2.2%, HI ~0.3%) — Census ACS B25103 + Tax Foundation are the planned sources. Currently $0 placeholder; populates with roadmap #13.',
+  },
+  'Homeowners insurance': {
+    label: 'Roadmap #13 (placeholder)',
+    tier: 'none',
+    description:
+      'Homeowners insurance premium. State spread is 5×+ (FL ~$5K/yr, VT ~$1K/yr) — III state-level avg expenditure tables are the planned source. Currently $0 placeholder; populates with roadmap #13.',
+  },
+  'Maintenance & repairs': {
+    label: 'Roadmap #13 (placeholder)',
+    tier: 'none',
+    description:
+      "Owner maintenance reserve, conventionally ~1% of home value per year. Currently $0 placeholder; populates with roadmap #13. CEX bundles this with HO insurance under 'Maintenance, repairs, insurance, and other expenses' on owned dwellings — when #13 lands, that bundle gets unbundled (insurance via III, maintenance from CEX residual).",
   },
   Utilities: BLS_CEX,
   'Cell service': BLS_CEX,
@@ -143,6 +167,10 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
 
 export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
   Housing: 'essential',
+  'Mortgage P&I': 'essential',
+  'Property tax': 'essential',
+  'Homeowners insurance': 'essential',
+  'Maintenance & repairs': 'essential',
   Utilities: 'essential',
   'Cell service': 'essential',
   'Home internet': 'essential',
@@ -256,6 +284,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     city,
     kids,
     lifestyle,
+    tenure = 'renter',
     claimedBenefits,
   } = input;
   const cityData = getCityData(city);
@@ -455,14 +484,23 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   if (kids >= 1) baseRent = cityData.rent3;
   else if (adults === 2) baseRent = cityData.rent1 * 1.2;
   else baseRent = cityData.rent1;
-  // Rent is fixed at 1.0× across the lifestyle dial. The previous ±10%
-  // modulation conflated "different neighborhood / building tier" with
-  // "lifestyle dial." Per the locked tree's editorial principle —
-  // within a given city × bedroom config, modest means picking fewer
-  // bedrooms (a different config decision, not the dial). The bedroom-
-  // count preferences feature is roadmap #16. See LIFESTYLE_ELASTICITY
-  // above for the full per-leaf elasticity discipline.
-  const housing = baseRent;
+  // Tenure-aware housing leaves. Renters get the rent + renters
+  // insurance leaves populated; owners get the owner leaves (mortgage
+  // P&I, property tax, HO insurance, maintenance), with rent zeroed
+  // out. The mortgage P&I / property tax / HO insurance / maintenance
+  // VALUES are still $0 placeholders until the actual math lands in
+  // roadmap #13 — this PR just exposes the tenure config and gates
+  // visibility, so the model stops silently assuming everyone rents.
+  // Within renter mode rent is fixed at 1.0× across the lifestyle dial
+  // (modest = pick fewer bedrooms = a config decision, not the dial;
+  // bedroom-count preferences are roadmap #16).
+  const isRenter = tenure === 'renter';
+  const housing = isRenter ? baseRent : 0;
+  // Owner leaves — all $0 placeholders for v1; mortgage math is #13.
+  const mortgagePI = 0;
+  const propertyTax = 0;
+  const homeownersInsurance = 0;
+  const homeMaintenance = 0;
 
   // Utilities = electric + gas + fuel oil + water/public. Phone/internet
   // stays as a separate line (CEX rolls "Telephone services" into the
@@ -549,12 +587,13 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const homeInternet = 70; // FCC Urban Rate Survey median for residential broadband, ballpark; not yet a cited source
 
   // Insurance split per the locked tree:
-  //   Renters insurance → flat $25/mo placeholder. Will be replaced by
-  //                       III state-level data in a follow-up.
+  //   Renters insurance → flat $25/mo placeholder, only when tenure is
+  //                       'renter'. Will be replaced by III state-level
+  //                       data in a follow-up.
   //   Life & disability insurance → CEX "Life and other personal
   //                       insurance" subline. Pensions explicitly NOT
   //                       pulled to avoid FICA + roadmap-#4 overlap.
-  const rentersInsurance = 25;
+  const rentersInsurance = isRenter ? 25 : 0;
   const lifeInsurance = cexMonthly('lifeInsurance');
 
   // CEX-derived line items the model previously omitted entirely.
@@ -667,6 +706,10 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // roadmap #5.
   const essentialExpenses =
     housing +
+    mortgagePI +
+    propertyTax +
+    homeownersInsurance +
+    homeMaintenance +
     utilities +
     foodAtHomeAfterBenefits +
     transitCost +
@@ -740,6 +783,10 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     // "model assumed N/A" from "BLS itself returned 0."
     expenses: {
       Housing: housing,
+      'Mortgage P&I': mortgagePI,
+      'Property tax': propertyTax,
+      'Homeowners insurance': homeownersInsurance,
+      'Maintenance & repairs': homeMaintenance,
       Utilities: utilities,
       'Cell service': cellService,
       'Home internet': homeInternet,
@@ -813,6 +860,53 @@ export function computeBudget(input: BudgetInput): BudgetResult {
             },
           }
         : {}),
+      // Tenure-gated housing leaves. Renters get rent + renters
+      // insurance; owners get mortgage / property tax / HO insurance /
+      // maintenance. The model surfaces the inapplicable side with a
+      // reason so the detail view can render "no rent — household
+      // owns" or "no mortgage — household rents."
+      ...(isRenter
+        ? {
+            'Mortgage P&I': {
+              modelValue: null,
+              reason: 'Household rents — mortgage math is roadmap #13',
+            },
+            'Property tax': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+            'Homeowners insurance': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+            'Maintenance & repairs': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+          }
+        : {
+            Housing: {
+              modelValue: null,
+              reason: 'Household owns — rent does not apply',
+            },
+            'Renters insurance': {
+              modelValue: null,
+              reason: 'Household owns — renters insurance does not apply',
+            },
+            ...(tenure === 'owner-no-mortgage'
+              ? {
+                  'Mortgage P&I': {
+                    modelValue: null,
+                    reason: 'Owner without mortgage — paid off',
+                  },
+                }
+              : {
+                  'Mortgage P&I': {
+                    modelValue: null,
+                    reason: 'Owner with mortgage — math is roadmap #13 (placeholder)',
+                  },
+                }),
+          }),
     },
     totalExpenses,
     essentialExpenses,

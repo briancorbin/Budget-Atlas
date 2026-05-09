@@ -9,6 +9,7 @@ import {
   stateToRegion,
   cuSizeBucket,
   compositionBucket,
+  blendCexSpendingTrace,
   QUINTILE_MEANS_2024_BEFORE_TAX,
   type BLSCEXLineItem,
   type CUSize,
@@ -296,6 +297,67 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
           blend's regional signal isn't double-counted.
         </div>
       ) : null;
+    // Per-axis numerical trace — surfaces the quintile baseline + each
+    // factor multiplier so the reader can see how the blend cell value
+    // was actually built. Only available for true CEX-anchored leaves
+    // (the cexItem branch); composite leaves like Utilities / Vehicle
+    // (other expenses) where cexBaseline is reassembled across multiple
+    // sublines fall through to the no-trace summary below.
+    const trace = cexItem
+      ? blendCexSpendingTrace(
+          result.cityId,
+          result.cityData.state,
+          result.grossIncome,
+          cexItem,
+          cuSize,
+          composition,
+        )
+      : null;
+    const traceBlock = trace ? (
+      <div
+        style={{
+          marginTop: 6,
+          padding: '6px 8px',
+          background: T.bgAlt,
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          fontSize: rem(11),
+          fontFamily: fonts.mono,
+          color: T.inkSoft,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>q{result.incomeQuintile.slice(1)} national baseline</span>
+          <span style={{ color: T.ink }}>{fmt(trace.nationalQuintile / 12)}/mo</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>× geo factor ({trace.geoCut})</span>
+          <span>{trace.geoFactor.toFixed(2)}×</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>× CU-size factor</span>
+          <span>{trace.sizeFactor.toFixed(2)}×</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>× family-comp factor</span>
+          <span>{trace.compositionFactor.toFixed(2)}×</span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 8,
+            paddingTop: 2,
+            borderTop: `1px solid ${T.border}`,
+          }}
+        >
+          <span>= BLS baseline</span>
+          <span style={{ color: T.ink }}>{fmt(trace.finalAnnual / 12)}/mo</span>
+        </div>
+      </div>
+    ) : null;
     return (
       <>
         <Header>How this is calculated</Header>
@@ -304,6 +366,7 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
           <strong>{fmt(baseline)}</strong>
         </div>
         {contextBlock}
+        {traceBlock}
         <div style={{ color: T.inkSoft, marginTop: 6 }}>
           {elasticityCopy}
           <br />= shipped <strong>{fmt(shipped)}</strong>

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { computeBudget, LIFESTYLE_ELASTICITY } from '@/lib/budget';
-import { cexLineItemSpendingForCity, compositionBucket, cuSizeBucket } from '@/data/cex';
+import {
+  cexLineItemSpendingForCity,
+  compositionBucket,
+  cuSizeBucket,
+} from '@/data/cex';
 import type { BudgetInput } from '@/types';
 
 function input(overrides: Partial<BudgetInput> = {}): BudgetInput {
@@ -366,15 +370,26 @@ describe('cexBaseline (three-column comparison)', () => {
   });
 
   it('Entertainment baseline excludes Pets (no double-count between leaves)', () => {
+    // The exposed Entertainment baseline + Pets baseline must equal the
+    // raw CEX entertainment rollup. The earlier version of this test
+    // only checked positivity, which would still pass if Entertainment
+    // had quietly been left as the full rollup (silent double-count).
     const r = computeBudget(input({ incomeA: 80_000 }));
-    // The exposed Entertainment baseline + Pets baseline ≈ the raw CEX
-    // entertainment rollup. They should not double-count.
     const ent = r.cexBaseline['Entertainment']!;
     const pets = r.cexBaseline['Pets']!;
-    // Both positive; pets smaller than entertainment-without-pets
     expect(ent).toBeGreaterThan(0);
     expect(pets).toBeGreaterThan(0);
     expect(pets).toBeLessThan(ent);
+    // Reconstruct the raw rollup from cex.ts directly.
+    const raw = cexLineItemSpendingForCity(
+      'cmh',
+      r.cityData.state,
+      r.grossIncome,
+      'entertainment',
+      cuSizeBucket(r.householdSize),
+      compositionBucket(r.adults, Math.max(0, r.householdSize - r.adults)),
+    );
+    expect(ent + pets).toBeCloseTo(raw.spending / 12, 0);
   });
 });
 

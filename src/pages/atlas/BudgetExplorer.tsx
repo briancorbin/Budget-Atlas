@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FilingStatus, Lifestyle } from '@/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FilingStatus, HousingTenure, Lifestyle } from '@/types';
 import { theme as T } from '@/theme';
 import { computeBudget } from '@/lib/budget';
 import { checkBenefit, type BenefitId } from '@/lib/benefits';
@@ -13,7 +13,7 @@ import {
 } from '@/lib/configShare';
 import { Masthead } from './Masthead';
 import { MethodologyNote } from './MethodologyNote';
-import { CustomizePanel, type InputsState } from './Inputs';
+import { CustomizePanel, CustomizeStickyBar, type InputsState } from './Inputs';
 import { ShareLink } from './ShareLink';
 import { StatRow, StatusBanner } from './Summary';
 import { IncomeFlow } from './IncomeFlow';
@@ -57,8 +57,10 @@ const INITIAL: SharedConfig = {
   city: 'cmh',
   kids: 2,
   lifestyle: 'moderate',
+  tenure: 'renter',
   compareCity: 'sf',
   claimedBenefits: new Set(),
+  overrides: {},
 };
 
 function readBootConfig(): SharedConfig {
@@ -85,10 +87,14 @@ export function BudgetExplorer() {
   const [city, setCity] = useState(boot.city);
   const [kids, setKids] = useState(boot.kids);
   const [lifestyle, setLifestyle] = useState<Lifestyle>(boot.lifestyle);
+  const [tenure, setTenure] = useState<HousingTenure>(boot.tenure);
   const [compareCity, setCompareCity] = useState(boot.compareCity);
   const [claimedBenefits, setClaimedBenefits] = useState<ReadonlySet<string>>(
     () => new Set(boot.claimedBenefits),
   );
+  const [overrides, setOverrides] = useState<Readonly<Record<string, number>>>(() => ({
+    ...boot.overrides,
+  }));
 
   const effectiveIncomeB = twoIncome ? incomeB : 0;
 
@@ -102,9 +108,22 @@ export function BudgetExplorer() {
         city,
         kids,
         lifestyle,
+        tenure,
         claimedBenefits,
+        overrides,
       }),
-    [incomeA, effectiveIncomeB, twoIncome, filing, city, kids, lifestyle, claimedBenefits],
+    [
+      incomeA,
+      effectiveIncomeB,
+      twoIncome,
+      filing,
+      city,
+      kids,
+      lifestyle,
+      tenure,
+      claimedBenefits,
+      overrides,
+    ],
   );
 
   const toggleBenefit = useCallback((id: string) => {
@@ -175,10 +194,24 @@ export function BudgetExplorer() {
       city,
       kids,
       lifestyle,
+      tenure,
       compareCity,
       claimedBenefits,
+      overrides,
     }),
-    [incomeA, incomeB, twoIncome, filing, city, kids, lifestyle, compareCity, claimedBenefits],
+    [
+      incomeA,
+      incomeB,
+      twoIncome,
+      filing,
+      city,
+      kids,
+      lifestyle,
+      tenure,
+      compareCity,
+      claimedBenefits,
+      overrides,
+    ],
   );
 
   // Sync hash + localStorage whenever any config field changes. replaceState
@@ -197,6 +230,28 @@ export function BudgetExplorer() {
       ? `${window.location.origin}${window.location.pathname}#${encoded}`
       : `#${encoded}`;
 
+  // Sticky compact Customize bar — shown only after the full panel has
+  // scrolled offscreen. A sentinel `<div>` placed just below the panel
+  // toggles `stickyVisible` via IntersectionObserver: when the sentinel is
+  // out of view (i.e. scrolled past), the user has lost access to the
+  // inputs and the sticky bar pops in.
+  const stickySentinelRef = useRef<HTMLDivElement | null>(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
+  useEffect(() => {
+    const el = stickySentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        // Visible when sentinel is above the viewport (scrolled past).
+        const rect = entry.boundingClientRect;
+        setStickyVisible(!entry.isIntersecting && rect.top < 0);
+      },
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const inputState: InputsState = {
     incomeA,
     setIncomeA,
@@ -212,6 +267,8 @@ export function BudgetExplorer() {
     setKids,
     lifestyle,
     setLifestyle,
+    tenure,
+    setTenure,
   };
 
   return (
@@ -227,13 +284,15 @@ export function BudgetExplorer() {
       }}
     >
       <PageNav sections={PAGE_NAV_SECTIONS} />
+      <CustomizeStickyBar {...inputState} visible={stickyVisible} />
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
         <MethodologyNote />
-        <section id="customize" style={{ scrollMarginTop: 24 }}>
+        <section id="customize" style={{ scrollMarginTop: 96 }}>
           <CustomizePanel {...inputState} />
         </section>
-        <section id="benefits" style={{ scrollMarginTop: 24 }}>
+        <div ref={stickySentinelRef} aria-hidden style={{ height: 1 }} />
+        <section id="benefits" style={{ scrollMarginTop: 96 }}>
           <PitWarning
             city={city}
             kids={kids}
@@ -245,14 +304,14 @@ export function BudgetExplorer() {
           />
           <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
         </section>
-        <section id="summary" style={{ scrollMarginTop: 24 }}>
+        <section id="summary" style={{ scrollMarginTop: 96 }}>
           <StatRow result={result} />
           <StatusBanner result={result} />
         </section>
-        <section id="income-flow" style={{ scrollMarginTop: 24 }}>
+        <section id="income-flow" style={{ scrollMarginTop: 96 }}>
           <IncomeFlow result={result} />
         </section>
-        <section id="tax-brackets" style={{ scrollMarginTop: 24 }}>
+        <section id="tax-brackets" style={{ scrollMarginTop: 96 }}>
           <BracketWalkthrough
             result={result}
             incomeA={incomeA}
@@ -261,17 +320,29 @@ export function BudgetExplorer() {
             filing={filing}
           />
         </section>
-        <section id="expenses" style={{ scrollMarginTop: 24 }}>
-          <ExpenseBreakdown result={result} />
+        <section id="expenses" style={{ scrollMarginTop: 96 }}>
+          <ExpenseBreakdown
+            result={result}
+            lifestyle={lifestyle}
+            overrides={overrides}
+            onOverrideChange={(label, value) => {
+              setOverrides((prev) => {
+                const next = { ...prev };
+                if (value === null) delete next[label];
+                else next[label] = value;
+                return next;
+              });
+            }}
+          />
         </section>
-        <section id="plan" style={{ scrollMarginTop: 24 }}>
+        <section id="plan" style={{ scrollMarginTop: 96 }}>
           <DiscretionaryPlan result={result} />
           <ShareLink shareUrl={shareUrl} />
         </section>
-        <section id="population" style={{ scrollMarginTop: 24 }}>
+        <section id="population" style={{ scrollMarginTop: 96 }}>
           <IncomePosition result={result} />
         </section>
-        <section id="geography" style={{ scrollMarginTop: 24 }}>
+        <section id="geography" style={{ scrollMarginTop: 96 }}>
           <CityComparison
             result={result}
             compareCity={compareCity}
@@ -284,7 +355,7 @@ export function BudgetExplorer() {
             lifestyle={lifestyle}
           />
         </section>
-        <section id="cliffs" style={{ scrollMarginTop: 24 }}>
+        <section id="cliffs" style={{ scrollMarginTop: 96 }}>
           <CliffCurve
             city={city}
             kids={kids}
@@ -295,7 +366,7 @@ export function BudgetExplorer() {
             incomeB={effectiveIncomeB}
           />
         </section>
-        <section id="notes" style={{ scrollMarginTop: 24 }}>
+        <section id="notes" style={{ scrollMarginTop: 96 }}>
           <Notes stateTaxSource={result.stateData.taxSource} />
         </section>
       </div>

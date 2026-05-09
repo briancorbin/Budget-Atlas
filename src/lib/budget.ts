@@ -6,20 +6,71 @@ import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/ta
 import { checkChip, checkMedicaid, checkSnap } from '@/lib/benefits';
 import {
   cexLineItemSpendingForCity,
+  compositionBucket,
+  cuSizeBucket,
   quintileFromIncome,
   type BLSCEXLineItem,
+  type CompositionType,
   type GeoGranularity,
 } from '@/data/cex';
+
+// Childcare BLS baseline — Table 1502 "Personal services" subline delta
+// vs. married-no-kids per composition column. Hoisted to module level
+// (was per-call inside `computeBudget`) so the income-sweep loop in
+// CliffCurve doesn't re-allocate this map on every iteration. Same
+// values used by the cexBaseline['Childcare'] derivation later in the
+// file — single source of truth.
+//
+// v1 limitation: `compositionBucket` collapses any 2-adult household
+// with kids into `marriedKids617`, so the marriedKidsU6 column ($454)
+// and singleParent column ($47) only fire when the model can route
+// there explicitly. Per-child age routing is roadmap #3.
+export const CHILDCARE_BLS_PER_COMP: Readonly<Record<CompositionType, number>> = {
+  marriedNoKids: 0,
+  marriedKidsU6: 454,
+  marriedKids617: 118,
+  marriedKids18p: 0,
+  otherMarried: 0,
+  singleParent: 47,
+  singleOrOther: 0,
+};
+import {
+  RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB,
+  NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB,
+  eiaElectricityFactor,
+} from '@/data/eiaElectricity';
+import { SOURCES } from '@/data/sources';
+
+// ── Planned per-leaf sources ────────────────────────────────────────────
+//
+// Citations for data the model knows it needs but hasn't wired the
+// actual per-cell values for yet — Mortgage P&I (#13), per-state
+// insurance (#13), broadband prices (Home internet leaf), private-
+// school tuition (Education leaf), childcare-price reference data, etc.
+// Exported as typed `*_SOURCE` constants so the unused-sources audit
+// (`scripts/source-inventory.mjs --check`) sees a real reference point
+// even before per-cell wiring lands. The leaf descriptions in
+// `EXPENSE_SOURCE` reference these by id in body text; this block
+// makes the typed link explicit.
+export const MORTGAGE_PI_SOURCE = SOURCES['census-acs-owner-costs'];
+export const PROPERTY_TAX_SOURCE = SOURCES['census-acs-property-tax'];
+export const HOMEOWNERS_INSURANCE_SOURCE = SOURCES['iii-state-insurance'];
+export const HOME_INTERNET_SOURCE = SOURCES['fcc-urban-rate-survey'];
+export const PRIVATE_SCHOOL_TUITION_SOURCE = SOURCES['nces-private-school-tuition'];
+export const COLLEGE_PRICING_SOURCE = SOURCES['college-board-trends'];
+export const CHILDCARE_PRICE_REFERENCE_SOURCE = SOURCES['dol-ndcp'];
 
 /**
  * Per-line categorization for the essentials vs. lifestyle split (#203).
  * Keys are the labels used in `BudgetResult.expenses` — granular sub-
  * lines, not rolled-up parents. Food and transportation get split into
  * their constituent lines so each one lands cleanly in 'essential' or
- * 'lifestyle': 'Food at home' is essential, 'Food away' is lifestyle;
- * 'Transit' / 'Gasoline' / 'Vehicle (insurance & maint.)' are essential,
- * 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown component
- * groups these under "Mixed" rollups in the UI when both kinds appear.
+ * 'lifestyle': 'Food at home' is essential, 'Food away' / 'Alcohol'
+ * are lifestyle; 'Transit' / 'Gasoline' / 'Vehicle insurance' /
+ * 'Vehicle maintenance & repair' / 'Vehicle (other expenses)' are
+ * essential, 'Vehicle (purchase)' is lifestyle. The ExpenseBreakdown
+ * component groups these under "Mixed" rollups in the UI when both
+ * kinds appear.
  *
  * Apparel and Personal Care are gray-zone (the BLS lines bundle
  * essentials with discretionary), filed as lifestyle because the
@@ -68,11 +119,74 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
     label: 'RentCafe / Zillow',
     tier: 'commercial',
     description:
-      "City-specific median rents, hand-curated per city in src/data/cities.ts. RentCafe and Zillow publish monthly market data; values are rounded to the nearest $50–100. 1BR for solo / couple-no-kids, 3BR for any household with kids. Replaces BLS's 'Shelter' line, which is averaged across owners and renters and isn't useful as a renter-specific number.",
+      "City-specific median rents, hand-curated per city in src/data/cities.ts. RentCafe and Zillow publish monthly market data; values are rounded to the nearest $50–100. 1BR for solo / couple-no-kids, 3BR for any household with kids. Replaces BLS's 'Shelter' line, which is averaged across owners and renters and isn't useful as a renter-specific number. Only populates when tenure is 'renter'; owners see $0 here.",
   },
-  Utilities: BLS_CEX,
+  'Mortgage P&I': {
+    label: 'Census ACS B25088 (planned, #13)',
+    tier: 'none',
+    description:
+      'Mortgage principal + interest. Currently a $0 placeholder — the actual mortgage math (purchase price, down payment, rate, term) lands with roadmap #13. Census ACS Selected Monthly Owner Costs (B25088) is the planned baseline source for the median; cited in `sources.ts` (`census-acs-owner-costs`).',
+  },
+  'Property tax': {
+    label: 'Census ACS B25103 + Tax Foundation (planned, #13)',
+    tier: 'none',
+    description:
+      'Annual property tax / 12. State-level effective rates vary enormously (TX ~1.6%, NJ ~2.2%, HI ~0.3%). Census ACS B25103 (median real-estate taxes paid) and Tax Foundation per-state effective rates are now in `sources.ts`. Currently $0 placeholder; populates with roadmap #13.',
+  },
+  'Homeowners insurance': {
+    label: 'III state-level (planned, #13)',
+    tier: 'none',
+    description:
+      'Homeowners insurance premium. State spread is 5×+ (FL ~$5K/yr, VT ~$1K/yr). III state-level avg expenditure tables (key: `iii-state-insurance` in `sources.ts`) are the planned source. Currently $0 placeholder; populates with roadmap #13.',
+  },
+  'Maintenance & repairs': {
+    label: 'Roadmap #13 (placeholder)',
+    tier: 'none',
+    description:
+      "Owner maintenance reserve, conventionally ~1% of home value per year. Currently $0 placeholder; populates with roadmap #13. CEX bundles this with HO insurance under 'Maintenance, repairs, insurance, and other expenses' on owned dwellings — when #13 lands, that bundle gets unbundled (insurance via III, maintenance from CEX residual).",
+  },
+  Utilities: {
+    label: 'BLS CEX (rollup) + EIA state context',
+    tier: 'mixed',
+    description:
+      'Utilities = BLS CEX "Utilities, fuels, and public services" rollup (electric + natural gas + fuel oil + water/public services). The CEX rollup carries the dollar amount through the synthetic blend (region/division/quintile/CU-size/composition). EIA state-level residential electricity prices (¢/kWh) are pulled from `src/data/eiaElectricity.ts` (Table 5.6.A, Feb 2026 vintage) and surfaced as editorial context on the Utilities leaf — readers can see "your state pays X% above/below the national average" without the model double-counting state-level signal that CEX already partially captures via the 4-region cut.',
+  },
+  'Cell service': BLS_CEX,
+  'Home internet': {
+    label: 'FCC Urban Rate Survey (planned)',
+    tier: 'none',
+    description:
+      'Flat $70/mo placeholder for residential broadband. The FCC Urban Rate Survey is now in `sources.ts` (key: `fcc-urban-rate-survey`) — wiring the actual benchmark values to this leaf is the next step. The placeholder reflects FCC URS median (~$60–80/mo); the source is cited even before the per-cell data lands.',
+  },
+  'Renters insurance': {
+    label: 'III state-level (planned)',
+    tier: 'none',
+    description:
+      'Flat $25/mo placeholder. The Insurance Information Institute is now in `sources.ts` (key: `iii-state-insurance`) — wiring the actual state-level avg expenditure to this leaf is the next step. III publishes state-level renters insurance averages from NAIC data; storm-risk states (TX/MS/OK) run higher than the placeholder, low-risk states lower.',
+  },
+  'Life & disability insurance': {
+    label: 'BLS CEX',
+    tier: 'primary',
+    description:
+      'BLS CEX "Life and other personal insurance" subline of "Personal insurance and pensions." The pensions sub-line is intentionally NOT pulled — it overlaps with FICA (Social Security tax, already modeled) and pre-tax retirement contributions (roadmap #4), so consuming the parent rollup would double-count.',
+  },
+  'Housekeeping Supplies': BLS_CEX,
+  Healthcare: {
+    label: 'KFF (premium) + BLS CEX (OOP)',
+    tier: 'mixed',
+    description:
+      "Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting. Medicaid/CHIP is modeled as binary full/none — when eligible, the entire Healthcare line zeros out; when not, full OOP. State-level variation in adult Medicaid scope (dental, vision, orthodontics range from comprehensive to emergency-only) isn't modeled in v1; finer state-by-state coverage modeling is roadmap #10.",
+  },
+  Childcare: {
+    label: 'BLS CEX Table 1502 (Personal services)',
+    tier: 'primary',
+    description:
+      'BLS CEX Table 1502 "Personal services" subline, delta vs. married-no-kids per composition. Captures what the average household with kids ACTUALLY spends on childcare out-of-pocket — net of free / family / community / CCDF-subsidized care. Per-composition values: ~$454/mo (married + oldest <6), ~$118/mo (married + oldest 6–17), ~$47/mo (single parent). v1 limitation: the model bucket-routes any 2-adult household with kids into the "oldest 6–17" column, so the higher under-6 value only fires when per-child age tracking lands (roadmap #3). Replaces the previous Care.com-based formula (private-market full-time center prices × kids × 0.85), which overstated by 5–10× for the typical household — most American childcare is informal (relatives, friends, churches) and CCDF subsidies cover most cost above a small co-pay for income-eligible families. Care.com private-market data stays in `cityData.childcarePreschool` for future re-introduction as a private-market reference. Note: BLS\'s Education line includes a small daycare share that overlaps slightly with this — see issue #190.',
+  },
+  Education: BLS_CEX,
   'Food at home': BLS_CEX,
   'Food away': BLS_CEX,
+  Alcohol: BLS_CEX,
   Transit: {
     label: 'Transit-agency rates',
     tier: 'none',
@@ -80,61 +194,140 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
       "Hand-curated monthly transit-pass costs per city in src/data/cities.ts (e.g. NYC OMNY $132, SF Muni $81). Sourced from each city's transit agency website but not formally cited in our sources registry — known audit gap.",
   },
   Gasoline: BLS_CEX,
-  'Vehicle (insurance & maint.)': BLS_CEX,
+  'Vehicle insurance': BLS_CEX,
+  'Vehicle maintenance & repair': BLS_CEX,
+  'Vehicle (other expenses)': {
+    label: 'BLS CEX (residual)',
+    tier: 'primary',
+    description:
+      'CEX "Other vehicle expenses" rollup minus the surfaced vehicle insurance and maintenance subleaves. Captures finance charges, vehicle rentals/leases, and other miscellaneous vehicle expenses BLS bundles together but doesn\'t individually publish at our schema depth.',
+  },
   'Vehicle (purchase)': BLS_CEX,
-  Healthcare: {
-    label: 'KFF (premium) + BLS CEX (OOP)',
-    tier: 'mixed',
-    description:
-      'Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting.',
-  },
-  Childcare: {
-    label: 'Care.com',
-    tier: 'commercial',
-    description:
-      "Care.com Cost of Care Report — annual commercial survey of US childcare costs. We use the preschool monthly value × kids × 0.85 (mix-of-ages discount for after-school / part-time). Note: BLS's Education line includes a small daycare share that overlaps slightly with this — see issue #190.",
-  },
-  'Phone & Internet': {
-    label: 'Hand formula (uncited)',
-    tier: 'none',
-    description:
-      'Hand-tuned formula in lib/budget.ts: $130 baseline + $50 per second adult + $25 per kid. No published source; the values are rough averages of typical phone+internet bundles. Known audit gap — should be replaced with a cited source.',
-  },
-  Insurance: {
-    label: 'Hand formula (uncited)',
-    tier: 'none',
-    description:
-      "Hand-tuned formula for renters' / life / other personal insurance: $90 baseline + $15/kid + $40 if family. No published source. Distinct from healthcare premiums (KFF) and from BLS's 'Personal insurance and pensions' which we don't pull. Known audit gap.",
-  },
   Apparel: BLS_CEX,
-  Entertainment: BLS_CEX,
+  Entertainment: {
+    label: 'BLS CEX (excl. Pets)',
+    tier: 'primary',
+    description:
+      'BLS CEX "Entertainment" rollup with the Pets subline subtracted out — the surfaced Pets leaf already carries that spending, so leaving it in Entertainment would double-count. Toys, hobbies, and playground equipment stay in Entertainment.',
+  },
+  Pets: BLS_CEX,
   'Personal Care': BLS_CEX,
-  Education: BLS_CEX,
   'Household Operations': BLS_CEX,
-  'Housekeeping Supplies': BLS_CEX,
   Furnishings: BLS_CEX,
+  'Travel & lodging': BLS_CEX,
 };
 
 export const EXPENSE_CATEGORY: Record<string, 'essential' | 'lifestyle'> = {
   Housing: 'essential',
+  'Mortgage P&I': 'essential',
+  'Property tax': 'essential',
+  'Homeowners insurance': 'essential',
+  'Maintenance & repairs': 'essential',
   Utilities: 'essential',
-  'Food at home': 'essential',
-  'Food away': 'lifestyle',
-  Transit: 'essential',
-  Gasoline: 'essential',
-  'Vehicle (insurance & maint.)': 'essential',
-  'Vehicle (purchase)': 'lifestyle',
+  'Cell service': 'essential',
+  'Home internet': 'essential',
+  'Renters insurance': 'essential',
+  'Life & disability insurance': 'essential',
+  'Housekeeping Supplies': 'essential',
   Healthcare: 'essential',
   Childcare: 'essential',
-  'Phone & Internet': 'essential',
-  Insurance: 'essential',
   Education: 'essential',
-  'Housekeeping Supplies': 'essential',
+  'Food at home': 'essential',
+  'Food away': 'lifestyle',
+  Alcohol: 'lifestyle',
+  Transit: 'essential',
+  Gasoline: 'essential',
+  'Vehicle insurance': 'essential',
+  'Vehicle maintenance & repair': 'essential',
+  'Vehicle (other expenses)': 'essential',
+  'Vehicle (purchase)': 'lifestyle',
   Apparel: 'lifestyle',
   Entertainment: 'lifestyle',
+  Pets: 'lifestyle',
   'Personal Care': 'lifestyle',
   'Household Operations': 'lifestyle',
   Furnishings: 'lifestyle',
+  'Travel & lodging': 'lifestyle',
+};
+
+/**
+ * Per-leaf lifestyle elasticities for CEX-anchored line items. Each
+ * value is the ± fraction at the modest / comfortable extremes; the
+ * applied multiplier is `1 + elasticity * lifestyleSign` where
+ * lifestyleSign is -1 / 0 / +1 for modest / moderate / comfortable.
+ *
+ * Calibration discipline (refined 2026-05-08): elasticity should
+ * capture only the LIFESTYLE-driven spending variance — not the
+ * volume / needs variance that comes from owning more stuff at higher
+ * incomes. The CEX q5/q1 ratio per line conflates both:
+ *
+ *   - Vehicle insurance q5/q1 = 3.2× looks "high elasticity" on its
+ *     face, but most of that spread is "q5 owns 2.5 cars, q1 owns
+ *     0.7 cars" — volume, not lifestyle. The household-size and
+ *     family-comp axes already capture that volume signal. The
+ *     elasticity should only modulate the within-config choice
+ *     (liability-only vs full coverage on the same car).
+ *   - Pets q5/q1 = 5× — partly volume (more pets) and partly lifestyle
+ *     (premium kibble vs generic). Mid-range elasticity captures the
+ *     lifestyle slice.
+ *   - Travel/lodging q5/q1 = 8× — both volume AND lifestyle stack
+ *     here, but the choice "staycation vs Hawaii" is a real dial knob.
+ *
+ * Tiers (calibrated against CEX q5/q1 with volume/needs share
+ * subtracted out — eyeballed, not formulaic):
+ *
+ *   Fixed (0%) — dial doesn't move them. `education` is fixed at 0%
+ *     because the lifestyle dial isn't the right axis for it: spending
+ *     is driven by life-stage / school-choice (private vs public,
+ *     part-time vs full-time). Surfacing those as a real input is
+ *     roadmap #3 (per-child age + school type); for now Education
+ *     flows from the BLS CEX baseline only.
+ *
+ *   Low (±5–8%) — bounded compression. Cheaper grocery store, cooler
+ *     thermostat, less driving, generic brands. Real but small.
+ *
+ *   Medium (±10–20%) — real lifestyle modulation but bounded by the
+ *     household's actual needs / config. Liability-only vs full
+ *     coverage; basic vs premium plans; Walmart vs Target.
+ *
+ *   High (±25%) — heavily discretionary; choice itself can cut deep
+ *     or balloon (eat out twice a month vs four times a week;
+ *     staycation vs Hawaii).
+ *
+ * Non-CEX leaves (rent, healthcare premium, childcare, transit pass,
+ * renters insurance, home internet) don't pass through this map — they
+ * stay at 1.0× implicitly.
+ */
+export const LIFESTYLE_ELASTICITY: Record<BLSCEXLineItem, number> = {
+  // Fixed (0%) — config-driven
+  education: 0, // life-stage / school-choice driven (roadmap #3), not a dial axis
+
+  // Low (±5–8%) — bounded compression
+  utilitiesElectricGas: 0.05, // q5/q1 2.1× — mostly home size; thermostat ~5%
+  utilitiesWaterPublic: 0.05, // q5/q1 2.6× — mostly volume
+  cellularService: 0.05, // q5/q1 2.7× — mostly plan tier (lifestyle); but fixed-monthly so bounded
+  healthcareOOP: 0.05, // need-driven; bounded compression
+  housekeepingSupplies: 0.05,
+  vehicleOther: 0.05, // catch-all residual; the splits below carry per-line elasticity
+  foodAtHome: 0.08, // q5/q1 2.4× — generic-brand vs name-brand is real
+  gasoline: 0.07, // q5/q1 3.0× — but mostly volume; lifestyle slice ~7%
+  vehicleMaintRepair: 0.07, // q5/q1 4.3× — mostly volume + vehicle age; lifestyle slice ~7%
+  vehicleInsurance: 0.05, // q5/q1 3.2× — mostly volume (more cars); lifestyle = coverage tier ~5%
+  lifeInsurance: 0.05, // q5/q1 7.7× — but mostly volume (more coverage); lifestyle = term vs whole ~5%
+
+  // Medium (±10–20%) — real lifestyle modulation
+  personalCare: 0.1, // q5/q1 4.2× — haircuts / spa range meaningfully
+  apparel: 0.15, // q5/q1 3.4× — solid lifestyle tier
+  householdOperations: 0.2, // q5/q1 4.8× — cleaners / lawn services lifestyle-elastic
+  furnishings: 0.2, // q5/q1 4.3× — IKEA vs design-store
+  pets: 0.2, // q5/q1 5.1× — premium food / grooming
+
+  // High (±25%) — heavily discretionary
+  foodAway: 0.25, // q5/q1 4.6× — frequency × restaurant tier
+  alcohol: 0.25, // q5/q1 5.7× — cheap beer vs cocktails
+  entertainment: 0.25, // q5/q1 5.8×
+  vehiclePurchase: 0.25, // q5/q1 7.0× — used Civic vs new SUV
+  otherLodging: 0.25, // q5/q1 8.1× — staycation vs Hawaii
 };
 
 /**
@@ -157,7 +350,9 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     city,
     kids,
     lifestyle,
+    tenure = 'renter',
     claimedBenefits,
+    overrides,
   } = input;
   const cityData = getCityData(city);
   const stateData = STATES[cityData.state];
@@ -238,17 +433,49 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const monthlyNet = netIncome / 12;
 
   // ── Expenses ──
-  const lifestyleMult = lifestyle === 'modest' ? 0.85 : lifestyle === 'comfortable' ? 1.2 : 1.0;
+  // Per-leaf lifestyle elasticities. Replaces the previous global ±15-20%
+  // multiplier with per-line elasticities calibrated against CEX q5/q1
+  // spreads. Some lines should NOT modulate with the dial: rent in a given
+  // city × bedroom config is rent (you'd change config, not pay 80% of
+  // rent for being modest); insurance premiums are contractually fixed;
+  // childcare is per-kid not per-lifestyle. Those leaves don't pass
+  // through this map (they get applied as 1.0× implicitly). Education
+  // is keyed here at 0% because it's life-stage / school-choice driven
+  // (per-child age + private vs public), not a lifestyle-dial knob —
+  // those inputs are roadmap #3.
+  //
+  // Tier discipline:
+  //   Low (±5%) — demand-driven, bounded compression: utilities, food at
+  //     home, gasoline, vehicle maint+ins, healthcare OOP, personal care,
+  //     housekeeping supplies.
+  //   Medium (±15%) — real lifestyle modulation, bounded: apparel,
+  //     furnishings.
+  //   High (±25%) — heavily discretionary, CEX q5/q1 ratios 4–8×: food
+  //     away, entertainment, vehicle purchase.
+  //
+  // Each value is the ± fraction at the modest/comfortable extremes;
+  // moderate is always 1.0× and is asserted by the test.
+  const lifestyleSign = lifestyle === 'modest' ? -1 : lifestyle === 'comfortable' ? 1 : 0;
+  const elasticityFor = (item: BLSCEXLineItem): number => LIFESTYLE_ELASTICITY[item];
+  const lifestyleMultFor = (item: BLSCEXLineItem): number =>
+    1 + elasticityFor(item) * lifestyleSign;
   const householdSize = adults + kids;
 
   // ── BLS CEX wire-up ─────────────────────────────────────────────────
   // For every line item BLS CEX publishes, derive the household's monthly
-  // spend from the (city/MSA × division × region × income-quintile) blend.
-  // The lifestyle lever stays as a ±15% / ±20% modulator on top — gives
-  // users a knob inside their quintile without throwing out the BLS
-  // shape. CEX values are per consumer-unit (CU) per year; we /12 for
-  // monthly and don't multiply by householdSize (the average CU in BLS's
-  // sample is ~2.5 people; finer per-CU-size scaling is roadmap #128).
+  // spend from the four-axis synthetic blend:
+  //   (city/MSA × division × region geo) × (income quintile, smoothed)
+  //   × (CU size, Table 1400)              × (family composition, Table 1502).
+  // The lifestyle lever applies per-leaf elasticity on top — see
+  // LIFESTYLE_ELASTICITY for the per-line tier discipline. CEX values
+  // are per consumer-unit per year; we /12 for monthly. CU-size scales
+  // each line by the 1p/2p/3p/4p/5+p column relative to the All-CU
+  // baseline (~0.55× for a 1-person, ~1.40× for a 4-person household
+  // on diffuse lines). Composition layers structural family-shape
+  // signal that pure size misses — a single parent of 3 and a married
+  // couple of 4 are both 4-person CUs but spend very differently.
+  // Honesty caveat: the four axes are treated as multiplicatively
+  // independent (BLS publishes single-axis cross-tabs only).
   //
   // The rolled-up legacy fields on `cityData` (groceries, utilities,
   // carCost, healthSingle/Family) were "approximate medians" hand-set
@@ -262,24 +489,43 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   //                                cex.education / cex.householdOperations /
   //                                cex.housekeepingSupplies / cex.furnishings (NEW)
   //
-  // Rent (HUD/Zillow), childcare (Care.com), phone/internet flat,
-  // insurance flat — these stay non-CEX with their existing sources.
+  // Rent (HUD/Zillow), home internet (flat placeholder), renters
+  // insurance (flat placeholder) — these stay non-CEX with their
+  // existing sources. Childcare WAS Care.com but now anchors at the
+  // BLS Table 1502 composition delta (see `CHILDCARE_BLS_PER_COMP`).
   // Income axis is smoothed across BLS quintile means — see
   // `smoothNationalQuintile` in src/data/cex.ts. The `quintile` value
   // below is still useful for the UI badge ("you're in q4") but no
   // longer drives spending lookups; passing `totalIncome` directly
   // eliminates the artifact step functions at quintile boundaries.
+  //
+  // Honesty caveat (synthetic-blend independence): the size axis is
+  // multiplied as if independent of income/geography. Real distributions
+  // aren't independent — small CUs skew lower-income/older, large CUs
+  // skew middle-quintile parents — so the factor is least biased on
+  // diffuse lines (food, utilities) and most strained on income-
+  // correlated demographics. CE PUMD microdata would resolve this; the
+  // synthetic blend is the published-table-only approximation.
   const quintile = quintileFromIncome(totalIncome);
+  const cuSize = cuSizeBucket(householdSize);
+  const composition = compositionBucket(adults, kids);
   const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
+  // Baseline cache — the BLS-only monthly value (no lifestyle mult,
+  // no source override) for each CEX-anchored line. Drives the
+  // "BLS baseline" column of the three-column comparison (#208).
+  const cexBaselineCache: Partial<Record<BLSCEXLineItem, number>> = {};
   const cexMonthly = (item: BLSCEXLineItem): number => {
     const { spending, granularity } = cexLineItemSpendingForCity(
       city,
       cityData.state,
       totalIncome,
       item,
+      cuSize,
+      composition,
     );
     if (granularity) cexGranularity[item] = granularity;
-    return (spending / 12) * lifestyleMult;
+    cexBaselineCache[item] = spending / 12;
+    return (spending / 12) * lifestyleMultFor(item);
   };
 
   // Housing footprint — sourced and editorial parts both flagged:
@@ -299,8 +545,23 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   if (kids >= 1) baseRent = cityData.rent3;
   else if (adults === 2) baseRent = cityData.rent1 * 1.2;
   else baseRent = cityData.rent1;
-  const housing =
-    baseRent * (lifestyle === 'modest' ? 0.9 : lifestyle === 'comfortable' ? 1.15 : 1.0);
+  // Tenure-aware housing leaves. Renters get the rent + renters
+  // insurance leaves populated; owners get the owner leaves (mortgage
+  // P&I, property tax, HO insurance, maintenance), with rent zeroed
+  // out. The mortgage P&I / property tax / HO insurance / maintenance
+  // VALUES are still $0 placeholders until the actual math lands in
+  // roadmap #13 — this PR just exposes the tenure config and gates
+  // visibility, so the model stops silently assuming everyone rents.
+  // Within renter mode rent is fixed at 1.0× across the lifestyle dial
+  // (modest = pick fewer bedrooms = a config decision, not the dial;
+  // bedroom-count preferences are roadmap #16).
+  const isRenter = tenure === 'renter';
+  const housing = isRenter ? baseRent : 0;
+  // Owner leaves — all $0 placeholders for v1; mortgage math is #13.
+  const mortgagePI = 0;
+  const propertyTax = 0;
+  const homeownersInsurance = 0;
+  const homeMaintenance = 0;
 
   // Utilities = electric + gas + fuel oil + water/public. Phone/internet
   // stays as a separate line (CEX rolls "Telephone services" into the
@@ -331,11 +592,26 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // forced to 0 (model assumption: transit-only household has no car),
   // but the BLS number stays available so the UI can show the
   // model-vs-shipped comparison and explain the override.
+  //
+  // Vehicle leaves split per the locked tree: Vehicle insurance and
+  // Vehicle maintenance & repair are now separate CEX-anchored leaves.
+  // The remainder of CEX "Other vehicle expenses" (finance + rental/
+  // leases + other) lives in a residual leaf "Vehicle (other expenses)"
+  // computed as `vehicleOther - vehicleInsurance - vehicleMaintRepair`
+  // so that totals reconcile with the parent CEX line.
   const gasolineBls = cexMonthly('gasoline');
   const vehicleOtherBls = cexMonthly('vehicleOther');
+  const vehicleInsuranceBls = cexMonthly('vehicleInsurance');
+  const vehicleMaintRepairBls = cexMonthly('vehicleMaintRepair');
+  const vehicleOtherResidualBls = Math.max(
+    0,
+    vehicleOtherBls - vehicleInsuranceBls - vehicleMaintRepairBls,
+  );
   const vehiclePurchaseBls = cexMonthly('vehiclePurchase');
   const gasoline = usesTransit ? 0 : gasolineBls;
-  const vehicleOther = usesTransit ? 0 : vehicleOtherBls;
+  const vehicleInsurance = usesTransit ? 0 : vehicleInsuranceBls;
+  const vehicleMaintRepair = usesTransit ? 0 : vehicleMaintRepairBls;
+  const vehicleOtherResidual = usesTransit ? 0 : vehicleOtherResidualBls;
   const vehiclePurchase = usesTransit ? 0 : vehiclePurchaseBls;
 
   // Healthcare = KFF employer-plan premium (still cityData) + CEX OOP.
@@ -347,21 +623,75 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   const healthcareOOP = cexMonthly('healthcareOOP');
   const healthcare = healthcarePremium + healthcareOOP;
 
-  // Childcare lite: kids × preschool average × 0.85 (mix of ages, after-school discount)
-  const childcare = kids > 0 ? cityData.childcarePreschool * kids * 0.85 : 0;
+  // Childcare — BLS Table 1502 "Personal services" subline delta
+  // vs. married-no-kids, per composition. This captures what the
+  // average household with kids of this composition ACTUALLY spends
+  // out-of-pocket on childcare — net of free / family / community /
+  // CCDF-subsidized care. The previous Care.com-based formula
+  // (cityData.childcarePreschool × kids × 0.85) used private-market
+  // full-time center prices and overstated by 5–10× for the
+  // typical household, since most kids aren't in full-time paid
+  // center care (most American childcare is informal — relatives,
+  // friends, churches — and CCDF subsidies cover most cost above a
+  // small co-pay for income-eligible families).
+  //
+  // No city-level scaling at v1: Table 1502 is published nationally
+  // by composition; per-city scaling would require re-introducing a
+  // private-market price (Care.com / DOL NDCP) as a cost-of-living
+  // multiplier — out of scope for the swap. Care.com data stays in
+  // `cityData.childcarePreschool` for future re-introduction as a
+  // private-market reference column or city-relative scaling factor.
+  //
+  // Households without kids: $0. marriedKids18p (adult children at
+  // home) and otherMarried (multigenerational): $0 — Personal
+  // services delta in those columns is dominated by adult care
+  // rather than childcare, and our model doesn't distinguish.
+  // (Lookup table hoisted to module level — see `CHILDCARE_BLS_PER_COMP`
+  // at the top of this file.)
+  const childcare = kids > 0 ? CHILDCARE_BLS_PER_COMP[composition] : 0;
 
-  const phoneInternet = 130 + (adults === 2 ? 50 : 0) + kids * 25;
-  const insuranceOther = 90 + kids * 15 + (kids >= 1 || adults === 2 ? 40 : 0);
+  // Phone & Internet split per the locked tree:
+  //   Cell service → CEX "Cellular phone service" subline (BLS-anchored,
+  //                  scales by household size from Table 1400).
+  //   Home internet → flat ~$70/mo placeholder. Closes #131 audit gap
+  //                  partially (cell now BLS-backed); home internet will
+  //                  be replaced by FCC Urban Rate Survey in a follow-up.
+  const cellService = cexMonthly('cellularService');
+  // Flat ~$70/mo placeholder reflecting FCC Urban Rate Survey median
+  // for residential broadband (~$60–80/mo). The source is registered
+  // (`HOME_INTERNET_SOURCE` above) but the actual per-cell wiring from
+  // FCC URS data is a follow-up; for now the leaf shows the source
+  // citation in the UI but uses the flat placeholder for the dollar.
+  const homeInternet = 70;
+
+  // Insurance split per the locked tree:
+  //   Renters insurance → flat $25/mo placeholder, only when tenure is
+  //                       'renter'. Will be replaced by III state-level
+  //                       data in a follow-up.
+  //   Life & disability insurance → CEX "Life and other personal
+  //                       insurance" subline. Pensions explicitly NOT
+  //                       pulled to avoid FICA + roadmap-#4 overlap.
+  const rentersInsurance = isRenter ? 25 : 0;
+  const lifeInsurance = cexMonthly('lifeInsurance');
 
   // CEX-derived line items the model previously omitted entirely.
   // Each is per-CU monthly × lifestyle.
   const apparel = cexMonthly('apparel');
-  const entertainment = cexMonthly('entertainment');
+  // Entertainment is the rolled-up CEX line; we strip out Pets so the
+  // surfaced Entertainment + Pets leaves don't double-count. Pets is
+  // CEX subline of "Pets, toys, hobbies, and playground equipment" —
+  // we only subtract the Pets cell (toys/hobbies/playground stay in
+  // Entertainment).
+  const petsBls = cexMonthly('pets');
+  const entertainment = Math.max(0, cexMonthly('entertainment') - petsBls);
+  const pets = petsBls;
   const personalCare = cexMonthly('personalCare');
   const education = cexMonthly('education');
   const householdOperations = cexMonthly('householdOperations');
   const housekeepingSupplies = cexMonthly('housekeepingSupplies');
   const furnishings = cexMonthly('furnishings');
+  const alcohol = cexMonthly('alcohol');
+  const travelLodging = cexMonthly('otherLodging');
 
   // ── Benefits ──
   // For each claimed program, compute eligibility from inputs (re-checked
@@ -443,27 +773,114 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // when present (tuition, school fees). vehicleOther (insurance,
   // registration, maintenance) is essential. Per-line user override is
   // roadmap #5.
-  const essentialExpenses =
-    housing +
-    utilities +
-    foodAtHomeAfterBenefits +
-    transitCost +
-    gasoline +
-    vehicleOther +
-    healthcareAfterBenefits +
-    childcare +
-    phoneInternet +
-    insuranceOther +
-    education +
-    housekeepingSupplies;
-  const lifestyleExpenses =
-    foodAway +
-    vehiclePurchase +
-    apparel +
-    entertainment +
-    personalCare +
-    householdOperations +
-    furnishings;
+  // Build the per-leaf expenses map up-front so user overrides (PR10)
+  // and category-driven sums share a single source of truth. If any
+  // override matches a leaf, clamp negative values to 0 and replace
+  // the computed value; non-overridden leaves keep the model's value.
+  const computedExpenses: Record<string, number> = {
+    Housing: housing,
+    'Mortgage P&I': mortgagePI,
+    'Property tax': propertyTax,
+    'Homeowners insurance': homeownersInsurance,
+    'Maintenance & repairs': homeMaintenance,
+    Utilities: utilities,
+    'Cell service': cellService,
+    'Home internet': homeInternet,
+    'Renters insurance': rentersInsurance,
+    'Life & disability insurance': lifeInsurance,
+    'Housekeeping Supplies': housekeepingSupplies,
+    Healthcare: healthcareAfterBenefits,
+    Childcare: childcare,
+    Education: education,
+    'Food at home': foodAtHomeAfterBenefits,
+    'Food away': foodAway,
+    Alcohol: alcohol,
+    Transit: transitCost,
+    Gasoline: gasoline,
+    'Vehicle insurance': vehicleInsurance,
+    'Vehicle maintenance & repair': vehicleMaintRepair,
+    'Vehicle (other expenses)': vehicleOtherResidual,
+    'Vehicle (purchase)': vehiclePurchase,
+    Apparel: apparel,
+    Entertainment: entertainment,
+    Pets: pets,
+    'Personal Care': personalCare,
+    'Household Operations': householdOperations,
+    Furnishings: furnishings,
+    'Travel & lodging': travelLodging,
+  };
+
+  // Apply user overrides — layer 4 of the precedence stack (after BLS
+  // baseline / lifestyle elasticity / source override). Toggling the
+  // dial re-runs computeBudget which re-computes the layers below; the
+  // override layer just replaces the final value, so non-overridden
+  // leaves naturally re-modulate and overridden leaves stick.
+  //
+  // Two safety details:
+  //   - We only consider overrides whose key is an *own* property of
+  //     the computed expenses map (`Object.hasOwn`). A naive `key in
+  //     map` check walks the prototype chain, so a crafted share-link
+  //     payload with `__proto__` / `constructor` / `toString` etc.
+  //     would slip through. Own-property check + null-prototype output
+  //     map closes that.
+  //   - The override loop is a no-op fast path when `overrides` is
+  //     empty / undefined: we keep the computed map as-is and just
+  //     iterate it once for the essential/lifestyle sums. Avoids an
+  //     allocation in the cliff sweep where computeBudget runs
+  //     hundreds of times per render.
+  const overrideEntries = overrides ? Object.entries(overrides) : [];
+  const hasOverrides = overrideEntries.length > 0;
+  const appliedOverrides: Record<string, number> = {};
+  // Single pass: compute sums while applying overrides, no intermediate
+  // map allocation when there are no overrides.
+  let essentialExpenses = 0;
+  let lifestyleExpenses = 0;
+  // When overrides are present, build a per-leaf override-value lookup
+  // we can consult during the sum loop. Null-prototype map keeps
+  // prototype keys (e.g. `toString`) from acting as live entries.
+  const overrideMap: Record<string, number> = hasOverrides
+    ? Object.create(null)
+    : (null as unknown as Record<string, number>);
+  let anyOverrideMatched = false;
+  if (hasOverrides) {
+    for (const [label, value] of overrideEntries) {
+      if (Object.hasOwn(computedExpenses, label)) {
+        // Drop NaN / Infinity defensively. `Math.max(0, NaN)` is NaN
+        // and would propagate through the sum to break totalExpenses.
+        if (!Number.isFinite(value)) continue;
+        const clamped = Math.max(0, value);
+        overrideMap[label] = clamped;
+        appliedOverrides[label] = clamped;
+        anyOverrideMatched = true;
+      }
+    }
+  }
+  // Materialize the post-override expenses map for downstream consumers
+  // (UI, tests, share-link round-trip). When no override actually
+  // matched a real leaf we can hand back the computed map directly
+  // without copying — guards against the case where `overrides` is
+  // non-empty but only contains stale labels from an old share-link
+  // (no real leaf is overridden, no need to allocate a copy).
+  const expensesAfterOverrides: Record<string, number> = anyOverrideMatched
+    ? { ...computedExpenses, ...overrideMap }
+    : computedExpenses;
+  // Sum loop. Iterate the keys of the canonical map (`computedExpenses`)
+  // since that's the schema; consult `overrideMap` per key for the
+  // possibly-clamped value.
+  for (const label of Object.keys(computedExpenses)) {
+    const value =
+      anyOverrideMatched && label in overrideMap ? overrideMap[label] : computedExpenses[label];
+    if (EXPENSE_CATEGORY[label] === 'lifestyle') {
+      lifestyleExpenses += value;
+    } else {
+      // Default to essential when category isn't explicitly set (e.g.
+      // newly added leaves before EXPENSE_CATEGORY is updated). Keeps
+      // the model strict-essential-by-default and makes "did I forget
+      // to categorize this?" debuggable via a per-line $0 in lifestyle
+      // section.
+      essentialExpenses += value;
+    }
+  }
 
   const totalExpenses = essentialExpenses + lifestyleExpenses;
 
@@ -498,35 +915,19 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     healthcarePremium,
     // Granular line items — every key is non-overlapping, so summing
     // values yields totalExpenses exactly. Food and Transportation are
-    // exposed as their constituent parts (foodAtHome + foodAway, and
-    // transit / gasoline / vehicleOther / vehiclePurchase) rather than
-    // pre-rolled, so the drill-down UI can show the essentials-vs-
-    // lifestyle split inside those parents. ALL keys are always present
-    // — when a category doesn't apply to the household type the value
-    // is $0 (e.g. Vehicle (purchase) for a transit-only household).
-    // expenseModelNotes below records why a $0 line is $0 so the UI
-    // can distinguish "model assumed N/A" from "BLS itself returned 0."
-    expenses: {
-      Housing: housing,
-      Utilities: utilities,
-      'Food at home': foodAtHomeAfterBenefits,
-      'Food away': foodAway,
-      Transit: transitCost,
-      Gasoline: gasoline,
-      'Vehicle (insurance & maint.)': vehicleOther,
-      'Vehicle (purchase)': vehiclePurchase,
-      Healthcare: healthcareAfterBenefits,
-      Childcare: childcare,
-      'Phone & Internet': phoneInternet,
-      Insurance: insuranceOther,
-      Apparel: apparel,
-      Entertainment: entertainment,
-      'Personal Care': personalCare,
-      Education: education,
-      'Household Operations': householdOperations,
-      'Housekeeping Supplies': housekeepingSupplies,
-      Furnishings: furnishings,
-    },
+    // exposed as their constituent parts (foodAtHome + foodAway +
+    // alcohol; transit / gasoline / vehicle insurance / vehicle maint /
+    // vehicle other / vehicle purchase) rather than pre-rolled, so the
+    // drill-down UI can show the essentials-vs-lifestyle split inside
+    // those parents. Pets is split out from Entertainment (CEX rolls
+    // them together; we subtract Pets from Entertainment to avoid
+    // double-counting). ALL keys are always present — when a category
+    // doesn't apply to the household type the value is $0 (e.g.
+    // Vehicle (purchase) for a transit-only household). expenseModelNotes
+    // below records why a $0 line is $0 so the UI can distinguish
+    // "model assumed N/A" from "BLS itself returned 0."
+    expenses: expensesAfterOverrides,
+    appliedOverrides,
     expenseModelNotes: {
       // Vehicle/gasoline lines are forced to $0 for transit-only
       // households. BLS-derived values (`*Bls`) are preserved so the
@@ -538,8 +939,16 @@ export function computeBudget(input: BudgetInput): BudgetResult {
               modelValue: gasolineBls,
               reason: 'No car modeled — transit-only household',
             },
-            'Vehicle (insurance & maint.)': {
-              modelValue: vehicleOtherBls,
+            'Vehicle insurance': {
+              modelValue: vehicleInsuranceBls,
+              reason: 'No car modeled — transit-only household',
+            },
+            'Vehicle maintenance & repair': {
+              modelValue: vehicleMaintRepairBls,
+              reason: 'No car modeled — transit-only household',
+            },
+            'Vehicle (other expenses)': {
+              modelValue: vehicleOtherResidualBls,
               reason: 'No car modeled — transit-only household',
             },
             'Vehicle (purchase)': {
@@ -566,6 +975,53 @@ export function computeBudget(input: BudgetInput): BudgetResult {
             },
           }
         : {}),
+      // Tenure-gated housing leaves. Renters get rent + renters
+      // insurance; owners get mortgage / property tax / HO insurance /
+      // maintenance. The model surfaces the inapplicable side with a
+      // reason so the detail view can render "no rent — household
+      // owns" or "no mortgage — household rents."
+      ...(isRenter
+        ? {
+            'Mortgage P&I': {
+              modelValue: null,
+              reason: 'Household rents — mortgage math is roadmap #13',
+            },
+            'Property tax': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+            'Homeowners insurance': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+            'Maintenance & repairs': {
+              modelValue: null,
+              reason: 'Household rents — owner-only line',
+            },
+          }
+        : {
+            Housing: {
+              modelValue: null,
+              reason: 'Household owns — rent does not apply',
+            },
+            'Renters insurance': {
+              modelValue: null,
+              reason: 'Household owns — renters insurance does not apply',
+            },
+            ...(tenure === 'owner-no-mortgage'
+              ? {
+                  'Mortgage P&I': {
+                    modelValue: null,
+                    reason: 'Owner without mortgage — paid off',
+                  },
+                }
+              : {
+                  'Mortgage P&I': {
+                    modelValue: null,
+                    reason: 'Owner with mortgage — math is roadmap #13 (placeholder)',
+                  },
+                }),
+          }),
     },
     totalExpenses,
     essentialExpenses,
@@ -580,9 +1036,73 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     suggestedVacation,
     suggestedSplurge,
     suggestedEmergency,
+    cityId: city,
     cityData,
     stateData,
     cexProvenance: cexGranularity,
     incomeQuintile: quintile,
+    electricityContext: {
+      stateCentsPerKwh: RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB[cityData.state],
+      nationalAvgCentsPerKwh: NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB,
+      stateVsNationalFactor: eiaElectricityFactor(cityData.state),
+    },
+    // Per-leaf BLS baseline — sparse map of display-label → monthly $ at
+    // the user's CEX cell, no lifestyle elasticity, no specialized-
+    // source override. Drives the "BLS baseline" column in the three-
+    // column comparison view. For composite leaves (Utilities, Vehicle
+    // (other expenses), Entertainment) we reconstruct the CEX rollup
+    // value from the individual sublines we cached. For mixed-source
+    // leaves (Healthcare = KFF premium + CEX OOP), we surface ONLY the
+    // CEX-baseline portion — the KFF premium is a non-CEX source and
+    // is not part of the "what BLS would say" anchor.
+    cexBaseline: {
+      // Childcare BLS baseline — Table 1502 "Personal services" subline
+      // delta vs. married-no-kids. With this PR's swap, the SAME values
+      // drive both the BLS baseline AND the model's shipped value (see
+      // the `childcare` calc earlier in this function). The baseline
+      // column will now collapse with the shipped column in the
+      // three-column comparison — that's expected: Care.com data is
+      // retired in favor of BLS, so there's no contrast to draw.
+      // Future re-introduction of Care.com as a private-market reference
+      // column would restore the contrast.
+      // Reuses the module-level CHILDCARE_BLS_PER_COMP map so the
+      // baseline column and the model's shipped value stay in sync.
+      // Returns undefined for compositions with no signal (so the UI
+      // skips the misleading "BLS = $0 → shipped = $X" comparison).
+      Childcare:
+        kids > 0 && CHILDCARE_BLS_PER_COMP[composition] > 0
+          ? CHILDCARE_BLS_PER_COMP[composition]
+          : undefined,
+      Utilities:
+        (cexBaselineCache.utilitiesElectricGas ?? 0) + (cexBaselineCache.utilitiesWaterPublic ?? 0),
+      'Cell service': cexBaselineCache.cellularService,
+      'Life & disability insurance': cexBaselineCache.lifeInsurance,
+      'Housekeeping Supplies': cexBaselineCache.housekeepingSupplies,
+      Healthcare: cexBaselineCache.healthcareOOP,
+      Education: cexBaselineCache.education,
+      'Food at home': cexBaselineCache.foodAtHome,
+      'Food away': cexBaselineCache.foodAway,
+      Alcohol: cexBaselineCache.alcohol,
+      Gasoline: cexBaselineCache.gasoline,
+      'Vehicle insurance': cexBaselineCache.vehicleInsurance,
+      'Vehicle maintenance & repair': cexBaselineCache.vehicleMaintRepair,
+      'Vehicle (other expenses)': Math.max(
+        0,
+        (cexBaselineCache.vehicleOther ?? 0) -
+          (cexBaselineCache.vehicleInsurance ?? 0) -
+          (cexBaselineCache.vehicleMaintRepair ?? 0),
+      ),
+      'Vehicle (purchase)': cexBaselineCache.vehiclePurchase,
+      Apparel: cexBaselineCache.apparel,
+      Entertainment: Math.max(
+        0,
+        (cexBaselineCache.entertainment ?? 0) - (cexBaselineCache.pets ?? 0),
+      ),
+      Pets: cexBaselineCache.pets,
+      'Personal Care': cexBaselineCache.personalCare,
+      'Household Operations': cexBaselineCache.householdOperations,
+      Furnishings: cexBaselineCache.furnishings,
+      'Travel & lodging': cexBaselineCache.otherLodging,
+    },
   };
 }

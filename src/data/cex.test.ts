@@ -18,7 +18,15 @@ import {
   geoGranularityFor,
   smoothNationalQuintile,
   QUINTILE_MEANS_2024_BEFORE_TAX,
+  SIZE_ALLCU_SPENDING,
+  SIZE_BASELINE_ALLCU,
+  cuSizeBucket,
+  COMPOSITION_ALLCU_SPENDING,
+  COMPOSITION_BASELINE_ALLCU,
+  compositionBucket,
+  blendCexSpendingTrace,
 } from './cex';
+import type { CUSize, CompositionType } from './cex';
 import type { StateCode } from '@/types';
 
 const ALL_STATES: StateCode[] = [
@@ -601,5 +609,338 @@ describe('cexLineItemSpendingForCity (city-aware city → MSA → division → r
       regionAllCU: 0,
     });
     expect(granularity).toBe(null);
+  });
+});
+
+describe('cuSizeBucket', () => {
+  it('maps household sizes 1–5+ to the BLS Table 1400 columns', () => {
+    expect(cuSizeBucket(1)).toBe('p1');
+    expect(cuSizeBucket(2)).toBe('p2');
+    expect(cuSizeBucket(3)).toBe('p3');
+    expect(cuSizeBucket(4)).toBe('p4');
+    expect(cuSizeBucket(5)).toBe('p5plus');
+    expect(cuSizeBucket(6)).toBe('p5plus');
+    expect(cuSizeBucket(20)).toBe('p5plus');
+  });
+
+  it('clamps non-positive and fractional inputs', () => {
+    expect(cuSizeBucket(0)).toBe('p1');
+    expect(cuSizeBucket(-3)).toBe('p1');
+    expect(cuSizeBucket(2.7)).toBe('p2'); // floor to 2
+    expect(cuSizeBucket(4.99)).toBe('p4');
+  });
+
+  it('treats non-finite inputs as 1-person rather than slipping to p5plus', () => {
+    // `Math.floor(NaN) === NaN`, which falls through every numeric
+    // comparison and lands at the final return. Without an explicit
+    // guard, an upstream bug producing NaN would silently anchor the
+    // household at the largest size bucket — exactly the wrong direction.
+    expect(cuSizeBucket(NaN)).toBe('p1');
+    expect(cuSizeBucket(Infinity)).toBe('p1');
+    expect(cuSizeBucket(-Infinity)).toBe('p1');
+  });
+});
+
+describe('SIZE_ALLCU_SPENDING', () => {
+  it('publishes a value for every line item × every size bucket', () => {
+    const sizes: CUSize[] = ['p1', 'p2', 'p3', 'p4', 'p5plus'];
+    for (const size of sizes) {
+      for (const item of BLS_CEX_LINE_ITEMS) {
+        expect(SIZE_ALLCU_SPENDING[size][item]).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('SIZE_BASELINE_ALLCU has every line item populated', () => {
+    for (const item of BLS_CEX_LINE_ITEMS) {
+      expect(SIZE_BASELINE_ALLCU[item]).toBeGreaterThan(0);
+    }
+  });
+
+  it('p1 spending is < p4 spending on diffuse household lines (real economies of scale)', () => {
+    // Food at home, apparel, gasoline — all should grow with household
+    // size in the published Table 1400 data.
+    expect(SIZE_ALLCU_SPENDING.p1.foodAtHome).toBeLessThan(SIZE_ALLCU_SPENDING.p4.foodAtHome);
+    expect(SIZE_ALLCU_SPENDING.p1.apparel).toBeLessThan(SIZE_ALLCU_SPENDING.p4.apparel);
+    expect(SIZE_ALLCU_SPENDING.p1.gasoline).toBeLessThan(SIZE_ALLCU_SPENDING.p4.gasoline);
+  });
+
+  it('matches the cross-vintage drift documented for SIZE_BASELINE_ALLCU vs NATIONAL_ALLCU_SPENDING (<6%)', () => {
+    // The SIZE table is 2024 single-year, the NATIONAL table is 2023-2024
+    // two-year. Most lines agree to within ~2%; the wider gaps reflect
+    // real economic drift (vehicleInsurance ~5.8% — auto-insurance
+    // premiums rose sharply in 2024; vehicleOther ~3.7%, housekeeping
+    // ~3.4%). Anything above 6% means a transcription error or a real
+    // vintage mismatch that needs investigation.
+    for (const item of BLS_CEX_LINE_ITEMS) {
+      const sizeBase = SIZE_BASELINE_ALLCU[item];
+      const nationalBase = NATIONAL_ALLCU_SPENDING[item];
+      const drift = Math.abs(sizeBase - nationalBase) / nationalBase;
+      expect(drift).toBeLessThan(0.06);
+    }
+  });
+});
+
+describe('blendCexSpending size factor', () => {
+  it('applies sizeFactor when both sizeAllCU and sizeBaselineAllCU are supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 600, // 1-person column
+      sizeBaselineAllCU: 1000, // All-CU baseline
+    });
+    // base = 1500 × (1000/1000) = 1500; size factor = 600/1000 = 0.6;
+    // final = 1500 × 0.6 = 900.
+    expect(out).toBe(900);
+  });
+
+  it('skips size factor when size inputs are omitted (legacy callers unchanged)', () => {
+    const withoutSize = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+    });
+    expect(withoutSize).toBe(1500);
+  });
+
+  it('returns 0 when sizeBaselineAllCU is 0 (no denominator)', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1500,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 600,
+      sizeBaselineAllCU: 0,
+    });
+    expect(out).toBe(0);
+  });
+
+  it('cexLineItemSpending: 1-person spending is less than 4-person at the same income/state', () => {
+    const oneP = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p1');
+    const fourP = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4');
+    expect(oneP).toBeLessThan(fourP);
+    // ratio should be roughly the SIZE_ALLCU ratio for foodAtHome
+    const expectedRatio = SIZE_ALLCU_SPENDING.p1.foodAtHome / SIZE_ALLCU_SPENDING.p4.foodAtHome;
+    const actualRatio = oneP / fourP;
+    expect(Math.abs(actualRatio - expectedRatio)).toBeLessThan(0.01);
+  });
+
+  it('cexLineItemSpending without cuSize returns the legacy "average CU" value', () => {
+    const legacy = cexLineItemSpending('CA', 80_000, 'foodAtHome');
+    const sized = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p1');
+    // The legacy path returns the All-CU value; sized=p1 returns ~55% of that.
+    expect(legacy).toBeGreaterThan(sized);
+  });
+});
+
+describe('compositionBucket', () => {
+  it('maps household shape to a CEX composition column', () => {
+    expect(compositionBucket(2, 0)).toBe('marriedNoKids');
+    expect(compositionBucket(2, 1)).toBe('marriedKids617'); // default age band
+    expect(compositionBucket(2, 3)).toBe('marriedKids617');
+    expect(compositionBucket(1, 1)).toBe('singleParent');
+    expect(compositionBucket(1, 0)).toBe('singleOrOther');
+  });
+
+  it('clamps non-positive adults to 1 and non-positive kids to 0', () => {
+    expect(compositionBucket(0, 0)).toBe('singleOrOther');
+    expect(compositionBucket(-1, 2)).toBe('singleParent');
+  });
+});
+
+describe('COMPOSITION_ALLCU_SPENDING', () => {
+  it('publishes a value for every line item × every composition bucket', () => {
+    const comps: CompositionType[] = [
+      'marriedNoKids',
+      'marriedKidsU6',
+      'marriedKids617',
+      'marriedKids18p',
+      'otherMarried',
+      'singleParent',
+      'singleOrOther',
+    ];
+    for (const c of comps) {
+      for (const item of BLS_CEX_LINE_ITEMS) {
+        expect(COMPOSITION_ALLCU_SPENDING[c][item]).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('marriedKidsU6 has elevated householdOperations (childcare signal)', () => {
+    // Personal services (childcare) lives under household operations and
+    // dominates spending for households with kids under 6. The composition
+    // factor captures this — it's the BLS-side validation of why the
+    // childcare leaf exists.
+    expect(COMPOSITION_ALLCU_SPENDING.marriedKidsU6.householdOperations).toBeGreaterThan(
+      COMPOSITION_ALLCU_SPENDING.marriedNoKids.householdOperations * 3,
+    );
+  });
+
+  it('singleParent food at home is less than marriedKids617 (size + structure both matter)', () => {
+    expect(COMPOSITION_ALLCU_SPENDING.singleParent.foodAtHome).toBeLessThan(
+      COMPOSITION_ALLCU_SPENDING.marriedKids617.foodAtHome,
+    );
+  });
+
+  it('COMPOSITION_BASELINE_ALLCU is aliased to SIZE_BASELINE_ALLCU', () => {
+    // Both denominators describe the same population aggregate (CEX
+    // 2024 All-CU baseline). Aliased to one canonical object so a
+    // future BLS vintage refresh can't update one and miss the other.
+    expect(COMPOSITION_BASELINE_ALLCU).toBe(SIZE_BASELINE_ALLCU);
+  });
+});
+
+describe('blendCexSpending composition factor', () => {
+  it('applies compositionFactor when both compositionAllCU and compositionBaselineAllCU are supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1000,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      compositionAllCU: 1500, // married-with-kids
+      compositionBaselineAllCU: 1000,
+    });
+    // base = 1000 × 1.0 = 1000; comp factor = 1.5; final = 1500.
+    expect(out).toBe(1500);
+  });
+
+  it('size and composition factors stack multiplicatively when both supplied', () => {
+    const out = blendCexSpending({
+      nationalAllCU: 1000,
+      nationalQuintile: 1000,
+      divisionAllCU: undefined,
+      regionAllCU: 1000,
+      sizeAllCU: 1400,
+      sizeBaselineAllCU: 1000,
+      compositionAllCU: 1500,
+      compositionBaselineAllCU: 1000,
+    });
+    // 1000 × 1.0 × 1.4 × 1.5 = 2100
+    expect(out).toBe(2100);
+  });
+
+  it('cexLineItemSpending: composition argument actually moves the result (size held constant)', () => {
+    // Earlier draft compared p4 vs p1 sizes — that test would still
+    // pass even if the composition factor were ignored, because the
+    // size factor alone produces the asymmetry. Hold size constant
+    // (both 4-person CUs) and vary only composition: a married couple
+    // with kids 6–17 spends differently on foodAtHome than a single
+    // parent of 3, by a margin that's strictly attributable to the
+    // composition factor.
+    const marriedKids = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4', 'marriedKids617');
+    const singleParent = cexLineItemSpending('CA', 80_000, 'foodAtHome', 'p4', 'singleParent');
+    // Direction we expect (married couples with kids tend to spend
+    // more at-home on food than single-parent households at the same
+    // income & size, per Table 1502). The point of the test isn't the
+    // direction per se — it's that the composition argument moves the
+    // number at all when size is fixed.
+    expect(marriedKids).not.toBeCloseTo(singleParent, 0);
+    expect(marriedKids).toBeGreaterThan(singleParent);
+  });
+});
+
+describe('blendCexSpendingTrace', () => {
+  it('returns step-by-step trace whose product equals the production blend', () => {
+    const trace = blendCexSpendingTrace('sf', 'CA', 80_000, 'foodAtHome', 'p3', 'singleParent');
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    // The product of all factors × the quintile baseline should equal
+    // finalAnnual (within float-rounding).
+    const product =
+      trace.nationalQuintile * trace.geoFactor * trace.sizeFactor * trace.compositionFactor;
+    expect(product).toBeCloseTo(trace.finalAnnual, 6);
+  });
+
+  it('finalAnnual matches what cexLineItemSpendingForCity returns (annualized)', () => {
+    const trace = blendCexSpendingTrace('cmh', 'OH', 75_000, 'apparel', 'p4', 'marriedKids617');
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    const { spending } = cexLineItemSpendingForCity(
+      'cmh',
+      'OH',
+      75_000,
+      'apparel',
+      'p4',
+      'marriedKids617',
+    );
+    expect(trace.finalAnnual).toBeCloseTo(spending, 6);
+  });
+
+  it('exposes quintile anchor + interpolation factor; product reconstructs nationalQuintile', () => {
+    // $46K sits between q2 mean ($42,925) and q3 mean ($74,474).
+    const trace = blendCexSpendingTrace('cmh', 'OH', 46_000, 'foodAtHome', 'p3', 'singleParent');
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    expect(trace.quintileAnchor.quintile).toBe('q2');
+    expect(trace.quintileAnchor.value).toBeGreaterThan(0);
+    // anchor.value × interpolation factor should reconstruct the
+    // smoothed nationalQuintile value.
+    expect(trace.quintileAnchor.value * trace.quintileInterpolationFactor).toBeCloseTo(
+      trace.nationalQuintile,
+      6,
+    );
+    // Interpolation factor should be > 1 here because q3 spending on
+    // foodAtHome is higher than q2, and we're sliding upward.
+    expect(trace.quintileInterpolationFactor).toBeGreaterThan(1);
+  });
+
+  it('quintile interpolation factor is exactly 1.00 when income clamps to q5', () => {
+    const trace = blendCexSpendingTrace(
+      'cmh',
+      'OH',
+      500_000, // way above q5 mean
+      'foodAtHome',
+      'p3',
+      'singleParent',
+    );
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    expect(trace.quintileAnchor.quintile).toBe('q5');
+    expect(trace.quintileInterpolationFactor).toBeCloseTo(1.0, 6);
+  });
+
+  it('anchors exactly at a quintile mean to that quintile (factor=1)', () => {
+    // Income exactly at q3's mean must anchor at q3 with factor=1.0.
+    // The earlier loop used inclusive `x <= means[i+1]` and would
+    // anchor x === means.q3 at q2 with a non-1 factor.
+    const q3Mean = QUINTILE_MEANS_2024_BEFORE_TAX.q3;
+    const trace = blendCexSpendingTrace('cmh', 'OH', q3Mean, 'foodAtHome', 'p3', 'marriedNoKids');
+    expect(trace).not.toBeNull();
+    if (!trace) return;
+    expect(trace.quintileAnchor.quintile).toBe('q3');
+    expect(trace.quintileInterpolationFactor).toBeCloseTo(1.0, 6);
+    // q2's mean too — same property must hold for every interior boundary.
+    const q2Trace = blendCexSpendingTrace(
+      'cmh',
+      'OH',
+      QUINTILE_MEANS_2024_BEFORE_TAX.q2,
+      'foodAtHome',
+      'p3',
+      'marriedNoKids',
+    );
+    expect(q2Trace?.quintileAnchor.quintile).toBe('q2');
+    expect(q2Trace?.quintileInterpolationFactor).toBeCloseTo(1.0, 6);
+  });
+
+  it('records geo cut as MSA / division / region depending on data availability', () => {
+    // NYC publishes foodAtHome at MSA level
+    const nyc = blendCexSpendingTrace('nyc', 'NY', 80_000, 'foodAtHome', 'p2', 'marriedNoKids');
+    expect(nyc?.geoCut).toBe('msa');
+    // Columbus has no MSA mapping → division (East North Central)
+    const cmh = blendCexSpendingTrace('cmh', 'OH', 80_000, 'foodAtHome', 'p2', 'marriedNoKids');
+    expect(cmh?.geoCut).toBe('division');
+    // Sublines (cellularService) aren't published at MSA level → division
+    const sublineNyc = blendCexSpendingTrace(
+      'nyc',
+      'NY',
+      80_000,
+      'cellularService',
+      'p2',
+      'marriedNoKids',
+    );
+    expect(sublineNyc?.geoCut).toBe('division');
   });
 });

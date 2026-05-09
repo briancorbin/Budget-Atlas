@@ -1,10 +1,524 @@
-import type { BudgetResult } from '@/types';
-import { useEffect, useState } from 'react';
+import type { BudgetResult, Lifestyle } from '@/types';
+import { useEffect, useState, type ReactNode } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { theme as T, fonts, PIE_COLORS, rem } from '@/theme';
 import { fmt } from '@/lib/format';
-import { SectionTitle } from '@/components/ui';
-import { EXPENSE_SOURCE, type ExpenseSource } from '@/lib/budget';
+import { SectionTitle, HoverGloss } from '@/components/ui';
+import { EXPENSE_SOURCE, LIFESTYLE_ELASTICITY, type ExpenseSource } from '@/lib/budget';
+import {
+  stateToRegion,
+  cuSizeBucket,
+  compositionBucket,
+  blendCexSpendingTrace,
+  type BLSCEXLineItem,
+} from '@/data/cex';
+
+// Per-axis cell labels are inlined into each trace row directly (see
+// `calcExplanation` below). Earlier revs surfaced them in a separate
+// context block above the numerical trace, but that double-named each
+// cell — once labeled, once measured. Merged for clarity.
+
+/**
+ * Map detail-view leaf labels to the CEX line item that drives them.
+ * Used to surface a per-cell geographic-granularity badge (msa /
+ * division / region) next to each CEX-anchored leaf, sourced from
+ * `BudgetResult.cexProvenance`. Composite leaves (Utilities) pick the
+ * dominant subline for the badge; non-CEX leaves (Housing, Childcare,
+ * Cell service flat, etc.) get no badge.
+ */
+const LEAF_TO_CEX_ITEM: Readonly<Record<string, BLSCEXLineItem>> = {
+  Utilities: 'utilitiesElectricGas', // composite — pick electric/gas as the headline subline
+  'Cell service': 'cellularService',
+  'Life & disability insurance': 'lifeInsurance',
+  'Housekeeping Supplies': 'housekeepingSupplies',
+  Education: 'education',
+  'Food at home': 'foodAtHome',
+  'Food away': 'foodAway',
+  Alcohol: 'alcohol',
+  Gasoline: 'gasoline',
+  'Vehicle insurance': 'vehicleInsurance',
+  'Vehicle maintenance & repair': 'vehicleMaintRepair',
+  'Vehicle (other expenses)': 'vehicleOther',
+  'Vehicle (purchase)': 'vehiclePurchase',
+  Apparel: 'apparel',
+  Entertainment: 'entertainment',
+  Pets: 'pets',
+  'Personal Care': 'personalCare',
+  'Household Operations': 'householdOperations',
+  Furnishings: 'furnishings',
+  'Travel & lodging': 'otherLodging',
+};
+
+/**
+ * Build the per-leaf "how this is calculated" explanation rendered in
+ * the shipped-value HoverGloss popover. Suppressed when a user override
+ * is active (the override input is its own affordance — a calc tooltip
+ * for "we used your value" doesn't add anything).
+ *
+ * Format depends on the leaf's source:
+ *   - CEX-anchored leaves: BLS baseline → ± lifestyle elasticity → shipped.
+ *     Names the dial position so the reader sees how the multiplier fired.
+ *   - Specialized-source leaves (rent, KFF premium, Care.com childcare):
+ *     describe the source + computation rule.
+ *   - Tenure / config-driven $0 placeholders: explain the gating.
+ *
+ * Values are rendered with `fmt` so the popover reads in the same
+ * currency-formatted way as the inline budget.
+ */
+/**
+ * Per-composition Childcare BLS-derived monthly value (mirrors the
+ * lookup in `budget.ts`). Used by `calcExplanation` to describe how
+ * the Childcare leaf was computed — Table 1502 "Personal services"
+ * subline delta vs. married-no-kids per composition.
+ */
+const CHILDCARE_BLS_DESCRIPTION: Record<string, string> = {
+  marriedKidsU6: 'married couple, oldest child <6',
+  marriedKids617: 'married couple, oldest child 6–17',
+  marriedKids18p: 'married couple, adult kids',
+  otherMarried: 'multigenerational',
+  singleParent: 'single parent',
+  singleOrOther: 'single person',
+  marriedNoKids: 'married couple, no kids',
+};
+
+function calcExplanation(
+  label: string,
+  result: BudgetResult,
+  lifestyle: Lifestyle,
+  /** When true (default), include the lifestyle-elasticity step. Set
+   *  false for the BLS-baseline tooltip, which describes the pre-
+   *  lifestyle blend only. */
+  includeLifestyle = true,
+): ReactNode {
+  const shipped = result.expenses[label] ?? 0;
+  const note = result.expenseModelNotes[label];
+  const cexItem = LEAF_TO_CEX_ITEM[label];
+  const elasticity = cexItem ? LIFESTYLE_ELASTICITY[cexItem] : undefined;
+  const baseline = result.cexBaseline[label];
+  const dialName =
+    lifestyle === 'modest' ? 'modest' : lifestyle === 'comfortable' ? 'comfortable' : 'moderate';
+  const dialSign = lifestyle === 'modest' ? -1 : lifestyle === 'comfortable' ? 1 : 0;
+
+  const Header = ({ children }: { children: ReactNode }) => (
+    <div
+      style={{
+        fontSize: rem(10),
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: T.accent,
+        fontWeight: 600,
+        marginBottom: 4,
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  // Childcare special-case — Table 1502 reassembly per composition.
+  // Childcare doesn't have a single CEX line item (it's the
+  // "Personal services" subline delta vs married-no-kids), so it
+  // doesn't appear in `LEAF_TO_CEX_ITEM` and the generic CEX trace
+  // path below doesn't apply. Without this branch the generic
+  // specialized-source fallback would surface only the first sentence
+  // of the EXPENSE_SOURCE description and stop at the first period —
+  // which lands inside "vs." (abbreviation), cutting the explanation.
+  if (label === 'Childcare') {
+    const composition = compositionBucket(
+      result.adults,
+      Math.max(0, result.householdSize - result.adults),
+    );
+    const compDesc = CHILDCARE_BLS_DESCRIPTION[composition] ?? composition;
+    const kids = Math.max(0, result.householdSize - result.adults);
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          Childcare uses BLS CEX Table 1502 "Personal services" subline, computed as the spending
+          delta between your composition (<strong>{compDesc}</strong>) and married-no- kids
+          households. This represents what households like yours actually spend on childcare on
+          average — net of free / family / community / CCDF-subsidized care, not private-market
+          full-time center prices.
+          <div
+            style={{
+              marginTop: 6,
+              padding: '6px 8px',
+              background: T.bgAlt,
+              borderRadius: 2,
+              fontFamily: fonts.mono,
+              fontSize: rem(11),
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>{compDesc} →</span>
+            <span style={{ color: T.ink }}>{fmt(shipped)}/mo</span>
+          </div>
+          {kids === 0 && (
+            <div style={{ marginTop: 4, fontStyle: 'italic', color: T.inkMuted }}>
+              No kids modeled, so the line is $0.
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Healthcare special-case — mixed source. The cexBaseline only
+  // exposes the CEX out-of-pocket portion; the Atlas-shipped value
+  // also includes the KFF employer-sponsored premium worker-share.
+  // Without this branch the generic CEX path below would say
+  // "BLS baseline $81 × ±5% lifestyle = $1,331" which is wildly
+  // wrong arithmetic — the gap is the premium, not the elasticity.
+  if (label === 'Healthcare' && shipped > 0) {
+    const oopBaseline = result.cexBaseline['Healthcare'] ?? 0;
+    const premium = result.healthcarePremium;
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          Healthcare combines two sources. The BLS-baseline column shows out-of-pocket only (CEX
+          medical services + drugs + supplies, no insurance premium):{' '}
+          <strong>{fmt(oopBaseline)}</strong>. The Atlas estimate adds the worker share of the
+          employer-sponsored health insurance premium from KFF{' '}
+          <em>
+            (Employer Health Benefits Survey, family vs single tier based on household composition)
+          </em>
+          : <strong>{fmt(premium)}</strong>. Total: <strong>{fmt(shipped)}</strong>. Medicaid
+          eligibility zeros the entire line; CHIP offsets the kids' premium share specifically.
+        </div>
+      </>
+    );
+  }
+
+  // Override-driven overrides (transit-only, no-kids, owner-only) are
+  // explained by the inline reason badge already; surface that in the
+  // tooltip too so the explanation is consistent.
+  if (note?.modelValue !== undefined && note.modelValue !== null && note.modelValue !== shipped) {
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          BLS would have given <strong>{fmt(note.modelValue)}</strong> for this household, but the
+          model overrode to <strong>{fmt(shipped)}</strong> — {note.reason}.
+        </div>
+      </>
+    );
+  }
+
+  // CEX-anchored leaf with a baseline available — the textbook three-step
+  // explanation. Skip when shipped equals baseline exactly (moderate +
+  // zero elasticity, e.g. education) — that's a plain pass-through that
+  // doesn't need a calc tooltip.
+  if (baseline !== undefined && elasticity !== undefined) {
+    const factor = 1 + elasticity * dialSign;
+    // Compact label for the grid lifestyle row — pairs with a
+    // dedicated multiplier cell ("1.00×") and running-$ cell. The
+    // zero-elasticity branch keeps the prose form because there's no
+    // multiplier to render and a one-line note reads better than a
+    // half-empty grid row.
+    const lifestyleRowLabel = `× lifestyle (${dialName}, ±${(elasticity * 100).toFixed(0)}%)`;
+
+    // Compute the per-axis cells (used inline in the merged trace
+    // below — labels embedded in each factor row instead of a
+    // separate context block).
+    const region = stateToRegion(result.cityData.state);
+    const cuSize = cuSizeBucket(result.householdSize);
+    const composition = compositionBucket(
+      result.adults,
+      Math.max(0, result.householdSize - result.adults),
+    );
+    // Utilities is mixed-tier (CEX rollup + EIA state-level
+    // electricity context). The dollar amount comes from CEX, but
+    // the EIA context is editorial signal: "your state pays X%
+    // above/below the national average residential electricity
+    // price." Surface that here so the blue (mixed) dot's tooltip
+    // explains both source contributions.
+    const utilitiesEiaNote =
+      label === 'Utilities' ? (
+        <div style={{ color: T.inkMuted, marginTop: 6, fontSize: rem(11) }}>
+          Plus EIA state context: your state pays{' '}
+          <strong>{result.electricityContext.stateCentsPerKwh.toFixed(1)}¢/kWh</strong> for
+          residential electricity vs. a national average of{' '}
+          {result.electricityContext.nationalAvgCentsPerKwh.toFixed(1)}¢/kWh —{' '}
+          {(result.electricityContext.stateVsNationalFactor * 100 - 100 >= 0 ? '+' : '') +
+            (result.electricityContext.stateVsNationalFactor * 100 - 100).toFixed(0)}
+          %. Surfaced as editorial context only; the leaf dollar amount stays CEX-driven so the
+          blend's regional signal isn't double-counted.
+        </div>
+      ) : null;
+    // Per-axis numerical trace — surfaces the quintile baseline + each
+    // factor multiplier so the reader can see how the blend cell value
+    // was actually built. Only available for true CEX-anchored leaves
+    // (the cexItem branch); composite leaves like Utilities / Vehicle
+    // (other expenses) where cexBaseline is reassembled across multiple
+    // sublines fall through to the no-trace summary below.
+    const trace = cexItem
+      ? blendCexSpendingTrace(
+          result.cityId,
+          result.cityData.state,
+          result.grossIncome,
+          cexItem,
+          cuSize,
+          composition,
+        )
+      : null;
+    // Each row names its axis cell inline so the reader sees both the
+    // identity (q2, division, single parent) and the magnitude (0.97×,
+    // 1.23×). Replaces the previous separate context block + numerical
+    // trace, which was redundant — both surfaced the same axis info.
+    const sizeLabelShort =
+      cuSize === 'p1'
+        ? '1-person'
+        : cuSize === 'p2'
+          ? '2-person'
+          : cuSize === 'p3'
+            ? '3-person'
+            : cuSize === 'p4'
+              ? '4-person'
+              : '5+ person';
+    const compLabelShort =
+      composition === 'singleOrOther'
+        ? 'single / other'
+        : composition === 'singleParent'
+          ? 'single parent'
+          : composition === 'marriedNoKids'
+            ? 'married, no kids'
+            : composition === 'marriedKidsU6'
+              ? 'married, oldest <6'
+              : composition === 'marriedKids617'
+                ? 'married, oldest 6–17'
+                : composition === 'marriedKids18p'
+                  ? 'married, adult kids'
+                  : 'other married';
+    // 3-column grid (label / multiplier / running $/mo) so every row
+    // aligns at the same vertical seam. Without this, flexbox + a wide
+    // right string ("1.45× → $190/mo") wraps onto its own line whenever
+    // the label fills the row, and rows look like 2-3 visual lines for
+    // one logical step. Anchor + baseline rows leave the multiplier
+    // column blank — they're endpoints, not multipliers.
+    const traceBlock = trace
+      ? (() => {
+          const afterGeo = trace.nationalQuintile * trace.geoFactor;
+          const afterSize = afterGeo * trace.sizeFactor;
+          const showSmoothing = Math.abs(trace.quintileInterpolationFactor - 1) > 0.001;
+          const showMismatch = trace.quintileAnchor.quintile !== result.incomeQuintile;
+          // Single grid container for the entire trace — every row's cells
+          // are direct grid children, so the three columns size once and
+          // align across all rows. Per-row wrappers (the previous shape)
+          // each created their own grid context and column 2 sized
+          // independently per row, producing visible misalignment.
+          const multCell: React.CSSProperties = {
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          const valCell: React.CSSProperties = {
+            textAlign: 'right',
+            color: T.ink,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          };
+          // Full-width separator pseudo-row between sections. Spans all 3
+          // columns as a single continuous rule (an earlier per-cell border
+          // approach left orphan line segments stranded in the empty
+          // middle column, broken up by the grid column-gap).
+          const separator: React.CSSProperties = {
+            gridColumn: '1 / -1',
+            height: 1,
+            background: T.border,
+            margin: '4px 0 2px',
+          };
+          const fullSpan: React.CSSProperties = { gridColumn: '1 / -1' };
+          return (
+            <div
+              style={{
+                marginTop: 6,
+                padding: '8px 10px',
+                background: T.bgAlt,
+                borderRadius: 2,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 64px',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
+              }}
+            >
+              {/* Anchor row — the starting reference. Bold value; full-width
+              separator below marks it off from the multiplier rows. */}
+              <span style={{ color: T.ink }}>
+                {trace.quintileAnchor.quintile} anchor (~$
+                {(trace.quintileAnchor.mean / 1000).toFixed(0)}K/yr mean)
+              </span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>
+                {fmt(trace.quintileAnchor.value / 12)}/mo
+              </span>
+              <span style={separator} />
+
+              {/* Smoothing row — only show when interpolation actually moved
+              the value (income sits between two quintile means; clamping
+              to q1 / q5 yields factor = 1.00 and adds nothing useful). */}
+              {showSmoothing && (
+                <>
+                  <span>× quintile-curve smoothing (your income)</span>
+                  <span style={multCell}>{trace.quintileInterpolationFactor.toFixed(2)}×</span>
+                  <span style={valCell}>{fmt(trace.nationalQuintile / 12)}/mo</span>
+                </>
+              )}
+
+              {/* Anchor-vs-quintile mismatch note. Two definitions of "your
+              quintile" don't perfectly align: the floor-based quintile
+              (used by the IncomePosition thermometer) puts a household
+              at $60K in q3, but the smoothing anchors at quintile MEANS,
+              so the same $60K household anchors at q2 and interpolates
+              up. Surface this explicitly when they differ — otherwise
+              readers wonder why the trace says "q2 anchor" while
+              elsewhere the household is labeled q3. */}
+              {showMismatch && (
+                <span
+                  style={{
+                    ...fullSpan,
+                    fontSize: rem(10),
+                    color: T.inkMuted,
+                    fontStyle: 'italic',
+                    fontFamily: fonts.body,
+                    paddingTop: 2,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  You're in {result.incomeQuintile} by floor, but anchored at{' '}
+                  {trace.quintileAnchor.quintile} because your income is below{' '}
+                  {result.incomeQuintile}'s mean — interpolating upward toward it.
+                </span>
+              )}
+
+              <span>
+                × geo ({region}, {trace.geoCut})
+              </span>
+              <span style={multCell}>{trace.geoFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterGeo / 12)}/mo</span>
+
+              <span>× size ({sizeLabelShort})</span>
+              <span style={multCell}>{trace.sizeFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(afterSize / 12)}/mo</span>
+
+              <span>× family-comp ({compLabelShort})</span>
+              <span style={multCell}>{trace.compositionFactor.toFixed(2)}×</span>
+              <span style={valCell}>{fmt(trace.finalAnnual / 12)}/mo</span>
+
+              {/* Baseline row — full-width separator above marks the
+              conclusion of the data-blend stage. */}
+              <span style={separator} />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= BLS baseline</span>
+              <span style={multCell} />
+              <span style={{ ...valCell, fontWeight: 600 }}>{fmt(trace.finalAnnual / 12)}/mo</span>
+            </div>
+          );
+        })()
+      : null;
+    return (
+      <>
+        <Header>{includeLifestyle ? 'How this is calculated' : 'BLS baseline'}</Header>
+        {traceBlock ?? (
+          <div style={{ color: T.inkSoft }}>
+            BLS baseline at your region · quintile · CU size · family-comp blend:{' '}
+            <strong>{fmt(baseline)}</strong>
+          </div>
+        )}
+        {includeLifestyle &&
+          (elasticity === 0 ? (
+            <div style={{ color: T.inkSoft, marginTop: 6 }}>
+              not modulated by lifestyle dial (config-driven)
+              <br />= Atlas estimate <strong>{fmt(shipped)}</strong>
+            </div>
+          ) : (
+            // Single grid for lifestyle + Atlas-estimate rows so the
+            // multiplier and value columns line up with each other
+            // (mirroring the trace block above). Kept as its own grid —
+            // not merged into the trace block — because this is a
+            // separate stage (user dial, not data blend) and the visual
+            // break helps signal that.
+            <div
+              style={{
+                marginTop: 6,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 64px',
+                columnGap: 8,
+                rowGap: 2,
+                alignItems: 'baseline',
+                fontSize: rem(11),
+                fontFamily: fonts.mono,
+                color: T.inkSoft,
+              }}
+            >
+              <span>{lifestyleRowLabel}</span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {factor.toFixed(2)}×
+              </span>
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+              <span
+                style={{
+                  gridColumn: '1 / -1',
+                  height: 1,
+                  background: T.border,
+                  margin: '4px 0 2px',
+                }}
+              />
+              <span style={{ color: T.ink, fontWeight: 600 }}>= Atlas estimate</span>
+              <span />
+              <span
+                style={{
+                  textAlign: 'right',
+                  color: T.ink,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt(shipped)}/mo
+              </span>
+            </div>
+          ))}
+        {utilitiesEiaNote}
+      </>
+    );
+  }
+
+  // Specialized-source leaves — point at the source description for the
+  // rule. EXPENSE_SOURCE descriptions already explain the formula; just
+  // surface them here without re-deriving.
+  const src = EXPENSE_SOURCE[label];
+  if (src) {
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          Sourced from <strong>{src.label}</strong>. {src.description.split('.')[0]}.
+        </div>
+      </>
+    );
+  }
+
+  return null;
+}
 
 const TIER_COLOR: Record<ExpenseSource['tier'], string> = {
   primary: '#5B7C3F', // muted green — primary BLS / agency
@@ -140,12 +654,34 @@ interface RollupDef {
 }
 
 const ROLLUPS: readonly RollupDef[] = [
-  { id: 'housing', label: 'Housing', kind: 'essential', lines: ['Housing'] },
+  {
+    id: 'housing',
+    label: 'Housing',
+    kind: 'essential',
+    // Tenure-gated: renters see Housing (rent); owners see Mortgage P&I /
+    // Property tax / Homeowners insurance / Maintenance. Inapplicable
+    // leaves are $0 + filtered from the summary, but kept in the detail
+    // panel with an `expenseModelNotes` reason badge.
+    lines: [
+      'Housing',
+      'Mortgage P&I',
+      'Property tax',
+      'Homeowners insurance',
+      'Maintenance & repairs',
+    ],
+  },
   {
     id: 'bills',
     label: 'Bills & home upkeep',
     kind: 'essential',
-    lines: ['Utilities', 'Phone & Internet', 'Insurance', 'Housekeeping Supplies'],
+    lines: [
+      'Utilities',
+      'Cell service',
+      'Home internet',
+      'Renters insurance',
+      'Life & disability insurance',
+      'Housekeeping Supplies',
+    ],
   },
   { id: 'healthcare', label: 'Healthcare', kind: 'essential', lines: ['Healthcare'] },
   {
@@ -156,9 +692,9 @@ const ROLLUPS: readonly RollupDef[] = [
   },
   // Food and Transportation are "mixed": each bundles an essential
   // portion (food at home / transit + gasoline + vehicle upkeep) with
-  // a lifestyle portion (dining out / vehicle upgrades). Drill-down
-  // reveals the split.
-  { id: 'food', label: 'Food', kind: 'mixed', lines: ['Food at home', 'Food away'] },
+  // a lifestyle portion (dining out / alcohol / vehicle upgrades).
+  // Drill-down reveals the split.
+  { id: 'food', label: 'Food', kind: 'mixed', lines: ['Food at home', 'Food away', 'Alcohol'] },
   {
     id: 'transport',
     label: 'Transportation',
@@ -169,13 +705,28 @@ const ROLLUPS: readonly RollupDef[] = [
     // car households have $0 transit). The summary list filters $0
     // out; the detail panel keeps them with a "no car modeled" or
     // similar reason badge.
-    lines: ['Transit', 'Gasoline', 'Vehicle (insurance & maint.)', 'Vehicle (purchase)'],
+    lines: [
+      'Transit',
+      'Gasoline',
+      'Vehicle insurance',
+      'Vehicle maintenance & repair',
+      'Vehicle (other expenses)',
+      'Vehicle (purchase)',
+    ],
   },
   {
     id: 'lifestyle',
     label: 'Personal & lifestyle',
     kind: 'lifestyle',
-    lines: ['Apparel', 'Entertainment', 'Personal Care', 'Household Operations', 'Furnishings'],
+    lines: [
+      'Apparel',
+      'Entertainment',
+      'Pets',
+      'Personal Care',
+      'Household Operations',
+      'Furnishings',
+      'Travel & lodging',
+    ],
   },
 ];
 
@@ -217,7 +768,135 @@ interface RollupRow {
   color: string;
 }
 
-export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
+export interface ExpenseBreakdownProps {
+  result: BudgetResult;
+  /** Current lifestyle dial position. Drives the calculation tooltip
+   *  copy ("± 5% lifestyle (modest)" etc.); not strictly needed for
+   *  rendering but makes the per-leaf calculation explanation honest. */
+  lifestyle: Lifestyle;
+  /** Current per-leaf user overrides (display-label → monthly $). */
+  overrides?: Readonly<Record<string, number>>;
+  /**
+   * Called when the user edits or clears an override. `value: null` means
+   * "clear the override and revert to the model's value." Non-null values
+   * replace the override.
+   */
+  onOverrideChange?: (label: string, value: number | null) => void;
+}
+
+/**
+ * Per-leaf override input. Renders inline under each detail-view leaf
+ * when the parent supplies `onOverrideChange`. Empty input = no
+ * override (uses model's value). Type a number to override; the value
+ * persists in BudgetInput and re-renders the budget.
+ *
+ * Override sticks across lifestyle-dial toggles — the dial only
+ * modulates non-overridden leaves. To clear an override, blank the
+ * input and blur, or click the small × button when overridden.
+ */
+function OverrideInput({
+  label,
+  shipped,
+  override,
+  onChange,
+}: {
+  label: string;
+  shipped: number;
+  override: number | undefined;
+  onChange: (label: string, value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState<string>(override !== undefined ? String(override) : '');
+  // Keep draft in sync if external state changes (share-link load, dial
+  // toggle on a non-overridden leaf, etc.). Tracked via a previous-prop
+  // ref + adjust-during-render pattern instead of useEffect, per the
+  // react-hooks/set-state-in-effect rule (effects are for syncing React
+  // to external systems; deriving state from props is render-time work).
+  const [prevOverride, setPrevOverride] = useState(override);
+  if (prevOverride !== override) {
+    setPrevOverride(override);
+    setDraft(override !== undefined ? String(override) : '');
+  }
+
+  const commit = () => {
+    if (draft.trim() === '') {
+      if (override !== undefined) onChange(label, null);
+      return;
+    }
+    const n = Number(draft);
+    if (!Number.isFinite(n) || n < 0) {
+      // Reset to last known good (override or empty).
+      setDraft(override !== undefined ? String(override) : '');
+      return;
+    }
+    if (Math.round(n) !== override) onChange(label, Math.round(n));
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        alignItems: 'baseline',
+        paddingTop: 4,
+        fontSize: rem(11),
+        color: T.inkMuted,
+      }}
+    >
+      <label style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
+        <span>Your value:</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={1}
+          placeholder={String(Math.round(shipped))}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          style={{
+            width: 80,
+            fontFamily: fonts.mono,
+            fontSize: rem(11),
+            padding: '2px 6px',
+            border: `1px solid ${T.border}`,
+            background: override !== undefined ? T.bgAlt : T.surface,
+            color: T.ink,
+            borderRadius: 2,
+          }}
+          aria-label={`Override ${label}`}
+        />
+      </label>
+      {override !== undefined && (
+        <button
+          type="button"
+          onClick={() => onChange(label, null)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: T.inkMuted,
+            cursor: 'pointer',
+            padding: '0 4px',
+            fontSize: rem(11),
+          }}
+          aria-label={`Clear override for ${label}`}
+          title="Clear override (revert to model value)"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ExpenseBreakdown({
+  result,
+  lifestyle,
+  overrides,
+  onOverrideChange,
+}: ExpenseBreakdownProps) {
   // Detailed breakdown is a separate disclosure below the pie + summary,
   // not an inline expand on each rollup row. Reasons:
   //   - Inline expand made the right column grow, which forced the left
@@ -229,6 +908,12 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
   //     granular sub-lines, percentile context, geo-granularity badges)
   //     without compressing the summary view.
   const [detailOpen, setDetailOpen] = useState(false);
+  // $0 lines are hidden by default — they crowd the panel for households
+  // where they don't apply (e.g. owner leaves for renters, vehicle leaves
+  // for transit-only). Toggle on to reveal them; useful for overriding a
+  // $0 line back to a real value, or for seeing what the model considered
+  // and zeroed out.
+  const [showZeroLines, setShowZeroLines] = useState(false);
   // Hover state for the pie. Drives the dynamic center label so we
   // don't need a separate floating tooltip — the center is the
   // tooltip, no fly-in animation, no collision with the static
@@ -632,6 +1317,62 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
               </a>
               .
             </div>
+            {/* Quintile context — the synthetic-blend "where you sit on
+                the income axis" anchor for every CEX-derived line below.
+                Surfaces what was previously implicit in the model. */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 16,
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                marginBottom: 16,
+                fontSize: rem(11),
+                color: T.inkSoft,
+                fontFamily: fonts.body,
+              }}
+            >
+              <span style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Income axis:
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 8px',
+                  background: T.bgAlt,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 2,
+                  fontFamily: fonts.mono,
+                }}
+              >
+                You're in <strong style={{ color: T.ink }}>{result.incomeQuintile}</strong> of the
+                national income distribution
+              </span>
+              <span style={{ color: T.inkMuted }}>
+                (CEX shape interpolates smoothly between quintile means)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowZeroLines((v) => !v)}
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: rem(11),
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  padding: '4px 10px',
+                  background: showZeroLines ? T.bgAlt : T.bg,
+                  color: T.ink,
+                  border: `1px solid ${T.border}`,
+                  fontFamily: fonts.body,
+                  cursor: 'pointer',
+                }}
+                aria-pressed={showZeroLines}
+              >
+                {showZeroLines ? 'Hide $0 lines' : 'Show $0 lines'}
+              </button>
+            </div>
             {/* Source-tier legend. Each line label below carries a small
                 colored dot indicating where its number came from; hover
                 a dot for the full source name + description. */}
@@ -750,6 +1491,10 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                           </span>
                         </div>
                         {[...r.lines]
+                          // Hide $0 lines by default — toggle below the
+                          // detail header reveals them. Override input
+                          // is still reachable when revealed.
+                          .filter((l) => showZeroLines || l.value !== 0)
                           .sort((a, b) => b.value - a.value)
                           .map((line) => {
                             const note = result.expenseModelNotes[line.label];
@@ -794,6 +1539,67 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                       const src = EXPENSE_SOURCE[line.label];
                                       return src ? <SourceBadge src={src} /> : null;
                                     })()}
+                                    {(() => {
+                                      // Per-cell geo-granularity badge —
+                                      // tells the reader whether this line
+                                      // resolved to MSA / division / region
+                                      // data. Most-specific = MSA (for
+                                      // cities BLS publishes separately);
+                                      // falls through to division then
+                                      // region. See cex.ts blendCexSpending.
+                                      const cexItem = LEAF_TO_CEX_ITEM[line.label];
+                                      const granularity = cexItem
+                                        ? result.cexProvenance[cexItem]
+                                        : undefined;
+                                      if (!granularity) return null;
+                                      const labelByG = {
+                                        msa: 'MSA',
+                                        division: 'div.',
+                                        region: 'region',
+                                      } as const;
+                                      const explainByG = {
+                                        msa: 'BLS published this line at the Metropolitan Statistical Area level — your specific metro. Most precise CEX cut available.',
+                                        division:
+                                          "BLS doesn't break this line out at the MSA level for our schema, so the blend fell through to the 9-division Census cut (e.g. Pacific, Mid-Atlantic). Less specific than MSA but still regional.",
+                                        region:
+                                          'BLS suppresses this line at MSA + division for our schema, so the blend fell through to the 4-region cut (Northeast / Midwest / South / West). Least specific level.',
+                                      } as const;
+                                      return (
+                                        <HoverGloss
+                                          gloss={
+                                            <>
+                                              <div
+                                                style={{
+                                                  fontSize: rem(10),
+                                                  letterSpacing: '0.1em',
+                                                  textTransform: 'uppercase',
+                                                  color: T.accent,
+                                                  fontWeight: 600,
+                                                  marginBottom: 4,
+                                                }}
+                                              >
+                                                Geographic granularity · {granularity}
+                                              </div>
+                                              <div style={{ color: T.inkSoft }}>
+                                                {explainByG[granularity]}
+                                              </div>
+                                            </>
+                                          }
+                                        >
+                                          <span
+                                            style={{
+                                              fontSize: rem(9),
+                                              letterSpacing: '0.06em',
+                                              textTransform: 'uppercase',
+                                              color: T.inkMuted,
+                                              padding: '0 2px',
+                                            }}
+                                          >
+                                            {labelByG[granularity]}
+                                          </span>
+                                        </HoverGloss>
+                                      );
+                                    })()}
                                   </span>
                                   <span
                                     style={{
@@ -804,20 +1610,118 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                       gap: 6,
                                     }}
                                   >
-                                    {showComparison && note.modelValue !== null && (
-                                      <>
-                                        <span
-                                          style={{
-                                            color: T.inkMuted,
-                                            textDecoration: 'line-through',
-                                          }}
-                                        >
-                                          {fmt(note.modelValue)}
-                                        </span>
-                                        <span style={{ color: T.inkMuted }}>→</span>
-                                      </>
-                                    )}
-                                    <span style={{ color: T.ink }}>{fmt(line.value)}</span>
+                                    {(() => {
+                                      // Three-column comparison (#208):
+                                      //   BLS baseline | Atlas shipped | Your value
+                                      // BLS baseline is the empirical anchor at the user's
+                                      // quintile/region/size/composition cell, no elasticity,
+                                      // no source override. Atlas shipped is what the model
+                                      // computed (BLS × elasticity, with specialized-source
+                                      // overrides like HUD rent / KFF premium). Your value
+                                      // = override or shipped (overrides land in PR10).
+                                      // Collapse columns when numerically identical.
+                                      const baseline = result.cexBaseline[line.label];
+                                      const shipped = line.value;
+                                      const showBaseline =
+                                        baseline !== undefined &&
+                                        Math.abs(baseline - shipped) > 0.5;
+                                      // Override-driven comparison (transit-only, no-kids)
+                                      // takes precedence — it's the model-vs-shipped story
+                                      // we already had.
+                                      const overrideShown =
+                                        showComparison && note?.modelValue !== null;
+                                      return (
+                                        <>
+                                          {overrideShown && note?.modelValue != null && (
+                                            <>
+                                              <span
+                                                style={{
+                                                  color: T.inkMuted,
+                                                  textDecoration: 'line-through',
+                                                }}
+                                              >
+                                                {fmt(note.modelValue)}
+                                              </span>
+                                              <span style={{ color: T.inkMuted }}>→</span>
+                                            </>
+                                          )}
+                                          {!overrideShown && showBaseline && (
+                                            <HoverGloss
+                                              gloss={
+                                                calcExplanation(
+                                                  line.label,
+                                                  result,
+                                                  lifestyle,
+                                                  /* includeLifestyle */ false,
+                                                ) ?? (
+                                                  <>
+                                                    <div
+                                                      style={{
+                                                        fontSize: rem(10),
+                                                        letterSpacing: '0.1em',
+                                                        textTransform: 'uppercase',
+                                                        color: T.accent,
+                                                        fontWeight: 600,
+                                                        marginBottom: 4,
+                                                      }}
+                                                    >
+                                                      BLS baseline
+                                                    </div>
+                                                    <div style={{ color: T.inkSoft }}>
+                                                      What households at your income / region / size
+                                                      / family composition spend on this line on
+                                                      average — before the model layers lifestyle
+                                                      elasticity or specialized-source overrides on
+                                                      top.
+                                                    </div>
+                                                  </>
+                                                )
+                                              }
+                                            >
+                                              <span style={{ color: T.inkMuted }}>
+                                                {fmt(baseline!)}
+                                              </span>
+                                            </HoverGloss>
+                                          )}
+                                          {!overrideShown && showBaseline && (
+                                            <span style={{ color: T.inkMuted }}>→</span>
+                                          )}
+                                          {(() => {
+                                            // Calculation tooltip — explains
+                                            // BLS baseline → ± lifestyle
+                                            // elasticity → shipped, or names
+                                            // the source rule for non-CEX
+                                            // leaves. Suppressed when the
+                                            // user has overridden this leaf:
+                                            // the override input is its own
+                                            // affordance and "we used your
+                                            // value" doesn't add anything.
+                                            const isOverridden =
+                                              line.label in result.appliedOverrides;
+                                            if (isOverridden) {
+                                              return (
+                                                <span style={{ color: T.ink }}>{fmt(shipped)}</span>
+                                              );
+                                            }
+                                            const explanation = calcExplanation(
+                                              line.label,
+                                              result,
+                                              lifestyle,
+                                            );
+                                            if (!explanation) {
+                                              return (
+                                                <span style={{ color: T.ink }}>{fmt(shipped)}</span>
+                                              );
+                                            }
+                                            return (
+                                              <HoverGloss gloss={explanation}>
+                                                <span style={{ color: T.ink }}>{fmt(shipped)}</span>
+                                              </HoverGloss>
+                                            );
+                                          })()}
+                                        </>
+                                      );
+                                    })()}
                                   </span>
                                 </div>
                                 {note && (
@@ -831,6 +1735,14 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                   >
                                     {note.reason}
                                   </div>
+                                )}
+                                {onOverrideChange && (
+                                  <OverrideInput
+                                    label={line.label}
+                                    shipped={line.value}
+                                    override={overrides?.[line.label]}
+                                    onChange={onOverrideChange}
+                                  />
                                 )}
                               </div>
                             );

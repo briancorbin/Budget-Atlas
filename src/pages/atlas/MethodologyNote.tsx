@@ -63,7 +63,25 @@ export function MethodologyNote() {
         Models always simplify. This one assumes employer-sponsored health insurance, no student
         loans, no debt servicing, no employer 401(k) pre-tax contributions, no homeownership (rents
         only), and average local prices. EITC and Child Tax Credit are approximated. Real households
-        have wide variance even within the same city and income.
+        have wide variance even within the same city and income.{' '}
+        <strong style={{ color: T.ink, fontWeight: 600 }}>
+          Medicaid is modeled as binary full/none
+        </strong>{' '}
+        — when an eligible household claims Medicaid, the entire Healthcare line zeros out; when not
+        claimed (or not eligible), the full out-of-pocket + premium estimate stays. CHIP is a
+        partial offset: when claimed and eligible, it covers the kids' share of the premium only,
+        leaving adults' premium and the household's OOP intact. Real-world variation in adult
+        dental, vision, and other state-level Medicaid scope (which ranges from comprehensive to
+        emergency-only depending on state) isn't modeled yet.
+      </p>
+      <p style={{ margin: '0 0 10px' }}>
+        Cost-of-living lines combine BLS Consumer Expenditure Survey data across three axes — income
+        quintile, geography, and household size — using a synthetic blend. Because BLS publishes
+        single-axis cross-tabs only, the blend treats the axes as independent. This is most accurate
+        for diffuse lines (groceries, utilities) and less so where size and income correlate (small
+        households skew older and lower-income; larger households skew toward middle quintiles and
+        peak earning years). Microdata could resolve this; the blend is the published-table-only
+        approximation.
       </p>
       <p style={{ margin: 0 }}>
         We try to be as transparent as possible about where each number comes from — hover the

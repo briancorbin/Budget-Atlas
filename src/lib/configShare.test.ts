@@ -45,9 +45,68 @@ describe('decodeConfig', () => {
       lifestyle: 'comfortable',
       compareCity: 'cmh',
       claimedBenefits: new Set(['chip']),
+      overrides: {},
+      tenure: 'owner-mortgage',
     };
     const decoded = decodeConfig(encodeConfig(original));
     expect(decoded).toEqual(original);
+  });
+
+  it('round-trips per-leaf overrides through the share-link', () => {
+    const original: SharedConfig = {
+      incomeA: 80_000,
+      incomeB: 0,
+      twoIncome: false,
+      filing: 'single',
+      city: 'cmh',
+      kids: 0,
+      lifestyle: 'moderate',
+      compareCity: 'sf',
+      claimedBenefits: new Set(),
+      tenure: 'renter',
+      overrides: {
+        Apparel: 50,
+        'Food away': 100,
+        'Mortgage P&I': 0,
+      },
+    };
+    const decoded = decodeConfig(encodeConfig(original));
+    expect(decoded.overrides).toEqual(original.overrides);
+  });
+
+  it('round-trips tenure through the share-link', () => {
+    const renter = decodeConfig(encodeConfig({ ...DEFAULTS_V1, tenure: 'renter' }));
+    expect(renter.tenure).toBe('renter');
+    const ownerMortgage = decodeConfig(encodeConfig({ ...DEFAULTS_V1, tenure: 'owner-mortgage' }));
+    expect(ownerMortgage.tenure).toBe('owner-mortgage');
+    const ownerNoMortgage = decodeConfig(
+      encodeConfig({ ...DEFAULTS_V1, tenure: 'owner-no-mortgage' }),
+    );
+    expect(ownerNoMortgage.tenure).toBe('owner-no-mortgage');
+  });
+
+  it('omits tenure param when default (renter)', () => {
+    const cfg: SharedConfig = { ...DEFAULTS_V1, tenure: 'renter' };
+    const params = new URLSearchParams(encodeConfig(cfg));
+    expect(params.has('te')).toBe(false);
+  });
+
+  it('omits overrides param when empty', () => {
+    const cfg: SharedConfig = {
+      incomeA: 50_000,
+      incomeB: 0,
+      twoIncome: false,
+      filing: 'single',
+      city: 'cmh',
+      kids: 0,
+      lifestyle: 'moderate',
+      compareCity: 'sf',
+      claimedBenefits: new Set(),
+      tenure: 'renter',
+      overrides: {},
+    };
+    const params = new URLSearchParams(encodeConfig(cfg));
+    expect(params.has('o')).toBe(false);
   });
 
   it('falls back to defaults for missing keys', () => {

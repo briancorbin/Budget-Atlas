@@ -125,6 +125,27 @@ export interface Scenario {
   takeaway: string;
 }
 
+/**
+ * Housing tenure. Controls which housing-related leaves apply.
+ *
+ *   'renter'            → Housing (rent) + Renters insurance leaves
+ *                         populate; owner leaves are $0.
+ *   'owner-mortgage'    → Mortgage P&I + Property tax + Homeowners
+ *                         insurance + Maintenance & repairs leaves
+ *                         populate; Housing + Renters insurance are $0.
+ *                         (Mortgage math itself is roadmap #13 — for
+ *                         v1 these leaves all stay at $0 placeholder
+ *                         until the math lands.)
+ *   'owner-no-mortgage' → Property tax + Homeowners insurance +
+ *                         Maintenance & repairs populate; Mortgage
+ *                         P&I + Housing + Renters insurance are $0.
+ *                         (Paid-off retirees, gen.
+ *                         wealth — a real third path the model now
+ *                         acknowledges even before the mortgage math
+ *                         ships.)
+ */
+export type HousingTenure = 'renter' | 'owner-mortgage' | 'owner-no-mortgage';
+
 export interface BudgetInput {
   incomeA: number;
   incomeB?: number;
@@ -139,11 +160,28 @@ export interface BudgetInput {
   kids: number;
   lifestyle: Lifestyle;
   /**
+   * Housing tenure. Defaults to 'renter' when omitted (the legacy
+   * behavior — every existing scenario assumed renting).
+   */
+  tenure?: HousingTenure;
+  /**
    * Set of benefit program IDs the household is claiming. Eligibility is
    * computed separately; this only controls whether the program's effect
    * is applied to the budget. Unknown / ineligible IDs are ignored.
    */
   claimedBenefits?: ReadonlySet<string>;
+  /**
+   * Per-leaf user overrides — display-label → monthly $. When a key
+   * matches a leaf in result.expenses, the override REPLACES the
+   * computed value entirely (layer 4 of the precedence stack: BLS
+   * baseline → lifestyle elasticity → source override → user override).
+   * Toggling the lifestyle dial re-runs computation but doesn't reset
+   * overrides; non-overridden leaves re-modulate, overridden leaves
+   * stay at the override value.
+   *
+   * Ignored when undefined or empty. Negative values clamp to 0.
+   */
+  overrides?: Readonly<Record<string, number>>;
 }
 
 export interface BudgetResult {
@@ -239,6 +277,10 @@ export interface BudgetResult {
   suggestedSplurge: number;
   suggestedEmergency: number;
   // References
+  /** City slug (the lookup key into CITIES / the BudgetInput.city
+   *  value). Useful for downstream consumers that need to look up
+   *  per-city data (e.g. MSA mapping in `blendCexSpendingTrace`). */
+  cityId: string;
   cityData: CityInfo;
   stateData: StateInfo;
   // BLS CEX provenance: which geographic granularity (msa / division /
@@ -250,6 +292,46 @@ export interface BudgetResult {
   cexProvenance: Readonly<Partial<Record<BLSCEXLineItem, GeoGranularity>>>;
   // Income quintile the household landed in, per BLS Table 1101 thresholds.
   incomeQuintile: 'q1' | 'q2' | 'q3' | 'q4' | 'q5';
+  /**
+   * Per-leaf BLS baseline value (monthly $, no lifestyle elasticity, no
+   * source override). Sparse — only populated for CEX-anchored leaves;
+   * leaves sourced entirely from non-CEX sources (Housing rent from HUD,
+   * Childcare from Care.com, healthcare premium from KFF, etc.) are
+   * absent here.
+   *
+   * Drives the "BLS baseline" column of the three-column comparison
+   * (#208) — the empirical anchor at the household's quintile / region /
+   * size / composition cell, before the model layers elasticity or
+   * specialized-source overrides on top. Always render alongside the
+   * shipped value; collapse when numerically identical.
+   */
+  cexBaseline: Readonly<Partial<Record<string, number>>>;
+  /**
+   * Echo of the user overrides actually applied to `expenses`. Same
+   * shape as `BudgetInput.overrides` but reflects only the keys that
+   * matched a real leaf (unknown leaf labels are silently dropped).
+   * Lets the UI distinguish "this leaf has a user override" (render the
+   * override input as filled) vs "no override" (render the baseline
+   * placeholder).
+   */
+  appliedOverrides: Readonly<Record<string, number>>;
+  /**
+   * EIA state-level residential electricity context (cents/kWh).
+   * Useful editorial signal for the Utilities leaf — surfaces "your
+   * state pays X% above/below national average" alongside the CEX-
+   * derived dollar amount. NOT yet wired as a multiplicative factor
+   * on the leaf itself (CEX already captures regional variation;
+   * stacking would double-count). Source: EIA Electric Power
+   * Monthly Table 5.6.A.
+   */
+  electricityContext: Readonly<{
+    /** State's residential price, ¢/kWh. */
+    stateCentsPerKwh: number;
+    /** National (51-jurisdiction) simple average, ¢/kWh. */
+    nationalAvgCentsPerKwh: number;
+    /** state / national. >1 = state pays above average, <1 = below. */
+    stateVsNationalFactor: number;
+  }>;
 }
 
 export type TaxBracket = readonly [number, number]; // [cap, rate]

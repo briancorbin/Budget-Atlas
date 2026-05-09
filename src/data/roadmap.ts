@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 221,
+    title: 'Picker autofill suppression',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "Added `data-1p-ignore` and `data-lpignore` attributes to the SearchableSelect input, alongside the existing `autoComplete='off'`. Modern password managers (1Password, LastPass, Chrome built-in) ignore plain `autoComplete='off'` and were offering to autofill names into the State / Filing / Tenure pickers. The data-attribute opt-outs are what those managers honor.",
+  },
+  {
     id: 220,
     title: 'Tenure picker + filing dropdown',
     category: 'UX & navigation',

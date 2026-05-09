@@ -576,7 +576,13 @@ export function SearchableSelect<T extends string>({
           color: T.ink,
           outline: 'none',
           boxSizing: 'border-box',
+          // text-overflow: ellipsis only kicks in when the box also has
+          // overflow: hidden + white-space: nowrap. Without those the
+          // browser renders the input's overflow as horizontal scroll
+          // and never truncates with the ellipsis character.
           textOverflow: 'ellipsis',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
         }}
       />
       <span

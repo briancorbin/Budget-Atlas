@@ -288,11 +288,11 @@ export function BudgetExplorer() {
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
         <MethodologyNote />
-        <section id="customize" style={{ scrollMarginTop: 24 }}>
+        <section id="customize" style={{ scrollMarginTop: 96 }}>
           <CustomizePanel {...inputState} />
         </section>
         <div ref={stickySentinelRef} aria-hidden style={{ height: 1 }} />
-        <section id="benefits" style={{ scrollMarginTop: 24 }}>
+        <section id="benefits" style={{ scrollMarginTop: 96 }}>
           <PitWarning
             city={city}
             kids={kids}
@@ -304,14 +304,14 @@ export function BudgetExplorer() {
           />
           <Benefits result={result} claimed={claimedBenefits} toggle={toggleBenefit} />
         </section>
-        <section id="summary" style={{ scrollMarginTop: 24 }}>
+        <section id="summary" style={{ scrollMarginTop: 96 }}>
           <StatRow result={result} />
           <StatusBanner result={result} />
         </section>
-        <section id="income-flow" style={{ scrollMarginTop: 24 }}>
+        <section id="income-flow" style={{ scrollMarginTop: 96 }}>
           <IncomeFlow result={result} />
         </section>
-        <section id="tax-brackets" style={{ scrollMarginTop: 24 }}>
+        <section id="tax-brackets" style={{ scrollMarginTop: 96 }}>
           <BracketWalkthrough
             result={result}
             incomeA={incomeA}
@@ -320,7 +320,7 @@ export function BudgetExplorer() {
             filing={filing}
           />
         </section>
-        <section id="expenses" style={{ scrollMarginTop: 24 }}>
+        <section id="expenses" style={{ scrollMarginTop: 96 }}>
           <ExpenseBreakdown
             result={result}
             lifestyle={lifestyle}
@@ -335,14 +335,14 @@ export function BudgetExplorer() {
             }}
           />
         </section>
-        <section id="plan" style={{ scrollMarginTop: 24 }}>
+        <section id="plan" style={{ scrollMarginTop: 96 }}>
           <DiscretionaryPlan result={result} />
           <ShareLink shareUrl={shareUrl} />
         </section>
-        <section id="population" style={{ scrollMarginTop: 24 }}>
+        <section id="population" style={{ scrollMarginTop: 96 }}>
           <IncomePosition result={result} />
         </section>
-        <section id="geography" style={{ scrollMarginTop: 24 }}>
+        <section id="geography" style={{ scrollMarginTop: 96 }}>
           <CityComparison
             result={result}
             compareCity={compareCity}
@@ -355,7 +355,7 @@ export function BudgetExplorer() {
             lifestyle={lifestyle}
           />
         </section>
-        <section id="cliffs" style={{ scrollMarginTop: 24 }}>
+        <section id="cliffs" style={{ scrollMarginTop: 96 }}>
           <CliffCurve
             city={city}
             kids={kids}
@@ -366,7 +366,7 @@ export function BudgetExplorer() {
             incomeB={effectiveIncomeB}
           />
         </section>
-        <section id="notes" style={{ scrollMarginTop: 24 }}>
+        <section id="notes" style={{ scrollMarginTop: 96 }}>
           <Notes stateTaxSource={result.stateData.taxSource} />
         </section>
       </div>

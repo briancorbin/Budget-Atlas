@@ -503,6 +503,11 @@ export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
         pointerEvents: s.visible ? 'auto' : 'none',
       }}
       aria-hidden={!s.visible}
+      // `inert` removes the entire subtree from the focus order and the
+      // a11y tree when the bar is hidden. Without this, keyboard users
+      // would tab into invisible inputs/buttons even though the bar is
+      // off-screen via the translateY transform.
+      {...({ inert: !s.visible ? '' : undefined } as Record<string, unknown>)}
     >
       <div
         style={{
@@ -593,7 +598,7 @@ export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
           />
         </div>
 
-        <div style={{ flex: '0 0 auto' }}>
+        <div style={{ flex: '0 0 auto' }} role="radiogroup" aria-label="Number of kids">
           <label style={compactLabel}>Kids</label>
           <div style={{ display: 'flex', gap: 2 }}>
             {[0, 1, 2, 3, 4].map((n) => (
@@ -610,6 +615,8 @@ export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
                   fontSize: rem(12),
                   cursor: 'pointer',
                 }}
+                role="radio"
+                aria-checked={s.kids === n}
                 aria-label={`${n}${n === 4 ? '+' : ''} children`}
               >
                 {n}
@@ -619,7 +626,7 @@ export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
           </div>
         </div>
 
-        <div style={{ flex: '0 0 auto' }}>
+        <div style={{ flex: '0 0 auto' }} role="radiogroup" aria-label="Lifestyle level">
           <label style={compactLabel}>Lifestyle</label>
           <div style={{ display: 'flex', gap: 2 }}>
             {(
@@ -642,6 +649,8 @@ export function CustomizeStickyBar(s: InputsState & { visible: boolean }) {
                   cursor: 'pointer',
                   letterSpacing: '0.02em',
                 }}
+                role="radio"
+                aria-checked={s.lifestyle === v}
               >
                 {l}
               </button>

@@ -1,6 +1,7 @@
 import { theme, fonts, rem } from '../theme';
 import { posts } from '../posts';
 import { Link } from '../components/Link';
+import { TimeLogStrip } from '../components/TimeLogStrip';
 
 export function IndexPage() {
   return (
@@ -28,6 +29,7 @@ export function IndexPage() {
             is what I'd hand to a tape recorder. Both are mine. The middle
             is where AI lives.
           </p>
+          <TimeLogStrip />
         </div>
       </section>
       <section

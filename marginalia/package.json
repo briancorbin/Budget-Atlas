@@ -6,10 +6,13 @@
   "description": "Marginalia — weekly notes from working with AI on the Budget Atlas. Subdomain publication at marginalia.thebudgetatlas.com.",
   "packageManager": "yarn@4.9.1",
   "scripts": {
+    "predev": "node scripts/build-stats.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/build-stats.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build-stats": "node scripts/build-stats.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",

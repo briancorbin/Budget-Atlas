@@ -4,6 +4,7 @@ import type { Post } from '../types';
 import { PostToggle, type PostView } from '../components/PostToggle';
 import { Prose } from '../components/Prose';
 import { Link } from '../components/Link';
+import { TimeLogStrip } from '../components/TimeLogStrip';
 
 export function PostPage({ post }: { post: Post }) {
   const [view, setView] = useState<PostView>('edited');
@@ -108,6 +109,8 @@ export function PostPage({ post }: { post: Post }) {
             post.raw()
           )}
         </Prose>
+
+        <TimeLogStrip />
       </div>
     </article>
   );

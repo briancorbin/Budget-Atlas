@@ -16,8 +16,10 @@
   "compatibility_date": "2026-05-09",
   "assets": {
     "directory": "./dist",
-    // SPA fallback — equivalent to the public/_redirects rule, but native
-    // to Workers Static Assets. Both are kept; either alone would work.
+    // SPA fallback. We previously also had a public/_redirects file
+    // (Pages-flavored `/* /index.html 200`), but Workers Static Assets
+    // rejected it as an infinite-loop rule. The two SPA-fallback
+    // mechanisms aren't compatible; this is the Workers-native one.
     "not_found_handling": "single-page-application",
   },
   // Don't expose the *.workers.dev preview URL — production traffic should

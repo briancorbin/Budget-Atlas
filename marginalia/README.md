@@ -36,26 +36,35 @@ yarn typecheck   # tsc --noEmit
 
 ## Deploy (one-time setup, then automatic per push)
 
-The Atlas's main site is on Cloudflare Pages. Marginalia uses a
-**second** Cloudflare Pages project on the same account, configured to
-build from this `marginalia/` subdirectory:
+The Atlas itself deploys via Cloudflare **Workers** (Static Assets), not
+Pages — see the root `wrangler.jsonc`. Marginalia matches that model:
+a **second** Workers project on the same account, configured to build
+from this `marginalia/` subdirectory and deploy via the local
+`marginalia/wrangler.jsonc`.
 
-1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to
-   Git → select `TheBudgetAtlas/thebudgetatlas`.
+1. Cloudflare dashboard → Workers & Pages → Create → Workers → Connect
+   to Git → select `TheBudgetAtlas/thebudgetatlas`.
 2. **Build settings:**
    - Framework preset: `None` (we drive Vite manually)
    - Build command: `corepack enable && yarn install --immutable && yarn build`
-   - Build output directory: `dist`
+   - Deploy command: `npx wrangler versions upload` (default for Workers
+     Builds) — picks up `marginalia/wrangler.jsonc` because Root directory
+     is `marginalia`
    - Root directory: `marginalia`
    - Environment variables: `NODE_VERSION=22`
 3. **Custom domain:** add `marginalia.thebudgetatlas.com`. Cloudflare
    will create the CNAME automatically since the apex is already on
    Cloudflare DNS.
-4. Enable Cloudflare Web Analytics on the new Pages project (same
+4. Enable Cloudflare Web Analytics on the new Workers project (same
    privacy posture as the Atlas — see [/privacy](https://thebudgetatlas.com/privacy)).
 
 That's it. Pushes to `main` trigger a build; preview deploys are created
 for PRs.
+
+**SPA fallback** is handled by `assets.not_found_handling: "single-page-application"`
+in `wrangler.jsonc`. We do **not** use a `public/_redirects` file —
+Workers Static Assets rejects the Pages-style `/* /index.html 200` rule
+as an infinite-loop redirect.
 
 ## Adding a post
 

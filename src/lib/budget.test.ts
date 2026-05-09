@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { computeBudget, LIFESTYLE_ELASTICITY } from '@/lib/budget';
-import { cexLineItemSpendingForCity, compositionBucket, cuSizeBucket } from '@/data/cex';
+import {
+  cexLineItemSpendingForCity,
+  compositionBucket,
+  cuSizeBucket,
+} from '@/data/cex';
 import type { BudgetInput } from '@/types';
 
 function input(overrides: Partial<BudgetInput> = {}): BudgetInput {
@@ -330,6 +334,62 @@ describe('leaf restructure', () => {
     const r = computeBudget(input({ incomeA: 80_000, kids: 2, filing: 'head' }));
     const sum = Object.values(r.expenses).reduce((s, n) => s + n, 0);
     expect(sum).toBeCloseTo(r.totalExpenses, 1);
+  });
+});
+
+describe('cexBaseline (three-column comparison)', () => {
+  it('exposes BLS baseline values for CEX-anchored leaves', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    expect(r.cexBaseline['Food at home']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Food away']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Apparel']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Entertainment']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Pets']).toBeGreaterThan(0);
+    expect(r.cexBaseline['Cell service']).toBeGreaterThan(0);
+  });
+
+  it('does NOT expose baseline for non-CEX leaves', () => {
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    // Housing, Childcare, Healthcare premium portion, etc. are non-CEX
+    // (HUD/Care.com/KFF). Only Healthcare's CEX OOP is exposed.
+    expect(r.cexBaseline['Housing']).toBeUndefined();
+    expect(r.cexBaseline['Childcare']).toBeUndefined();
+    expect(r.cexBaseline['Renters insurance']).toBeUndefined();
+    expect(r.cexBaseline['Home internet']).toBeUndefined();
+    expect(r.cexBaseline['Mortgage P&I']).toBeUndefined();
+  });
+
+  it('baseline is independent of lifestyle dial — only shipped value moves', () => {
+    const modest = computeBudget(input({ incomeA: 80_000, lifestyle: 'modest' }));
+    const comfortable = computeBudget(input({ incomeA: 80_000, lifestyle: 'comfortable' }));
+    // Baselines should match exactly (BLS data is the same regardless
+    // of dial position).
+    expect(modest.cexBaseline['Food away']).toBeCloseTo(comfortable.cexBaseline['Food away']!, 2);
+    // Shipped values diverge by the elasticity.
+    expect(modest.expenses['Food away']).toBeLessThan(comfortable.expenses['Food away']!);
+  });
+
+  it('Entertainment baseline excludes Pets (no double-count between leaves)', () => {
+    // The exposed Entertainment baseline + Pets baseline must equal the
+    // raw CEX entertainment rollup. The earlier version of this test
+    // only checked positivity, which would still pass if Entertainment
+    // had quietly been left as the full rollup (silent double-count).
+    const r = computeBudget(input({ incomeA: 80_000 }));
+    const ent = r.cexBaseline['Entertainment']!;
+    const pets = r.cexBaseline['Pets']!;
+    expect(ent).toBeGreaterThan(0);
+    expect(pets).toBeGreaterThan(0);
+    expect(pets).toBeLessThan(ent);
+    // Reconstruct the raw rollup from cex.ts directly.
+    const raw = cexLineItemSpendingForCity(
+      'cmh',
+      r.cityData.state,
+      r.grossIncome,
+      'entertainment',
+      cuSizeBucket(r.householdSize),
+      compositionBucket(r.adults, Math.max(0, r.householdSize - r.adults)),
+    );
+    expect(ent + pets).toBeCloseTo(raw.spending / 12, 0);
   });
 });
 

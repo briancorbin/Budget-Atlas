@@ -424,6 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
+    id: 229,
+    title: 'Tooltip: quintile smoothing row',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-09',
+    summary:
+      "The first row of the calc trace was labeled `q2 national` but actually showed the SMOOTHED value at the user's exact income (interpolated between adjacent quintile means in `smoothNationalQuintile`). Made the smoothing explicit: anchor row now shows the published BLS Table 1101 q-anchor value at its mean income, then a separate `× quintile-curve smoothing` row shows the interpolation factor that takes you to the user's actual income. Hidden when factor = 1 (clamped to q1/q5 or exactly at a quintile mean).",
+  },
+  {
     id: 228,
     title: 'HoverGloss flips on overflow',
     category: 'UX & navigation',

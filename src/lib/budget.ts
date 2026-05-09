@@ -6,6 +6,7 @@ import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/ta
 import { checkChip, checkMedicaid, checkSnap } from '@/lib/benefits';
 import {
   cexLineItemSpendingForCity,
+  cuSizeBucket,
   quintileFromIncome,
   type BLSCEXLineItem,
   type GeoGranularity,
@@ -243,12 +244,15 @@ export function computeBudget(input: BudgetInput): BudgetResult {
 
   // ── BLS CEX wire-up ─────────────────────────────────────────────────
   // For every line item BLS CEX publishes, derive the household's monthly
-  // spend from the (city/MSA × division × region × income-quintile) blend.
-  // The lifestyle lever stays as a ±15% / ±20% modulator on top — gives
-  // users a knob inside their quintile without throwing out the BLS
-  // shape. CEX values are per consumer-unit (CU) per year; we /12 for
-  // monthly and don't multiply by householdSize (the average CU in BLS's
-  // sample is ~2.5 people; finer per-CU-size scaling is roadmap #128).
+  // spend from the (city/MSA × division × region × income-quintile ×
+  // CU-size) blend. The lifestyle lever stays as a ±15% / ±20% modulator
+  // on top — gives users a knob inside their quintile without throwing
+  // out the BLS shape. CEX values are per consumer-unit per year; we /12
+  // for monthly. The CU-size factor (Table 1400) scales each line by the
+  // 1p/2p/3p/4p/5+p column relative to the All-CU baseline — a 1-person
+  // household lands ~0.55× a 4-person household lands ~1.40× on most
+  // diffuse lines. This corrects the systematic bias of using "average
+  // CU" (~2.5 people) values regardless of actual household size.
   //
   // The rolled-up legacy fields on `cityData` (groceries, utilities,
   // carCost, healthSingle/Family) were "approximate medians" hand-set
@@ -269,7 +273,16 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // below is still useful for the UI badge ("you're in q4") but no
   // longer drives spending lookups; passing `totalIncome` directly
   // eliminates the artifact step functions at quintile boundaries.
+  //
+  // Honesty caveat (synthetic-blend independence): the size axis is
+  // multiplied as if independent of income/geography. Real distributions
+  // aren't independent — small CUs skew lower-income/older, large CUs
+  // skew middle-quintile parents — so the factor is least biased on
+  // diffuse lines (food, utilities) and most strained on income-
+  // correlated demographics. CE PUMD microdata would resolve this; the
+  // synthetic blend is the published-table-only approximation.
   const quintile = quintileFromIncome(totalIncome);
+  const cuSize = cuSizeBucket(householdSize);
   const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
   const cexMonthly = (item: BLSCEXLineItem): number => {
     const { spending, granularity } = cexLineItemSpendingForCity(
@@ -277,6 +290,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       cityData.state,
       totalIncome,
       item,
+      cuSize,
     );
     if (granularity) cexGranularity[item] = granularity;
     return (spending / 12) * lifestyleMult;

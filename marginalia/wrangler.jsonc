@@ -1,6 +1,5 @@
 {
   // Cloudflare Workers configuration for the Marginalia subdomain.
-  // Source of truth — overrides dashboard config on every deploy.
   // https://developers.cloudflare.com/workers/wrangler/configuration/
   //
   // Marginalia is a static-assets-only deployment (no Worker code) — the
@@ -11,7 +10,15 @@
   // makes wrangler resolve this file at deploy time and read
   // `assets.directory` relative to this directory (so `./dist` =
   // `marginalia/dist`).
-  "$schema": "../node_modules/wrangler/config-schema.json",
+  //
+  // Scope of this file: anything declared here (script name, compatibility
+  // date, assets, observability) is the source of truth and overrides
+  // dashboard config on every deploy. Things NOT declared here — most
+  // notably the custom-domain binding for marginalia.thebudgetatlas.com —
+  // are managed in the Cloudflare dashboard. They could be moved into
+  // this file under `routes` (matching the Atlas's pattern) if config-as-
+  // code becomes load-bearing; for now the dashboard owns them.
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "marginalia",
   "compatibility_date": "2026-05-09",
   "assets": {

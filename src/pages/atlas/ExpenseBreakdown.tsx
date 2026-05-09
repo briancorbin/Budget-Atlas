@@ -12,8 +12,14 @@ import type { BLSCEXLineItem } from '@/data/cex';
  * Used to surface a per-cell geographic-granularity badge (msa /
  * division / region) next to each CEX-anchored leaf, sourced from
  * `BudgetResult.cexProvenance`. Composite leaves (Utilities) pick the
- * dominant subline for the badge; non-CEX leaves (Housing, Childcare,
- * Cell service flat, etc.) get no badge.
+ * dominant subline for the badge; non-CEX leaves (Housing, Home
+ * internet, Renters insurance, Childcare, Mortgage P&I, Property tax,
+ * Homeowners insurance, Maintenance & repairs, Transit) get no badge —
+ * those are sourced from per-city / per-state hand formulas or
+ * commercial / placeholder values, none of which carry a CEX geographic
+ * provenance to surface. Healthcare is intentionally omitted because
+ * it's a mixed-source leaf (CEX OOP + KFF premium) and a single
+ * granularity badge would misrepresent half the line.
  */
 const LEAF_TO_CEX_ITEM: Readonly<Record<string, BLSCEXLineItem>> = {
   Utilities: 'utilitiesElectricGas', // composite — pick electric/gas as the headline subline

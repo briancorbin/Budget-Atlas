@@ -385,6 +385,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
     summary:
       'Replaced the global ±15-20% lifestyle multiplier with per-leaf elasticities (Low ±5%, Medium ±15%, High ±25%, Zero for config-driven lines). Rent and other contractually-fixed lines no longer modulate with the dial — the editorial principle is "modest means picking fewer bedrooms (a config decision), not paying less for the same unit." Foundation for the full lifestyle drill-down (#5).',
   },
+  {
+    id: 211,
+    title: 'Methodology callouts (explorer)',
+    category: 'UX & navigation',
+    status: 'shipped',
+    shippedAt: '2026-05-08',
+    summary:
+      'Surfaced two simplifications in the MethodologyNote: (1) Medicaid full/none when claimed; CHIP partial offset for kids (state Medicaid-scope variation acknowledged, not modeled — deepening is #10); (2) synthetic-blend treats income / geo / size as independent (BLS publishes single-axis cross-tabs only).',
+  },
 ];
 
 /**

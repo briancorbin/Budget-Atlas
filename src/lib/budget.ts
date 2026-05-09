@@ -87,7 +87,7 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
     label: 'KFF (premium) + BLS CEX (OOP)',
     tier: 'mixed',
     description:
-      'Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting.',
+      "Healthcare splits two ways. The premium portion comes from KFF Employer Health Benefits Survey (worker share of an employer-sponsored plan, single vs. family). The out-of-pocket portion (deductibles, copays, drugs, supplies) comes from BLS CEX with insurance premium explicitly excluded — so KFF and BLS are added without double-counting. Benefit handling: when claimed AND eligible, Medicaid zeros the entire Healthcare line; CHIP offsets the kids' premium share only (adults' premium + the household's OOP stay). State-level variation in adult Medicaid scope (dental, vision, orthodontics range from comprehensive to emergency-only) isn't modeled in v1; finer state-by-state coverage modeling is roadmap #10.",
   },
   Childcare: {
     label: 'Care.com',

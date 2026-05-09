@@ -998,7 +998,7 @@ export function ExpenseBreakdown({ result }: { result: BudgetResult }) {
                                           {!overrideShown && showBaseline && (
                                             <span
                                               style={{ color: T.inkMuted }}
-                                              title={`BLS baseline at your income/region/size/composition cell — before lifestyle modulation. Atlas shipped value adjusts this by the per-line elasticity.`}
+                                              title={`BLS baseline at your income/region/size/composition cell — before any model layering. The Atlas shipped value applies the per-leaf adjustments that fit this household: lifestyle elasticity for CEX-anchored leaves, plus specialized-source overrides where they apply (KFF premium for Healthcare; per-city values for Housing/Childcare/Transit) and any benefits offsets you've claimed (SNAP, Medicaid, CHIP).`}
                                             >
                                               {fmt(baseline!)}
                                             </span>

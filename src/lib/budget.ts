@@ -469,8 +469,10 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   //                                cex.education / cex.householdOperations /
   //                                cex.housekeepingSupplies / cex.furnishings (NEW)
   //
-  // Rent (HUD/Zillow), childcare (Care.com), phone/internet flat,
-  // insurance flat — these stay non-CEX with their existing sources.
+  // Rent (HUD/Zillow), home internet (flat placeholder), renters
+  // insurance (flat placeholder) — these stay non-CEX with their
+  // existing sources. Childcare WAS Care.com but now anchors at the
+  // BLS Table 1502 composition delta (see `CHILDCARE_BLS_PER_COMP`).
   // Income axis is smoothed across BLS quintile means — see
   // `smoothNationalQuintile` in src/data/cex.ts. The `quintile` value
   // below is still useful for the UI badge ("you're in q4") but no
@@ -1030,18 +1032,14 @@ export function computeBudget(input: BudgetInput): BudgetResult {
     // is not part of the "what BLS would say" anchor.
     cexBaseline: {
       // Childcare BLS baseline — Table 1502 "Personal services" subline
-      // delta vs. married-no-kids. This is what households with kids
-      // actually spend out-of-pocket on childcare on average (NOT the
-      // Care.com private-market price the model uses for shipped value
-      // — a useful contrast: BLS captures actual spending net of free
-      // care from family / community / government-subsidized programs;
-      // Care.com captures private-market prices). Surfaces as the BLS
-      // baseline column of the three-column comparison so users can
-      // see the gap between "average household with kids" and
-      // "private-market childcare price." The "married couple, oldest
-      // <6" delta is ~$454/mo; "married, oldest 6-17" is ~$118/mo;
-      // single parent is ~$47/mo (lower because single-parent
-      // households in CEX use less paid care on average).
+      // delta vs. married-no-kids. With this PR's swap, the SAME values
+      // drive both the BLS baseline AND the model's shipped value (see
+      // the `childcare` calc earlier in this function). The baseline
+      // column will now collapse with the shipped column in the
+      // three-column comparison — that's expected: Care.com data is
+      // retired in favor of BLS, so there's no contrast to draw.
+      // Future re-introduction of Care.com as a private-market reference
+      // column would restore the contrast.
       // Reuses the module-level CHILDCARE_BLS_PER_COMP map so the
       // baseline column and the model's shipped value stay in sync.
       // Returns undefined for compositions with no signal (so the UI

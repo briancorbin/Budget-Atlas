@@ -65,11 +65,14 @@ export function MethodologyNote() {
         only), and average local prices. EITC and Child Tax Credit are approximated. Real households
         have wide variance even within the same city and income.{' '}
         <strong style={{ color: T.ink, fontWeight: 600 }}>
-          Medicaid and CHIP are modeled as binary full/none
+          Medicaid is modeled as binary full/none
         </strong>{' '}
-        — when a household qualifies, healthcare costs zero out; when not, full out-of-pocket. The
-        real-world variation in adult dental, vision, and other state-level Medicaid scope (which
-        ranges from comprehensive to emergency-only depending on state) isn't modeled yet.
+        — when an eligible household claims Medicaid, the entire Healthcare line zeros out; when not
+        claimed (or not eligible), the full out-of-pocket + premium estimate stays. CHIP is a
+        partial offset: when claimed and eligible, it covers the kids' share of the premium only,
+        leaving adults' premium and the household's OOP intact. Real-world variation in adult
+        dental, vision, and other state-level Medicaid scope (which ranges from comprehensive to
+        emergency-only depending on state) isn't modeled yet.
       </p>
       <p style={{ margin: '0 0 10px' }}>
         Cost-of-living lines combine BLS Consumer Expenditure Survey data across three axes — income

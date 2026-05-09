@@ -387,12 +387,12 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 211,
-    title: 'Methodology callouts: Medicaid full/none + synthetic blend',
+    title: 'Methodology callouts (homepage)',
     category: 'UX & navigation',
     status: 'shipped',
     shippedAt: '2026-05-08',
     summary:
-      'Surfaced two model simplifications in the front-and-center MethodologyNote: (1) Medicaid/CHIP is binary full/none — state-level variation in adult dental, vision, and other Medicaid scope is acknowledged but not modeled (deepening is #10); (2) the cost-of-living blend treats income, geography, and household size as independent because BLS publishes single-axis cross-tabs only — most accurate for diffuse lines, less so where size correlates with income.',
+      'Surfaced two simplifications in the MethodologyNote: (1) Medicaid full/none when claimed; CHIP partial offset for kids (state Medicaid-scope variation acknowledged, not modeled — deepening is #10); (2) synthetic-blend treats income / geo / size as independent (BLS publishes single-axis cross-tabs only).',
   },
 ];
 

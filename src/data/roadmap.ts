@@ -425,12 +425,12 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 234,
-    title: 'Tooltip: running $/mo per row',
+    title: 'Calc tooltip: running $/mo per row',
     category: 'UX & navigation',
     status: 'shipped',
     shippedAt: '2026-05-09',
     summary:
-      "Multiplier rows in the blend-trace tooltip now carry the running monthly $ that emerges after each factor is applied (e.g. `1.20× → $137/mo`). Reader doesn't have to compound 1.08 × 1.05 × 1.20 × 0.95 mentally to see where the value lands at each step. Picked over six visual variants (bars, sparklines, deflection charts) in /design-lab — visual treatments either lied about the math (bars-as-composition, lines-as-continuity) or carried directional semantics that aren't actually present. Plain text won.",
+      "Multiplier rows in the blend-trace tooltip now carry the running monthly $ that emerges after each factor is applied (e.g. `1.20× → $137/mo`). Reader doesn't have to compound 1.08 × 1.05 × 1.20 × 0.95 mentally to see where the value lands at each step. Single 3-column grid so columns align across all rows; anchor + baseline values bolded with full-width separators to mark them as endpoints. Renamed user-facing 'shipped' → 'Atlas estimate' for parity with 'BLS baseline'. Picked over six visual variants (bars, sparklines, deflection charts) in /design-lab — visual treatments either lied about the math or carried directional semantics that aren't actually present.",
   },
   {
     id: 233,

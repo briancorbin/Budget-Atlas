@@ -81,10 +81,10 @@ export const EXPENSE_SOURCE: Record<string, ExpenseSource> = {
       'Mortgage principal + interest. Currently a $0 placeholder — the actual mortgage math (purchase price, down payment, rate, term) lands with roadmap #13. Census ACS Selected Monthly Owner Costs (B25088) is the planned baseline source for the median; cited in `sources.ts` (`census-acs-owner-costs`).',
   },
   'Property tax': {
-    label: 'Census ACS B25103 + Tax Foundation (planned, #13)',
+    label: 'Census ACS B25103 (planned, #13)',
     tier: 'none',
     description:
-      'Annual property tax / 12. State-level effective rates vary enormously (TX ~1.6%, NJ ~2.2%, HI ~0.3%). Census ACS B25103 (median real-estate taxes paid) and Tax Foundation per-state effective rates are now in `sources.ts`. Currently $0 placeholder; populates with roadmap #13.',
+      'Annual property tax / 12. State-level effective rates vary enormously (TX ~1.6%, NJ ~2.2%, HI ~0.3%). Census ACS B25103 (median real-estate taxes paid) is the planned source — cited in `sources.ts` as `census-acs-property-tax`. Currently $0 placeholder; populates with roadmap #13.',
   },
   'Homeowners insurance': {
     label: 'III state-level (planned, #13)',

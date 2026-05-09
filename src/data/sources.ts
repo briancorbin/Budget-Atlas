@@ -229,7 +229,11 @@ const RAW_SOURCES = {
   },
   'iii-state-insurance': {
     label: 'Insurance Information Institute — Facts + Statistics (state-level)',
-    url: 'https://www.iii.org/fact-statistic/facts-statistics-auto-insurance',
+    // III's umbrella Facts + Statistics index page — links out to the
+    // per-line state-level expenditure tables we cite (auto,
+    // homeowners, renters). Pointing at the index rather than the
+    // auto-only page because this source covers all three lines.
+    url: 'https://www.iii.org/publications/facts-statistics',
     // III publishes state-level avg expenditures for auto / homeowners /
     // renters insurance from NAIC data. Single source covers all 50
     // states; the displayed citation passes state context per the

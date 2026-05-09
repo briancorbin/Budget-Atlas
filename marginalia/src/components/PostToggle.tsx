@@ -19,9 +19,14 @@ export function PostToggle({
   view: PostView;
   onChange: (next: PostView) => void;
 }) {
+  // Segmented control semantics rather than the WAI-ARIA tablist pattern:
+  // tablist requires roving tabindex + arrow-key navigation + aria-controls
+  // wiring to be conformant. For a two-state visibility toggle, plain
+  // <button aria-pressed> gives screen readers and keyboard users
+  // consistent behavior with much less surface area.
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label="Post view"
       style={{
         display: 'inline-flex',
@@ -56,8 +61,8 @@ function Tab({
 }) {
   return (
     <button
-      role="tab"
-      aria-selected={active}
+      type="button"
+      aria-pressed={active}
       onClick={onClick}
       style={{
         appearance: 'none',

@@ -20,5 +20,7 @@ export function navigate(to: string): void {
   if (to === window.location.pathname) return;
   window.history.pushState(null, '', to);
   window.dispatchEvent(new PopStateEvent('popstate'));
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  // 'auto' (the default) is the well-supported equivalent to 'instant';
+  // explicit so the intent is documented at the call site.
+  window.scrollTo({ top: 0, behavior: 'auto' });
 }

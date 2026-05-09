@@ -80,12 +80,13 @@ export const RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB: Readonly<Record<StateCode, 
 
 /**
  * National average residential electricity price for the same vintage,
- * weighted across all states. Used as the denominator when computing
- * per-state factors. Computed once at module init from the table above
- * — equally-weighted across 51 jurisdictions, NOT population-weighted.
- * (Population weights would be a small refinement; the simple average
- * tracks "what the average state pays" which is what readers expect
- * when reading "your state pays X% above/below average.")
+ * computed as the simple (equally-weighted) mean across the 51
+ * jurisdictions in the table above. Used as the denominator when
+ * computing per-state factors. NOT a population- or sales-weighted
+ * national average — population weights would be a small refinement,
+ * but the simple mean tracks "what the average state pays" which is
+ * what readers expect when reading "your state pays X% above/below
+ * average."
  */
 export const NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB: number = (() => {
   const values = Object.values(RESIDENTIAL_ELECTRICITY_PRICE_2026_FEB);
@@ -94,9 +95,10 @@ export const NATIONAL_AVG_RESIDENTIAL_ELECTRICITY_2026_FEB: number = (() => {
 
 /**
  * Per-state factor: how much above (>1) or below (<1) the national
- * average a state's residential electricity price is. CA at 1.71×
- * means Californians pay 71% above the national average; ND at 0.59×
- * means North Dakotans pay 41% below.
+ * average a state's residential electricity price is. CA at ~1.81×
+ * (33.22¢/kWh vs ~18.35¢/kWh national) means Californians pay ~81%
+ * above the national average; ND at ~0.63× means North Dakotans pay
+ * ~37% below.
  *
  * Useful as a relative signal for the editorial copy ("your state
  * pays X% more than average") and for any future per-state utility

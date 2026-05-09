@@ -6,6 +6,7 @@ import { progressiveTax, calcFICA, calcChildTaxCredit, calcEITC } from '@/lib/ta
 import { checkChip, checkMedicaid, checkSnap } from '@/lib/benefits';
 import {
   cexLineItemSpendingForCity,
+  compositionBucket,
   cuSizeBucket,
   quintileFromIncome,
   type BLSCEXLineItem,
@@ -447,6 +448,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
   // synthetic blend is the published-table-only approximation.
   const quintile = quintileFromIncome(totalIncome);
   const cuSize = cuSizeBucket(householdSize);
+  const composition = compositionBucket(adults, kids);
   const cexGranularity: Partial<Record<BLSCEXLineItem, GeoGranularity>> = {};
   // Pre-elasticity monthly value (raw blended baseline / 12). Used by
   // residual computations that need to subtract one CEX subline from
@@ -460,6 +462,7 @@ export function computeBudget(input: BudgetInput): BudgetResult {
       totalIncome,
       item,
       cuSize,
+      composition,
     );
     if (granularity) cexGranularity[item] = granularity;
     return spending / 12;

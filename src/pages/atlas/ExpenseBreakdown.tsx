@@ -1064,16 +1064,17 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                       const explainByG = {
                                         msa: 'BLS published this line at the Metropolitan Statistical Area level — your specific metro. Most precise CEX cut available.',
                                         division:
-                                          "BLS doesn't break this line out at the MSA level for our schema, so the blend fell through to the 9-division Census cut (e.g. Pacific, Mid-Atlantic). Less specific than MSA but still regional.",
+                                          'MSA data wasn’t available for this lookup — either your city has no MSA mapping in our schema, or BLS doesn’t break this line out at the MSA level. The blend fell through to the 9-division Census cut (e.g. Pacific, Mid-Atlantic). Less specific than MSA but still regional.',
                                         region:
-                                          'BLS suppresses this line at MSA + division for our schema, so the blend fell through to the 4-region cut (Northeast / Midwest / South / West). Least specific level.',
+                                          'MSA and division data both weren’t available for this lookup, so the blend fell through to the 4-region cut (Northeast / Midwest / South / West). Least specific level.',
                                       } as const;
                                       return (
                                         <HoverGloss
                                           gloss={
                                             <>
-                                              <div
+                                              <span
                                                 style={{
+                                                  display: 'block',
                                                   fontSize: rem(10),
                                                   letterSpacing: '0.1em',
                                                   textTransform: 'uppercase',
@@ -1083,10 +1084,10 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                                 }}
                                               >
                                                 Geographic granularity · {labelByG[granularity]}
-                                              </div>
-                                              <div style={{ color: T.inkSoft }}>
+                                              </span>
+                                              <span style={{ display: 'block', color: T.inkSoft }}>
                                                 {explainByG[granularity]}
-                                              </div>
+                                              </span>
                                             </>
                                           }
                                         >
@@ -1153,8 +1154,9 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                             <HoverGloss
                                               gloss={
                                                 <>
-                                                  <div
+                                                  <span
                                                     style={{
+                                                      display: 'block',
                                                       fontSize: rem(10),
                                                       letterSpacing: '0.1em',
                                                       textTransform: 'uppercase',
@@ -1164,8 +1166,8 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                                     }}
                                                   >
                                                     BLS baseline
-                                                  </div>
-                                                  <div style={{ color: T.inkSoft }}>
+                                                  </span>
+                                                  <span style={{ display: 'block', color: T.inkSoft }}>
                                                     What households at your income / region / size /
                                                     family composition spend on this line on average
                                                     — before the model layers lifestyle elasticity
@@ -1173,7 +1175,7 @@ export function ExpenseBreakdown({ result, overrides, onOverrideChange }: Expens
                                                     Atlas-shipped value adjusts this by the per-line
                                                     elasticity (and swaps in HUD/Zillow/Care.com/KFF
                                                     for specialized lines).
-                                                  </div>
+                                                  </span>
                                                 </>
                                               }
                                             >

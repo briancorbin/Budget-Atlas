@@ -424,27 +424,15 @@ export const ROADMAP: readonly RoadmapItem[] = [
       'Added 8 new entries to `sources.ts` for state-external data: III (insurance), FCC URS (broadband), EIA state electricity, NCES private school tuition, College Board college pricing, Census ACS B25088/B25103 (owner costs + property tax), DOL NDCP (childcare). Hybrid pattern — one entry per publisher, state context passed at render time. EXPENSE_SOURCE descriptions for Home internet, Renters insurance, Mortgage P&I, Property tax, and Homeowners insurance now reference the concrete planned sources instead of vague placeholders. Per-cell data wiring follows.',
   },
   {
-<<<<<<< HEAD
-=======
-    id: 215,
-    title: 'Family-composition axis (Table 1502, #207)',
-    category: 'Cost of living',
-    status: 'shipped',
-    shippedAt: '2026-05-08',
-    summary:
-      'Added the fourth axis to the synthetic blend: family-composition (single, married no kids, married w/ kids by oldest-age band, single parent, other). Table 1502 captures structural spending differences pure CU size misses — a single parent of 3 and a married couple of 4 are both 4-person CUs by size, but spend very differently. Foundation for honest baseline comparisons (#208 / #5 drilldown) and per-child-age detail (#3) when those land. Per-child-age maps to the composition column at baseline level.',
-  },
-  {
     id: 217,
-    title: 'Detail-view tooltips use HoverGloss primitive (consistency fix)',
+    title: 'Detail-view tooltips use HoverGloss',
     category: 'UX & navigation',
     status: 'shipped',
-    shippedAt: '2026-05-08',
+    shippedAt: '2026-05-09',
     summary:
       "Fixed two new detail-view tooltips (geo-granularity badges and BLS-baseline values) to use the project's `HoverGloss` primitive instead of native `title=` attributes — matches the styled hover popover the rest of the detail view already uses (SourceBadge dots, etc.). The native `title` is browser-flaky and didn't match the visual family. Override clear button keeps native `title` (button accessibility hint, not a content tooltip).",
   },
   {
->>>>>>> 2158120 (Detail-view tooltips: switch from native title= to HoverGloss primitive)
     id: 216,
     title: 'Lifestyle elasticity calibration',
     category: 'Cost of living',

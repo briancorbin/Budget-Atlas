@@ -425,7 +425,7 @@ export const ROADMAP: readonly RoadmapItem[] = [
   },
   {
     id: 218,
-    title: 'Childcare BLS baseline',
+    title: 'Childcare BLS baseline (#208 fill)',
     category: 'Cost of living',
     status: 'shipped',
     shippedAt: '2026-05-09',

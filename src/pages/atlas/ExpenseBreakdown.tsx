@@ -111,6 +111,33 @@ function calcExplanation(label: string, result: BudgetResult, lifestyle: Lifesty
     </div>
   );
 
+  // Healthcare special-case — mixed source. The cexBaseline only
+  // exposes the CEX out-of-pocket portion; the Atlas-shipped value
+  // also includes the KFF employer-sponsored premium worker-share.
+  // Without this branch the generic CEX path below would say
+  // "BLS baseline $81 × ±5% lifestyle = $1,331" which is wildly
+  // wrong arithmetic — the gap is the premium, not the elasticity.
+  if (label === 'Healthcare' && shipped > 0) {
+    const oopBaseline = result.cexBaseline['Healthcare'] ?? 0;
+    const premium = result.healthcarePremium;
+    return (
+      <>
+        <Header>How this is calculated</Header>
+        <div style={{ color: T.inkSoft }}>
+          Healthcare combines two sources. The BLS-baseline column shows out-of-pocket only (CEX
+          medical services + drugs + supplies, no insurance premium):{' '}
+          <strong>{fmt(oopBaseline)}</strong>. The Atlas-shipped value adds the worker share of the
+          employer-sponsored health insurance premium from KFF{' '}
+          <em>
+            (Employer Health Benefits Survey, family vs single tier based on household composition)
+          </em>
+          : <strong>{fmt(premium)}</strong>. Total: <strong>{fmt(shipped)}</strong>. Medicaid
+          eligibility zeros the entire line; CHIP offsets the kids' premium share specifically.
+        </div>
+      </>
+    );
+  }
+
   // Override-driven overrides (transit-only, no-kids, owner-only) are
   // explained by the inline reason badge already; surface that in the
   // tooltip too so the explanation is consistent.

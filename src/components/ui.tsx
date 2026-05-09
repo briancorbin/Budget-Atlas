@@ -335,8 +335,16 @@ export function Cite({ source }: { source: Source | readonly Source[] }) {
  * for genuinely-confusing distinctions (e.g. "household" actually
  * meaning "BLS consumer unit"), not for every piece of jargon.
  */
+const HOVER_GLOSS_WIDTH = 320;
+const HOVER_GLOSS_VIEWPORT_MARGIN = 16;
+
 export function HoverGloss({ children, gloss }: { children: ReactNode; gloss: ReactNode }) {
   const [open, setOpen] = useState(false);
+  // Flip the tooltip to right-anchor when left-anchoring would overflow
+  // the right edge of the viewport. Without this the gloss clips off
+  // the screen for triggers near the right side of the page (e.g.
+  // dollar values in the right column of the detail panel).
+  const [hAlign, setHAlign] = useState<'left' | 'right'>('left');
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -345,6 +353,13 @@ export function HoverGloss({ children, gloss }: { children: ReactNode; gloss: Re
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+  useEffect(() => {
+    if (!open || !ref.current || typeof window === 'undefined') return;
+    const triggerRect = ref.current.getBoundingClientRect();
+    const wouldOverflowRight =
+      triggerRect.left + HOVER_GLOSS_WIDTH + HOVER_GLOSS_VIEWPORT_MARGIN > window.innerWidth;
+    setHAlign(wouldOverflowRight ? 'right' : 'left');
   }, [open]);
 
   return (
@@ -369,9 +384,9 @@ export function HoverGloss({ children, gloss }: { children: ReactNode; gloss: Re
           style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
-            left: 0,
+            ...(hAlign === 'right' ? { right: 0 } : { left: 0 }),
             zIndex: 10,
-            width: 320,
+            width: HOVER_GLOSS_WIDTH,
             maxWidth: '90vw',
             padding: '10px 12px',
             background: T.surface,

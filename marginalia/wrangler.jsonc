@@ -44,6 +44,18 @@
   "env": {
     "develop": {
       "name": "marginalia-develop",
+      // Develop's custom domain is config-managed (unlike prod, which is
+      // dashboard-managed). custom_domain: true makes Cloudflare auto-
+      // create the DNS record + binding + SSL cert on first deploy of
+      // this env. Cheaper to declare here than to click through the
+      // dashboard for a non-prod domain.
+      "routes": [
+        {
+          "pattern": "develop.marginalia.thebudgetatlas.com",
+          "zone_name": "thebudgetatlas.com",
+          "custom_domain": true,
+        },
+      ],
     },
   },
 }

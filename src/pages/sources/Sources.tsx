@@ -14,7 +14,7 @@
  * lives in the rolling [`audit:link`] issue.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { SectionTitle } from '@/components/ui';
 import { Footer as SiteFooter } from '@/components/Footer';
@@ -387,13 +387,14 @@ function ThresholdsNote() {
   // Default open on desktop, closed on mobile — the legend is reference
   // material rather than a primary read, and on a phone it eats a lot
   // of vertical room before the actual citation list. matchMedia is
-  // checked once on mount; the user's manual toggle isn't reverted on
-  // resize, since changing this on viewport flips would feel intrusive.
-  const [open, setOpen] = useState(true);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    setOpen(!window.matchMedia('(max-width: 720px)').matches);
-  }, []);
+  // checked at first render via lazy initializer (avoids the
+  // setState-in-effect cascade); the user's manual toggle then sticks
+  // and isn't reverted on resize, since flipping on viewport changes
+  // would feel intrusive.
+  const [open, setOpen] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return true;
+    return !window.matchMedia('(max-width: 720px)').matches;
+  });
   return (
     <details
       open={open}

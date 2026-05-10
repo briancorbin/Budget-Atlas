@@ -238,39 +238,44 @@ export function BudgetExplorer() {
   // out of view (i.e. scrolled past), the user has lost access to the
   // inputs and the sticky bar pops in.
   const stickySentinelRef = useRef<HTMLDivElement | null>(null);
-  const [stickyVisible, setStickyVisible] = useState(false);
   // Mobile sticky bar is the *only* Customize entry point — the in-flow
   // CustomizePanel is hidden below 720px to avoid duplicating controls.
   // So on mobile the bar must be visible from page-load (no scroll
   // trigger), and the IntersectionObserver that drives desktop's pop-in
   // is skipped entirely.
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(max-width: 720px)').matches;
+  });
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mql = window.matchMedia('(max-width: 720px)');
     const update = () => setIsMobile(mql.matches);
-    update();
     mql.addEventListener('change', update);
     return () => mql.removeEventListener('change', update);
   }, []);
+  // Desktop pop-in trigger: the sentinel toggles a flag that's OR'd with
+  // the mobile-always-visible rule below. Splitting the source-of-truth
+  // (vs. a single `setStickyVisible(true)` inside an `if (isMobile)`
+  // effect) avoids the React lint warning about cascading setState in
+  // effects, and keeps the wiring declarative.
+  const [scrolledPastSentinel, setScrolledPastSentinel] = useState(false);
   useEffect(() => {
-    if (isMobile) {
-      setStickyVisible(true);
-      return;
-    }
+    if (isMobile) return;
     const el = stickySentinelRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const obs = new IntersectionObserver(
       ([entry]) => {
         // Visible when sentinel is above the viewport (scrolled past).
         const rect = entry.boundingClientRect;
-        setStickyVisible(!entry.isIntersecting && rect.top < 0);
+        setScrolledPastSentinel(!entry.isIntersecting && rect.top < 0);
       },
       { threshold: 0 },
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, [isMobile]);
+  const stickyVisible = isMobile || scrolledPastSentinel;
 
   const inputState: InputsState = {
     incomeA,

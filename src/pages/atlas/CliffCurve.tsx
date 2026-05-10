@@ -362,9 +362,7 @@ export function CliffCurve({
               data={points}
               margin={{
                 top:
-                  chartWidthPx < 480
-                    ? 14
-                    : 20 + Math.max(0, ...cliffs.map((c) => c.labelRow)) * 13,
+                  chartWidthPx < 480 ? 14 : 20 + Math.max(0, ...cliffs.map((c) => c.labelRow)) * 13,
                 right: chartWidthPx < 480 ? 12 : 24,
                 left: chartWidthPx < 480 ? 0 : 8,
                 bottom: chartWidthPx < 480 ? 8 : 16,

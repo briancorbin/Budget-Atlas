@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   ['/sources', 'Sources', false],
   ['/roadmap', 'Roadmap', false],
   ['/privacy', 'Privacy', false],
+  ['/terms', 'Terms', false],
   ['https://marginalia.thebudgetatlas.com', 'Marginalia', true],
 ] as const;
 

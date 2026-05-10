@@ -633,6 +633,17 @@ export function SearchableSelect<T extends string>({
               No matches
             </div>
           )}
+          {/* Option layout: side-by-side label + hint on desktop, stacked
+              (label above, hint below as caption) on mobile. Both columns
+              wrapping independently on a narrow viewport produces ragged
+              double-column rows; stacking is more legible on phones. */}
+          <style>{`
+            @media (max-width: 720px) {
+              .ss-option { flex-direction: column !important;
+                align-items: flex-start !important; gap: 2px !important; }
+              .ss-option .ss-hint { font-size: 12px !important; }
+            }
+          `}</style>
           {filtered.map((o, i) => {
             const active = i === activeIdx;
             const isSelected = o.value === value;
@@ -642,6 +653,7 @@ export function SearchableSelect<T extends string>({
                 data-idx={i}
                 role="option"
                 aria-selected={isSelected}
+                className="ss-option"
                 onMouseEnter={() => setActiveIdx(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -661,7 +673,11 @@ export function SearchableSelect<T extends string>({
                 }}
               >
                 <span>{o.label}</span>
-                {o.hint && <span style={{ color: T.inkMuted, fontSize: rem(12) }}>{o.hint}</span>}
+                {o.hint && (
+                  <span className="ss-hint" style={{ color: T.inkMuted, fontSize: rem(12) }}>
+                    {o.hint}
+                  </span>
+                )}
               </div>
             );
           })}

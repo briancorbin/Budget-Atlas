@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 # Run the Vite dev server and expose it through the named Cloudflare tunnel
-# `budget-dev`, routed to dev.thebudgetatlas.com. Stable URL, works over
-# cellular, gives you HTTPS for free.
+# `budget-local`, routed to local.thebudgetatlas.com. Stable URL, works over
+# cellular, gives you HTTPS for free. The "local" naming distinguishes this
+# from `develop` (the long-lived staging Worker at develop.thebudgetatlas.com).
 #
 # Setup (one time):
 #   brew install cloudflared
 #   cloudflared tunnel login
-#   cloudflared tunnel create budget-dev
-#   cloudflared tunnel route dns budget-dev dev.thebudgetatlas.com
+#   cloudflared tunnel create budget-local
+#   cloudflared tunnel route dns budget-local local.thebudgetatlas.com
 #
 # Requires: cloudflared on PATH, ~/.cloudflared/<tunnel-id>.json present.
 
 set -euo pipefail
 
 PORT="${PORT:-5173}"
-TUNNEL_NAME="${TUNNEL_NAME:-budget-dev}"
+TUNNEL_NAME="${TUNNEL_NAME:-budget-local}"
 
 if ! command -v cloudflared >/dev/null 2>&1; then
   echo "cloudflared not found. Install with: brew install cloudflared" >&2

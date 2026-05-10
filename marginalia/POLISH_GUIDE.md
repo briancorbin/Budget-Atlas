@@ -70,15 +70,14 @@ notes" without prior context?
   typographic quotes for consistency.
 - **Forbidden:** rephrasing of Brian's words, paragraph reordering,
   em-dashes for emphasis, italicized beats, bolded claims.
-- **`[Claude prompted: ...]` blocks SYNTHESIZED but kept.** Distill
-  each prompt to its operative question, drop the meta-framing
-  ("Pick from a few options", "Posts live or die on this kind of
-  detail", chatty asides). Same `[Claude prompted: ...]` formatting;
-  shorter content. The reader sliding to Raw should recognize each
-  Light prompt as a faithful tightening of the corresponding Raw
-  prompt — same question, fewer words. **No clever rephrasing, no
-  merging across prompts, no making the interviewer look sharper than
-  they were.**
+- **`[Claude prompted: ...]` framing dropped; questions kept as
+  plain Q&A.** Distill each prompt to its operative question and
+  render it in a blockquote with no `[Claude prompted: ...]` wrapper
+  — reads like a normal interviewer's question floating above the
+  answer. The reader sliding to Raw can still see the Claude
+  attribution; at Light it just disappears like the asker would in
+  any published interview. **No clever rephrasing, no merging across
+  prompts, no making the interviewer look sharper than they were.**
 - Filler conversational openers ("So,", "Oh man", "Right so,")
   preserved. They're his voice.
 - Paragraph breaks preserved as he wrote them; do not merge or split.

@@ -22,6 +22,7 @@ export const theme = {
   // uniformly "weaker / stronger evidence within the family."
   aiAccent: '#3E5A7A',
   commercialAccent: '#7A6628', // deep gold, used for the commercial source tier
+  splurge: '#8A4A6E', // muted plum, used for the discretionary "splurge / dining" role
   surface: '#FBF8EF',
 
   /**
@@ -68,6 +69,21 @@ export const theme = {
     mixed: '#6E7AA8', // muted blue — multi-source combinations
     commercial: '#7A6B5A', // muted brown — commercial / proprietary
     none: '#B85C5C', // muted red — audit gap, no formal source
+  },
+
+  /**
+   * Income-quintile palette — graduated tan→brown scale for the equal-
+   * width banded thermometer in IncomePosition. Each band is one BLS
+   * quintile (q1 = lowest, q5 = highest); the gradient reads as ascending
+   * weight rather than a shift in hue, deliberately keeping the chart
+   * editorial rather than rainbow.
+   */
+  quintileScale: {
+    q1: '#D9C9A3',
+    q2: '#C7B57F',
+    q3: '#A89968',
+    q4: '#8A7B4F',
+    q5: '#6B5E3A',
   },
 } as const;
 

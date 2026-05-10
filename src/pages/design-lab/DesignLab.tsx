@@ -4061,7 +4061,7 @@ function CompoundConfigPanel({
         borderRadius: 4,
         padding: collapsed ? '8px 16px' : 16,
         marginBottom: 4,
-        boxShadow: '0 4px 12px rgba(27, 24, 21, 0.08)',
+        boxShadow: T.shadows.card,
       }}
     >
       <div

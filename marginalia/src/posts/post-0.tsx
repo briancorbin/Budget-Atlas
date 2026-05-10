@@ -191,9 +191,9 @@ const light: Section[] = [
     content: (
       <blockquote>
         <p>
-          [Claude prompted: Just talk — what's been on your mind about
-          working with AI on this project? Smaller prompts if it helps: why
-          now? What are you afraid this blog becomes if you're not careful?]
+          Just talk — what's been on your mind about working with AI on this
+          project? Smaller prompts if it helps: why now? What are you afraid
+          this blog becomes if you're not careful?
         </p>
       </blockquote>
     ),
@@ -221,7 +221,7 @@ const light: Section[] = [
     mapsFrom: ['prompt-the-moment'],
     content: (
       <blockquote>
-        <p>[Claude prompted: What was the specific moment?]</p>
+        <p>What was the specific moment?</p>
       </blockquote>
     ),
   },
@@ -242,8 +242,8 @@ const light: Section[] = [
     content: (
       <blockquote>
         <p>
-          [Claude prompted: What flipped casual curiosity into "drop
-          everything, this is the thing"?]
+          What flipped casual curiosity into "drop everything, this is the
+          thing"?
         </p>
       </blockquote>
     ),
@@ -292,10 +292,7 @@ const light: Section[] = [
     mapsFrom: ['prompt-afraid'],
     content: (
       <blockquote>
-        <p>
-          [Claude prompted: What are you afraid this blog becomes if you're
-          not careful?]
-        </p>
+        <p>What are you afraid this blog becomes if you're not careful?</p>
       </blockquote>
     ),
   },

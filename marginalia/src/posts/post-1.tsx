@@ -82,10 +82,7 @@ const EditorialRaw = () => (
 const EditorialLight = () => (
   <>
     <blockquote>
-      <p>
-        [Claude prompted: What's the most "I would not have done this solo"
-        moment?]
-      </p>
+      <p>What's the most "I would not have done this solo" moment?</p>
     </blockquote>
     <p>
       Oh man... the most "I would not have done this solo" moment...
@@ -98,9 +95,9 @@ const EditorialLight = () => (
     </p>
     <blockquote>
       <p>
-        [Claude prompted: In AI_LEARNINGS the Figma entry says it's the
-        single biggest "would not have existed at all solo" line item —
-        that's in tension with what you just said. Which is true?]
+        In AI_LEARNINGS the Figma entry says it's the single biggest "would
+        not have existed at all solo" line item — that's in tension with
+        what you just said. Which is true?
       </p>
     </blockquote>
     <p>
@@ -110,8 +107,8 @@ const EditorialLight = () => (
     </p>
     <blockquote>
       <p>
-        [Claude prompted: When you hit that realization — "whoa, cool, AI
-        can handle this", or "oh shit, this would have broken me solo"?]
+        When you hit that realization — "whoa, cool, AI can handle this",
+        or "oh shit, this would have broken me solo"?
       </p>
     </blockquote>
     <p>

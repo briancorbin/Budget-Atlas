@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
+import { marginaliaUrl } from '@/lib/cross-site';
 
 const navLinkStyle = {
   color: T.accent,
@@ -15,7 +16,7 @@ const NAV_ITEMS = [
   ['/sources', 'Sources', false],
   ['/roadmap', 'Roadmap', false],
   ['/privacy', 'Privacy', false],
-  ['https://marginalia.thebudgetatlas.com', 'Marginalia', true],
+  [marginaliaUrl(), 'Marginalia', true],
 ] as const;
 
 // Unicode ↗ (U+2197) renders as a color emoji on iOS Safari, which clashes

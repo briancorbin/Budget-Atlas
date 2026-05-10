@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
 
@@ -239,8 +239,41 @@ export function Masthead() {
  * Escape (handled by the parent), backdrop tap also closes.
  */
 function MenuSheet({ onClose }: { onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Focus management for the modal: capture the previously-focused element
+  // when the sheet opens so we can restore focus on close, move initial
+  // focus to the close button, and trap Tab inside the dialog so keyboard
+  // users can't drift back to the page underneath while it's open.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onTab);
+    return () => {
+      document.removeEventListener('keydown', onTab);
+      previouslyFocused?.focus?.();
+    };
+  }, []);
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Navigation"
@@ -287,6 +320,7 @@ function MenuSheet({ onClose }: { onClose: () => void }) {
           The Budget Atlas
         </span>
         <button
+          ref={closeBtnRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();

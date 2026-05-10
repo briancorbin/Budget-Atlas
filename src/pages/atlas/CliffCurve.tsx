@@ -354,9 +354,12 @@ export function CliffCurve({
         </div>
 
         <div ref={chartWrapperRef}>
-          {/* On narrow charts, horizontal stagger of 3+ labels above the
-              chart eats too much vertical room. Switch to vertical labels
-              hugging each cliff line so the chart top stays compact. */}
+          {/* On narrow charts the in-chart Medicaid/SNAP/CHIP labels are
+              suppressed entirely (see the ReferenceLine label render
+              below) — the legend underneath names each cliff with the
+              matching color swatch, so the dashed lines stay readable
+              without crowding the plot area. The top margin can drop
+              accordingly. */}
           <ResponsiveContainer width="100%" height={chartWidthPx < 480 ? 380 : 340}>
             <LineChart
               data={points}

@@ -43,6 +43,21 @@ input[type='number']::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* Suppress the default <details>/<summary> disclosure marker. Per-summary
+ * we use `list-style: none` plus a custom chevron, but that alone leaves
+ * the native triangle visible on Safari/iOS (::-webkit-details-marker)
+ * and on Firefox (::marker). Hide both globally so any custom-styled
+ * summary in the app reads with the intended chevron only. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary::marker {
+  display: none;
+}
+
 /* iOS Safari auto-zooms the viewport whenever an input/select/textarea has
  * a font-size below 16px and the user taps it — and doesn't reliably zoom
  * back out afterward. The Atlas's compact form controls run 11–14px for

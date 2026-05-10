@@ -26,6 +26,12 @@ export function ScrollToTop({ threshold = 600 }: { threshold?: number }) {
       onClick={scrollToTop}
       aria-label="Scroll to top"
       title="Scroll to top"
+      // When invisible the button is still in the tab order if we only
+      // toggle opacity/pointer-events. Take it out of focus and the a11y
+      // tree explicitly so keyboard / screen-reader users can't land on
+      // an invisible control.
+      tabIndex={visible ? 0 : -1}
+      aria-hidden={!visible}
       style={{
         position: 'fixed',
         right: 'max(16px, env(safe-area-inset-right))',

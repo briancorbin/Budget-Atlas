@@ -398,7 +398,7 @@ function ThresholdsNote() {
   return (
     <details
       open={open}
-      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
       style={{
         fontSize: rem(13),
         color: T.inkSoft,

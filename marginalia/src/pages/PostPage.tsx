@@ -7,9 +7,9 @@ import { Prose } from '../components/Prose';
 import { Link } from '../components/Link';
 import { TimeLogStrip } from '../components/TimeLogStrip';
 
-// Default landing position. Medium gives readers a friendly read while
-// signaling that other levels exist on either side.
-const DEFAULT_LEVEL: PolishLevel = 'medium';
+// Default landing position. Full is the most polished read — slider lets
+// readers walk it back toward Raw if they want to see what's underneath.
+const DEFAULT_LEVEL: PolishLevel = 'full';
 
 // Compare view is desktop-only for v0 — side-by-side panes don't fit on
 // phones. Threshold matches a comfortable two-column layout.

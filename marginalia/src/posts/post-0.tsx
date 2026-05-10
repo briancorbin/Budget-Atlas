@@ -48,6 +48,61 @@ const raw: Section[] = [
         for the last year.
       </p>
     ),
+    sentences: [
+      {
+        id: 'why-now-s1',
+        content: (
+          <p>
+            Why Now: So, I've been putting off starting this project for a
+            really long time because of how time consuming I knew it was
+            going to be.
+          </p>
+        ),
+      },
+      {
+        id: 'why-now-s2',
+        content: (
+          <p>
+            This is a real project, that requires real commitment and real
+            attention.
+          </p>
+        ),
+      },
+      {
+        id: 'why-now-s3',
+        content: (
+          <p>I have been largely ignoring using AI tooling in my workflow.</p>
+        ),
+      },
+      {
+        id: 'why-now-s4',
+        content: (
+          <p>
+            Mostly just github copilot for some small reviews on PRs, and the
+            smart autocomplete in VS Code.
+          </p>
+        ),
+      },
+      {
+        id: 'why-now-s5',
+        content: (
+          <p>
+            It wasn't until recently that I decided to look into where the
+            tech actually was, and when I saw the state of it, I knew it was
+            something I had to dive in to HARD.
+          </p>
+        ),
+      },
+      {
+        id: 'why-now-s6',
+        content: (
+          <p>
+            So naturally, it collided with this project I have been pushing
+            off for the last year.
+          </p>
+        ),
+      },
+    ],
   },
   {
     id: 'prompt-the-moment',
@@ -570,6 +625,33 @@ const full: Section[] = [
         commitment, real attention. The kind of thing you can't half-do.
       </p>
     ),
+    sentences: [
+      {
+        id: 'why-now-opener-s1',
+        mapsFrom: ['why-now-s1'],
+        content: <p>I put this project off for a year.</p>,
+      },
+      {
+        id: 'why-now-opener-s2',
+        mapsFrom: ['why-now-s1'],
+        content: (
+          <p>
+            Not because I didn't want to do it — I do — but because I knew
+            how much of me it would take.
+          </p>
+        ),
+      },
+      {
+        id: 'why-now-opener-s3',
+        mapsFrom: ['why-now-s2'],
+        content: <p>Real commitment, real attention.</p>,
+      },
+      {
+        id: 'why-now-opener-s4',
+        aiAdded: true,
+        content: <p>The kind of thing you can't half-do.</p>,
+      },
+    ],
   },
   {
     id: 'inertia-as-context',
@@ -582,6 +664,33 @@ const full: Section[] = [
         up.
       </p>
     ),
+    sentences: [
+      {
+        id: 'inertia-as-context-s1',
+        mapsFrom: ['why-now-s3'],
+        content: <p>I'd also been largely ignoring AI in my workflow.</p>,
+      },
+      {
+        id: 'inertia-as-context-s2',
+        mapsFrom: ['why-now-s4'],
+        content: (
+          <p>
+            GitHub Copilot for some PR reviews, the smart autocomplete in
+            VS Code, and that was about it.
+          </p>
+        ),
+      },
+      {
+        id: 'inertia-as-context-s3',
+        mapsFrom: ['inertia'],
+        content: <p>Not skepticism — inertia.</p>,
+      },
+      {
+        id: 'inertia-as-context-s4',
+        mapsFrom: ['inertia'],
+        content: <p>I just hadn't been keeping up.</p>,
+      },
+    ],
   },
   {
     id: 'bio',

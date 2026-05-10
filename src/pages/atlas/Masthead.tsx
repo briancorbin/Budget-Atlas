@@ -1,7 +1,62 @@
+import { useEffect, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
 
+const navLinkStyle = {
+  color: T.accent,
+  textDecoration: 'none',
+  fontWeight: 600,
+  borderBottom: `1px solid ${T.border}`,
+  paddingBottom: 1,
+} as const;
+
+const NAV_ITEMS = [
+  ['/about', 'About', false],
+  ['/sources', 'Sources', false],
+  ['/roadmap', 'Roadmap', false],
+  ['/privacy', 'Privacy', false],
+  ['https://marginalia.thebudgetatlas.com', 'Marginalia', true],
+] as const;
+
+// Unicode ↗ (U+2197) renders as a color emoji on iOS Safari, which clashes
+// with the editorial typography. Inline SVG forces a glyph-style arrow that
+// inherits currentColor.
+function ExternalArrow() {
+  return (
+    <svg
+      aria-hidden
+      width="0.7em"
+      height="0.7em"
+      viewBox="0 0 10 10"
+      style={{ verticalAlign: 'baseline', marginLeft: 1 }}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="square"
+    >
+      <path d="M2.5 7.5 L7.5 2.5" />
+      <path d="M3.5 2.5 L7.5 2.5 L7.5 6.5" />
+    </svg>
+  );
+}
+
 export function Masthead() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Lock body scroll while the menu sheet is open so the page underneath
+  // doesn't scroll under the overlay. Restore on close.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
   return (
     <div
       style={{
@@ -12,15 +67,23 @@ export function Masthead() {
         marginBottom: 32,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
+      {/* Title-and-nav header row. Desktop shows the full inline nav to
+          the right of the title block; mobile hides that nav and shows a
+          MENU trigger that opens a full-screen overlay sheet — five nav
+          items don't fit cleanly on a phone width without wrapping
+          unpredictably. */}
+      <style>{`
+        .masthead-header { display: flex; justify-content: space-between;
+          align-items: baseline; gap: 12px; }
+        .masthead-nav-inline { display: flex; align-items: baseline; gap: 18px;
+          flex-wrap: wrap; justify-content: flex-end; }
+        .masthead-menu-trigger { display: none; }
+        @media (max-width: 720px) {
+          .masthead-nav-inline { display: none; }
+          .masthead-menu-trigger { display: inline-flex; }
+        }
+      `}</style>
+      <div className="masthead-header">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div
             style={{
@@ -31,7 +94,7 @@ export function Masthead() {
               fontWeight: 600,
             }}
           >
-            The Budget Atlas · Vol. 2026
+            The Budget Atlas <span style={{ whiteSpace: 'nowrap' }}>· Vol.&nbsp;2026</span>
           </div>
           <span
             style={{
@@ -47,99 +110,63 @@ export function Masthead() {
         </div>
         <nav
           aria-label="Primary"
+          className="masthead-nav-inline"
           style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 18,
             fontSize: rem(11),
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             color: T.inkMuted,
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
           }}
         >
-          <a
-            href="/about"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/about');
-            }}
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-              borderBottom: `1px solid ${T.border}`,
-              paddingBottom: 1,
-            }}
-          >
-            About →
-          </a>
-          <a
-            href="/sources"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/sources');
-            }}
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-              borderBottom: `1px solid ${T.border}`,
-              paddingBottom: 1,
-            }}
-          >
-            Sources →
-          </a>
-          <a
-            href="/roadmap"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/roadmap');
-            }}
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-              borderBottom: `1px solid ${T.border}`,
-              paddingBottom: 1,
-            }}
-          >
-            Roadmap →
-          </a>
-          <a
-            href="/privacy"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/privacy');
-            }}
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-              borderBottom: `1px solid ${T.border}`,
-              paddingBottom: 1,
-            }}
-          >
-            Privacy →
-          </a>
-          {/* Marginalia is a sister publication at a different subdomain
-              (not an Atlas route). The ↗ glyph signals "leaves this site"
-              vs. → for in-app routes; same red styling because it's the
-              same publication brand. */}
-          <a
-            href="https://marginalia.thebudgetatlas.com"
-            style={{
-              color: T.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-              borderBottom: `1px solid ${T.border}`,
-              paddingBottom: 1,
-            }}
-          >
-            Marginalia ↗
-          </a>
+          {NAV_ITEMS.map(([href, label, external]) =>
+            external ? (
+              <a key={href} href={href} style={navLinkStyle}>
+                {label} <ExternalArrow />
+              </a>
+            ) : (
+              <a
+                key={href}
+                href={href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(href);
+                }}
+                style={navLinkStyle}
+              >
+                {label} →
+              </a>
+            ),
+          )}
         </nav>
+        <button
+          type="button"
+          className="masthead-menu-trigger"
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(true)}
+          style={{
+            background: 'transparent',
+            border: `1px solid ${T.border}`,
+            color: T.accent,
+            padding: '8px 12px',
+            fontFamily: fonts.body,
+            fontSize: rem(11),
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+            cursor: 'pointer',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          Menu
+          <span aria-hidden style={{ display: 'inline-flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ width: 14, height: 1.5, background: T.accent, display: 'block' }} />
+            <span style={{ width: 14, height: 1.5, background: T.accent, display: 'block' }} />
+            <span style={{ width: 14, height: 1.5, background: T.accent, display: 'block' }} />
+          </span>
+        </button>
+        {menuOpen && <MenuSheet onClose={() => setMenuOpen(false)} />}
       </div>
       <h1
         style={{
@@ -201,6 +228,138 @@ export function Masthead() {
           Details
         </a>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Full-screen mobile nav sheet. Triggered by the masthead's MENU button.
+ * Editorial-styled (not app-shell): cream background, large display
+ * Fraunces items, top-right close affordance. Keyboard-dismissible via
+ * Escape (handled by the parent), backdrop tap also closes.
+ */
+function MenuSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Navigation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        background: T.bg,
+        // Editorial framing: a thin top rule mirrors the masthead. The
+        // backdrop is the page background color, not a translucent dim,
+        // because the sheet covers the whole viewport — there's no
+        // page underneath to imply.
+        borderTop: `2px solid ${T.ink}`,
+        padding: '20px 24px 32px',
+        display: 'flex',
+        flexDirection: 'column',
+        animation: 'menu-sheet-in 180ms ease-out',
+      }}
+    >
+      <style>{`
+        @keyframes menu-sheet-in {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 28,
+        }}
+      >
+        <span
+          style={{
+            fontSize: rem(11),
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: T.accent,
+            fontWeight: 600,
+          }}
+        >
+          The Budget Atlas
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="Close menu"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: T.ink,
+            fontSize: rem(24),
+            cursor: 'pointer',
+            padding: '4px 8px',
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <nav
+        aria-label="Primary"
+        // Stop click propagation on the link list so taps on the items
+        // commit navigation rather than bubbling to the dialog backdrop
+        // and triggering its onClose first.
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}
+      >
+        {NAV_ITEMS.map(([href, label, external]) =>
+          external ? (
+            <a
+              key={href}
+              href={href}
+              style={{
+                fontFamily: fonts.display,
+                fontSize: rem(28),
+                color: T.accent,
+                textDecoration: 'none',
+                fontStyle: 'italic',
+                padding: '10px 0',
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 6,
+              }}
+            >
+              {label} <ExternalArrow />
+            </a>
+          ) : (
+            <a
+              key={href}
+              href={href}
+              onClick={(e) => {
+                e.preventDefault();
+                onClose();
+                navigate(href);
+              }}
+              style={{
+                fontFamily: fonts.display,
+                fontSize: rem(28),
+                color: T.accent,
+                textDecoration: 'none',
+                fontStyle: 'italic',
+                padding: '10px 0',
+              }}
+            >
+              {label}
+            </a>
+          ),
+        )}
+      </nav>
     </div>
   );
 }

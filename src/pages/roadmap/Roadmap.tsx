@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { ROADMAP, SHIPPED, type RoadmapItem, type RoadmapStatus } from '@/data/roadmap';
 import { SectionTitle } from '@/components/ui';
+import { Footer as SiteFooter } from '@/components/Footer';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 export function Roadmap({ onBack }: { onBack: () => void }) {
   return (
@@ -21,8 +23,10 @@ export function Roadmap({ onBack }: { onBack: () => void }) {
         <Intro />
         <PlannedList />
         <ShippedList />
-        <Footer onBack={onBack} />
+        <ContributePrompt />
+        <SiteFooter />
       </div>
+      <ScrollToTop />
     </div>
   );
 }
@@ -502,66 +506,37 @@ function ShippedList() {
   );
 }
 
-function Footer({ onBack }: { onBack: () => void }) {
+function ContributePrompt() {
   return (
     <div
       style={{
-        borderTop: `2px solid ${T.ink}`,
-        paddingTop: 24,
         marginTop: 48,
+        paddingTop: 24,
+        borderTop: `2px solid ${T.ink}`,
+        fontSize: rem(11),
+        color: T.inkMuted,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        fontFamily: fonts.body,
         textAlign: 'center',
       }}
     >
+      Have an idea worth adding? Open an issue on{' '}
       <a
-        href="/"
-        onClick={(e) => {
-          e.preventDefault();
-          onBack();
-        }}
+        href="https://github.com/TheBudgetAtlas/thebudgetatlas/issues"
+        target="_blank"
+        rel="noreferrer"
         style={{
-          fontFamily: fonts.body,
-          fontSize: rem(13),
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          cursor: 'pointer',
-          padding: '10px 18px',
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          color: T.ink,
-          fontWeight: 600,
+          color: T.accent,
           textDecoration: 'none',
-          display: 'inline-block',
+          fontWeight: 600,
+          borderBottom: `1px solid ${T.border}`,
+          paddingBottom: 1,
         }}
       >
-        ← Back to the atlas
+        the repo
       </a>
-      <div
-        style={{
-          marginTop: 24,
-          fontSize: rem(11),
-          color: T.inkMuted,
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          fontFamily: fonts.body,
-        }}
-      >
-        Have an idea worth adding? Open an issue on{' '}
-        <a
-          href="https://github.com/TheBudgetAtlas/thebudgetatlas/issues"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            color: T.accent,
-            textDecoration: 'none',
-            fontWeight: 600,
-            borderBottom: `1px solid ${T.border}`,
-            paddingBottom: 1,
-          }}
-        >
-          the repo
-        </a>
-        .
-      </div>
+      .
     </div>
   );
 }

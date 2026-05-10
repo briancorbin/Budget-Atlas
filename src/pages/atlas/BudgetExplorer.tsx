@@ -12,8 +12,10 @@ import {
   type SharedConfig,
 } from '@/lib/configShare';
 import { Masthead } from './Masthead';
+import { Footer } from '@/components/Footer';
+import { ScrollToTop } from '@/components/ScrollToTop';
 import { MethodologyNote } from './MethodologyNote';
-import { CustomizePanel, CustomizeStickyBar, type InputsState } from './Inputs';
+import { CustomizePanel, CustomizeStickyBar, ScenarioPicker, type InputsState } from './Inputs';
 import { ShareLink } from './ShareLink';
 import { StatRow, StatusBanner } from './Summary';
 import { IncomeFlow } from './IncomeFlow';
@@ -237,7 +239,25 @@ export function BudgetExplorer() {
   // inputs and the sticky bar pops in.
   const stickySentinelRef = useRef<HTMLDivElement | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  // Mobile sticky bar is the *only* Customize entry point — the in-flow
+  // CustomizePanel is hidden below 720px to avoid duplicating controls.
+  // So on mobile the bar must be visible from page-load (no scroll
+  // trigger), and the IntersectionObserver that drives desktop's pop-in
+  // is skipped entirely.
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 720px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (isMobile) {
+      setStickyVisible(true);
+      return;
+    }
     const el = stickySentinelRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const obs = new IntersectionObserver(
@@ -250,7 +270,7 @@ export function BudgetExplorer() {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [isMobile]);
 
   const inputState: InputsState = {
     incomeA,
@@ -273,6 +293,7 @@ export function BudgetExplorer() {
 
   return (
     <div
+      className="atlas-page"
       style={{
         minHeight: '100vh',
         background: T.bg,
@@ -285,12 +306,43 @@ export function BudgetExplorer() {
     >
       <PageNav sections={PAGE_NAV_SECTIONS} />
       <CustomizeStickyBar {...inputState} visible={stickyVisible} />
+      {/* Hide the in-flow Customize panel on mobile — the sticky bar at the
+          top of the viewport is the sole Customize entry point on phones.
+          The standalone Scenario picker takes its place (mobile-only) so
+          the "load an example" affordance doesn't disappear with the rest
+          of the panel. Also reserve top padding for the always-visible
+          sticky chip so the masthead doesn't sit underneath it on
+          initial load. */}
+      <style>{`
+        .mobile-scenario-picker { display: none; }
+        @media (max-width: 720px) {
+          .in-flow-customize { display: none; }
+          .mobile-scenario-picker { display: block; }
+          .atlas-page { padding-top: 56px !important; }
+        }
+      `}</style>
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Masthead />
         <MethodologyNote />
-        <section id="customize" style={{ scrollMarginTop: 96 }}>
+        <section id="customize" className="in-flow-customize" style={{ scrollMarginTop: 96 }}>
           <CustomizePanel {...inputState} />
         </section>
+        {/* Mobile-only: scenario picker as a static element where the
+            full Customize panel would otherwise sit. Gives phone users a
+            one-tap way to load an example household; the chip up top
+            handles per-input editing. */}
+        <ScenarioPicker
+          {...inputState}
+          className="mobile-scenario-picker"
+          label="START WITH AN EXAMPLE"
+          description="Real-feeling households across the income spectrum — each one prefills every input so you can see how the math plays out, then tap Customize up top to tweak."
+          style={{
+            margin: '0 0 32px',
+            padding: '20px 18px',
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+          }}
+        />
         <div ref={stickySentinelRef} aria-hidden style={{ height: 1 }} />
         <section id="benefits" style={{ scrollMarginTop: 96 }}>
           <PitWarning
@@ -369,7 +421,9 @@ export function BudgetExplorer() {
         <section id="notes" style={{ scrollMarginTop: 96 }}>
           <Notes stateTaxSource={result.stateData.taxSource} />
         </section>
+        <Footer />
       </div>
+      <ScrollToTop />
     </div>
   );
 }

@@ -109,9 +109,13 @@ export function CliffCurve({
   const metricMeta = METRIC;
 
   const currentGross = incomeA + incomeB;
-  // Sweep up to $200K or 1.5× current income, whichever is higher, so the
-  // user's dot is always visible with cliff territory still on screen.
-  const maxGross = Math.max(200_000, Math.ceil((currentGross * 1.5) / 1000) * 1000);
+  // Sweep up to the floor or 1.5× current income, whichever is higher, so
+  // the user's dot is always visible with cliff territory still on screen.
+  // Mobile floor is lower ($100K vs $200K) so the cliff cluster (typically
+  // $20K-$80K) occupies more of the chart width — on a phone, the line's
+  // continued rise to $200K is editorial weight the chart can't afford.
+  const maxGrossFloor = chartWidthPx < 480 ? 100_000 : 200_000;
+  const maxGross = Math.max(maxGrossFloor, Math.ceil((currentGross * 1.5) / 1000) * 1000);
   const stepCount = 240;
   const stepSize = Math.max(500, Math.round(maxGross / stepCount / 500) * 500);
 
@@ -350,14 +354,20 @@ export function CliffCurve({
         </div>
 
         <div ref={chartWrapperRef}>
-          <ResponsiveContainer width="100%" height={340}>
+          {/* On narrow charts, horizontal stagger of 3+ labels above the
+              chart eats too much vertical room. Switch to vertical labels
+              hugging each cliff line so the chart top stays compact. */}
+          <ResponsiveContainer width="100%" height={chartWidthPx < 480 ? 380 : 340}>
             <LineChart
               data={points}
               margin={{
-                top: 20 + Math.max(0, ...cliffs.map((c) => c.labelRow)) * 13,
-                right: 24,
-                left: 8,
-                bottom: 16,
+                top:
+                  chartWidthPx < 480
+                    ? 14
+                    : 20 + Math.max(0, ...cliffs.map((c) => c.labelRow)) * 13,
+                right: chartWidthPx < 480 ? 12 : 24,
+                left: chartWidthPx < 480 ? 0 : 8,
+                bottom: chartWidthPx < 480 ? 8 : 16,
               }}
             >
               <CartesianGrid stroke={T.border} strokeDasharray="2 4" vertical={false} />
@@ -368,35 +378,49 @@ export function CliffCurve({
                 tickFormatter={(v) => `$${Math.round(v / 1000)}K`}
                 stroke={T.inkMuted}
                 tick={{ fontSize: 11, fontFamily: fonts.mono, fill: T.inkSoft }}
-                label={{
-                  value: 'Gross household income',
-                  position: 'insideBottom',
-                  offset: -8,
-                  style: {
-                    fontSize: 11,
-                    fill: T.inkMuted,
-                    fontFamily: fonts.body,
-                    letterSpacing: '0.1em',
-                  },
-                }}
+                // Drop the wordy axis title on narrow viewports — the
+                // caption above the chart already names the axes; the
+                // tick labels ($0K/$50K/…) tell you it's dollars.
+                label={
+                  chartWidthPx < 480
+                    ? undefined
+                    : {
+                        value: 'Gross household income',
+                        position: 'insideBottom',
+                        offset: -8,
+                        style: {
+                          fontSize: 11,
+                          fill: T.inkMuted,
+                          fontFamily: fonts.body,
+                          letterSpacing: '0.1em',
+                        },
+                      }
+                }
               />
               <YAxis
                 tickFormatter={(v) => (v === 0 ? '$0' : `$${Math.round(v / 1000)}K`)}
                 stroke={T.inkMuted}
                 tick={{ fontSize: 11, fontFamily: fonts.mono, fill: T.inkSoft }}
-                width={Y_AXIS_WIDTH_PX}
-                label={{
-                  value: METRIC.longLabel,
-                  angle: -90,
-                  position: 'insideLeft',
-                  offset: 14,
-                  style: {
-                    fontSize: 11,
-                    fontFamily: fonts.body,
-                    fill: T.inkSoft,
-                    textAnchor: 'middle',
-                  },
-                }}
+                // Narrow Y axis on mobile: just enough for "$160K" ticks,
+                // no rotated label. Reclaiming ~30px of horizontal room
+                // for the actual line is worth the trade.
+                width={chartWidthPx < 480 ? 38 : Y_AXIS_WIDTH_PX}
+                label={
+                  chartWidthPx < 480
+                    ? undefined
+                    : {
+                        value: METRIC.longLabel,
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 14,
+                        style: {
+                          fontSize: 11,
+                          fontFamily: fonts.body,
+                          fill: T.inkSoft,
+                          textAnchor: 'middle',
+                        },
+                      }
+                }
               />
               <Tooltip
                 content={(props) => <CliffTooltip {...props} cliffs={cliffs} metric={metricMeta} />}
@@ -423,6 +447,13 @@ export function CliffCurve({
                   label={(props: { viewBox?: { x?: number; y?: number } }) => {
                     const x = props.viewBox?.x ?? 0;
                     const y = props.viewBox?.y ?? 0;
+                    if (chartWidthPx < 480) {
+                      // No in-chart label on mobile — the legend below
+                      // the chart names each cutoff with the matching
+                      // color swatch, doing the same job without
+                      // crowding the plot area.
+                      return <g />;
+                    }
                     // Label sits in the chart's top margin; for bumped rows
                     // it's even higher up. The ReferenceLine itself only
                     // draws inside the plot area, so when row > 0 we add a
@@ -520,21 +551,29 @@ export function CliffCurve({
               Worse off than at some lower income
             </span>
           )}
-          {cliffs.map((c) => (
-            <span key={c.id + c.gross}>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: 14,
-                  height: 0,
-                  borderTop: `2px dashed ${c.color}`,
-                  marginRight: 6,
-                  verticalAlign: 'middle',
-                }}
-              />
-              {c.label} cutoff: {fmt(c.gross)}
-            </span>
-          ))}
+          {cliffs.map((c) => {
+            // Tightened legend copy: the FPL percentage was on every line
+            // (e.g. "Medicaid (138% FPL) cutoff: $37,702") and crowded the
+            // legend on mobile. Strip parenthetical FPL from the program
+            // name; the per-cliff caption below the chart still names the
+            // FPL multiplier.
+            const cleanLabel = c.label.replace(/\s*\(\d+%\s*FPL\)\s*/g, '');
+            return (
+              <span key={c.id + c.gross}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 14,
+                    height: 0,
+                    borderTop: `2px dashed ${c.color}`,
+                    marginRight: 6,
+                    verticalAlign: 'middle',
+                  }}
+                />
+                {cleanLabel} · {fmt(c.gross)}
+              </span>
+            );
+          })}
         </div>
 
         {cliffDrops.some((c) => c.drop > 0) && (
@@ -594,19 +633,33 @@ export function CliffCurve({
                       a small residual. The annotation softens accordingly. */}
                   {c.id === 'snap' &&
                     snapIncomeLimitFpl(cityData.state) === SNAP_GROSS_INCOME_LIMIT_FPL_FEDERAL && (
-                      <>
-                        {' '}
-                        <span
+                      <details
+                        style={{
+                          display: 'block',
+                          marginTop: 6,
+                          fontFamily: fonts.body,
+                          fontSize: rem(12),
+                          fontStyle: 'normal',
+                          color: T.inkMuted,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <summary
                           style={{
-                            display: 'block',
-                            marginTop: 6,
-                            fontFamily: fonts.body,
-                            fontSize: rem(12),
-                            fontStyle: 'normal',
-                            color: T.inkMuted,
-                            lineHeight: 1.5,
+                            cursor: 'pointer',
+                            color: T.inkSoft,
+                            listStyle: 'none',
+                            fontSize: rem(11),
+                            letterSpacing: '0.04em',
+                            textDecoration: 'underline',
+                            textDecorationStyle: 'dotted',
+                            textUnderlineOffset: 3,
+                            display: 'inline-block',
                           }}
                         >
+                          Why does {cityData.state} have this cliff?
+                        </summary>
+                        <div style={{ marginTop: 4 }}>
                           {cityData.state} uses the 130% federal gross-income floor for SNAP — no
                           BBCE expansion. SNAP benefits phase out at 30% of net income, which
                           doesn't reach $0 by 130% FPL for multi-person households, so whatever
@@ -615,8 +668,8 @@ export function CliffCurve({
                           typically (especially at 185% / 200%) bring residual benefit to $0 before
                           the cutoff, smoothing or eliminating the cliff. Larger households at the
                           lowest BBCE tier (165%) can still see a small residual.
-                        </span>
-                      </>
+                        </div>
+                      </details>
                     )}
                 </li>
               ))}

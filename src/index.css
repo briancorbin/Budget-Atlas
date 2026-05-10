@@ -15,6 +15,12 @@ body {
    * opsz=14 (thicker, denser). `font-optical-sizing: auto` is the modern
    * default in most browsers but stating it explicitly avoids surprises. */
   font-optical-sizing: auto;
+  /* Clip rather than scroll on x-axis: any absolutely-positioned popover
+   * (source-dot tooltips, StatCell tooltips, etc.) that extends past the
+   * right viewport edge would otherwise trigger horizontal page scroll.
+   * Trim it at the document boundary instead. Was previously applied
+   * per-page on BudgetExplorer; promoted here so all routes get it. */
+  overflow-x: clip;
 }
 
 body {
@@ -35,4 +41,18 @@ input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* iOS Safari auto-zooms the viewport whenever an input/select/textarea has
+ * a font-size below 16px and the user taps it — and doesn't reliably zoom
+ * back out afterward. The Atlas's compact form controls run 11–14px for
+ * editorial density. Override to 16px on touch viewports so the page stays
+ * put on focus. The visual scale gets a touch larger on phones; the
+ * tradeoff is worth losing the runaway-zoom bug. */
+@media (max-width: 720px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

@@ -14,9 +14,11 @@
  * lives in the rolling [`audit:link`] issue.
  */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { theme as T, fonts, rem } from '@/theme';
 import { SectionTitle } from '@/components/ui';
+import { Footer as SiteFooter } from '@/components/Footer';
+import { ScrollToTop } from '@/components/ScrollToTop';
 import {
   SOURCES,
   STATE_DOR,
@@ -259,8 +261,9 @@ export function Sources({ onBack }: { onBack: () => void }) {
             />
           ))}
         </div>
-        <Footer onBack={onBack} />
+        <SiteFooter />
       </div>
+      <ScrollToTop />
     </div>
   );
 }
@@ -381,8 +384,20 @@ function Intro() {
 }
 
 function ThresholdsNote() {
+  // Default open on desktop, closed on mobile — the legend is reference
+  // material rather than a primary read, and on a phone it eats a lot
+  // of vertical room before the actual citation list. matchMedia is
+  // checked once on mount; the user's manual toggle isn't reverted on
+  // resize, since changing this on viewport flips would feel intrusive.
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    setOpen(!window.matchMedia('(max-width: 720px)').matches);
+  }, []);
   return (
-    <div
+    <details
+      open={open}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
       style={{
         fontSize: rem(13),
         color: T.inkSoft,
@@ -394,18 +409,27 @@ function ThresholdsNote() {
         borderRadius: 4,
       }}
     >
-      <div
+      <summary
         style={{
           fontSize: rem(12),
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           color: T.inkMuted,
           fontWeight: 600,
-          marginBottom: 8,
+          marginBottom: open ? 8 : 0,
+          cursor: 'pointer',
+          listStyle: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
         }}
       >
-        Source classes & review windows
-      </div>
+        <span>Source classes & review windows</span>
+        <span aria-hidden style={{ color: T.inkMuted, fontSize: rem(11) }}>
+          {open ? '▴' : '▾'}
+        </span>
+      </summary>
       <div style={{ lineHeight: 1.6 }}>
         Every citation has a class that determines how often it should be re-verified:
       </div>
@@ -444,7 +468,7 @@ function ThresholdsNote() {
         Status indicators
       </div>
       <StatusLegend />
-    </div>
+    </details>
   );
 }
 
@@ -711,9 +735,12 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
         {heading}
       </div>
       <div
+        // Lowered from minmax(140px, 1fr) so phones fit 2 cells per row
+        // (was collapsing to 1 column at ~360px viewport — eight stats
+        // stacked vertically reads as filler). Desktop still gets 4-up.
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
           gap: 16,
         }}
       >
@@ -734,8 +761,21 @@ function StatRow({ heading, stats }: { heading: string; stats: ReadonlyArray<Sta
  */
 function StatCell({ stat }: { stat: Stat }) {
   const [hover, setHover] = useState(false);
+  // Tooltip side flips to the right edge when the cell sits in the right
+  // half of the viewport, so the tooltip grows leftward and doesn't get
+  // clipped at the right viewport edge (overflow-x: clip on body would
+  // otherwise hide it). Measured per-hover via getBoundingClientRect.
+  const [tipSide, setTipSide] = useState<'left' | 'right'>('left');
+  const cellRef = useRef<HTMLDivElement | null>(null);
   const valueColor = TONE_COLOR[stat.tone ?? 'default'];
   const interactive = !!stat.tooltip;
+  const showTooltip = () => {
+    if (!interactive) return;
+    const rect = cellRef.current?.getBoundingClientRect();
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+    if (rect && vw > 0) setTipSide(rect.left + rect.width / 2 > vw / 2 ? 'right' : 'left');
+    setHover(true);
+  };
   // Slugify the label for use in element ids — labels like "Human verified"
   // would otherwise produce ids with spaces, which are invalid HTML and
   // break the aria-describedby relationship for assistive tech.
@@ -744,7 +784,7 @@ function StatCell({ stat }: { stat: Stat }) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')}`;
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={cellRef} style={{ position: 'relative' }}>
       <div
         style={{
           fontFamily: fonts.display,
@@ -757,9 +797,9 @@ function StatCell({ stat }: { stat: Stat }) {
         {stat.value}
       </div>
       <span
-        onMouseEnter={() => interactive && setHover(true)}
+        onMouseEnter={showTooltip}
         onMouseLeave={() => setHover(false)}
-        onFocus={() => interactive && setHover(true)}
+        onFocus={showTooltip}
         onBlur={() => setHover(false)}
         tabIndex={interactive ? 0 : -1}
         aria-describedby={interactive ? tipId : undefined}
@@ -784,7 +824,7 @@ function StatCell({ stat }: { stat: Stat }) {
           style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
-            left: 0,
+            ...(tipSide === 'right' ? { right: 0 } : { left: 0 }),
             padding: '8px 12px',
             background: T.ink,
             color: T.bg,
@@ -1222,42 +1262,6 @@ function ReviewKindPill({ kind }: { kind: string }) {
     >
       {palette.label}
     </span>
-  );
-}
-
-function Footer({ onBack }: { onBack: () => void }) {
-  return (
-    <div
-      style={{
-        borderTop: `2px solid ${T.ink}`,
-        paddingTop: 24,
-        marginTop: 48,
-        textAlign: 'center',
-      }}
-    >
-      <a
-        href="/"
-        onClick={(e) => {
-          e.preventDefault();
-          onBack();
-        }}
-        style={{
-          fontFamily: fonts.body,
-          fontSize: rem(13),
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          padding: '10px 18px',
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          color: T.ink,
-          fontWeight: 600,
-          textDecoration: 'none',
-          display: 'inline-block',
-        }}
-      >
-        ← Back to the atlas
-      </a>
-    </div>
   );
 }
 

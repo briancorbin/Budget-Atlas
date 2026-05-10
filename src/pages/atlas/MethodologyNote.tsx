@@ -27,10 +27,10 @@ export function MethodologyNote() {
   } as const;
 
   return (
-    <div
+    <details
       style={{
         margin: '8px 0 28px',
-        padding: '16px 20px',
+        padding: '12px 20px',
         background: T.bgAlt,
         border: `1px solid ${T.border}`,
         borderLeft: `3px solid ${T.accent}`,
@@ -40,18 +40,39 @@ export function MethodologyNote() {
         color: T.inkSoft,
       }}
     >
-      <div
-        style={{
-          fontSize: rem(10),
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          color: T.accent,
-          fontWeight: 700,
-          marginBottom: 8,
-        }}
-      >
-        About this model
-      </div>
+      <style>{`
+        .methodology-summary { list-style: none; cursor: pointer;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; }
+        .methodology-summary::-webkit-details-marker { display: none; }
+        .methodology-summary .chev { transition: transform 150ms ease-out;
+          color: ${T.inkMuted}; font-size: 0.85em; }
+        details[open] .methodology-summary .chev { transform: rotate(90deg); }
+        details[open] .methodology-summary { margin-bottom: 8px; }
+      `}</style>
+      <summary className="methodology-summary">
+        <span
+          style={{
+            fontSize: rem(10),
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: T.accent,
+            fontWeight: 700,
+          }}
+        >
+          About this model
+        </span>
+        <span
+          style={{
+            fontSize: rem(11),
+            color: T.inkMuted,
+            letterSpacing: '0.05em',
+            fontStyle: 'italic',
+          }}
+        >
+          What's in, what's out, where the numbers come from <span className="chev">›</span>
+        </span>
+      </summary>
       <p style={{ margin: '0 0 10px' }}>
         The numbers here are produced by a custom budget model — not lifted whole from any single
         source. Some lines come from primary government data (BLS, IRS, state agencies), some from
@@ -109,6 +130,6 @@ export function MethodologyNote() {
         </a>
         .
       </p>
-    </div>
+    </details>
   );
 }

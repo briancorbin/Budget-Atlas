@@ -150,21 +150,24 @@ Run history lives in a Cloudflare D1 database (`budget-atlas-audit`) bound to th
 
 The audit pipeline is fully API-backed — the nightly job POSTs runs, the /sources page fetches `/api/audit/latest`, the rolling broken-citation issue is seeded from `/api/audit/latest` + `/api/audit/history`. No machine-generated audit data lives in the repo. `reviewed.tsv` stays as the only file under version control because it's authored content (git history is meaningful).
 
-**One-time bootstrap** (only relevant for setting up a fresh D1 instance, e.g. moving providers or recreating from scratch):
+**One-time bootstrap** (only relevant for setting up a fresh D1 instance, e.g. moving providers, recreating from scratch, or seeding a new env like `develop`):
 
 ```sh
-wrangler d1 create budget-atlas-audit
-wrangler d1 execute budget-atlas-audit --remote --file=worker/schema.sql
+wrangler d1 create budget-atlas-audit                # or budget-atlas-audit-develop, etc.
+yarn db:apply-schema prod                            # or develop / local
+yarn db:sync prod develop                            # optional: copy prod data into develop
 # If old TSVs exist somewhere (e.g. an artifact), backfill-d1.mjs reads
 # from a `results/` directory and POSTs each run.
 AUDIT_WRITE_TOKEN=<token> node audit/links/backfill-d1.mjs
 ```
 
+Both `db:apply-schema` and `db:sync` accept `prod`, `develop`, or `local` and resolve the right wrangler flags (`--remote` / `--env develop` / `--local --persist-to`). They're wrapped with `op run` automatically — see "Cloudflare API token" below for why that wrap is required for any `--remote` op.
+
 ### Local backend
 
 For backend changes (worker code, schema, API contract), run a local Worker against a local D1 so production stays untouched.
 
-**Cloudflare API token (one-time setup).** `yarn db:sync` calls `wrangler d1 export --remote`, which the OAuth token from `wrangler login` can't access. You need a real API token + the account ID, both pulled from `.env.audit` via the 1Password CLI.
+**Cloudflare API token (one-time setup).** Any `wrangler d1 ... --remote` operation (export, execute, anything that hits the live database) needs a real API token — the OAuth token from `wrangler login` doesn't have access to those endpoints. `yarn db:sync` (which wraps `wrangler d1 export --remote`) is the most common case, but the same wrap is required when applying schema to a remote D1, running ad-hoc queries against prod or develop, etc. The token + account ID both come from `.env.audit` via the 1Password CLI.
 
 1. Create a token at <https://dash.cloudflare.com/profile/api-tokens> using the **Edit Cloudflare Workers** template (covers D1 read+write).
 2. Save it to 1Password as an item named `CLOUDFLARE_API_TOKEN` (vault `The Budget Atlas`) with a `credential` field. The reference in [`.env.audit`](../../.env.audit) is `op://The Budget Atlas/CLOUDFLARE_API_TOKEN/credential` — adjust the vault if yours differs.

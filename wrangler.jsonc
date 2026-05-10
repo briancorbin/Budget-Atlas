@@ -2,7 +2,7 @@
   // Cloudflare Workers configuration. Source of truth — overrides dashboard config on every deploy.
   // https://developers.cloudflare.com/workers/wrangler/configuration/
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "thebudgetatlas",
+  "name": "thebudgetatlas-develop",
   "compatibility_date": "2026-05-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker/index.ts",

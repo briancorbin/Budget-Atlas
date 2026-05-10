@@ -46,11 +46,11 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true, // fail instead of silently drifting to 5174/5175
-    // Allow Cloudflare quick-tunnel hostnames so `yarn tunnel` works for
+    // Allow Cloudflare quick-tunnel hostnames so `yarn dev:tunnel` works for
     // testing on phones / over cellular. Vite blocks unknown Host headers
     // by default as a DNS-rebinding mitigation; the wildcard scopes the
     // exception to trycloudflare.com only.
-    allowedHosts: ['dev.thebudgetatlas.com', '.trycloudflare.com'],
+    allowedHosts: ['local.thebudgetatlas.com', '.trycloudflare.com'],
     // Proxy /api/* to a backend so the dev server can fetch audit data.
     //
     // Default target is the deployed develop Worker — UI work hits develop

@@ -1,6 +1,8 @@
 import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
 import { SectionTitle } from '@/components/ui';
+import { Footer as SiteFooter } from '@/components/Footer';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 const GITHUB_URL = 'https://github.com/TheBudgetAtlas/thebudgetatlas';
 const CONTACT_EMAIL = 'privacy@thebudgetatlas.com';
@@ -54,8 +56,9 @@ export function Privacy({ onBack }: { onBack: () => void }) {
         <SecurityDisclosure />
         <FuturePromise />
         <Contact />
-        <Footer onBack={onBack} />
+        <SiteFooter />
       </div>
+      <ScrollToTop />
     </div>
   );
 }
@@ -687,42 +690,5 @@ function SecurityDisclosure() {
         . We'll respond and patch as quickly as possible.
       </p>
     </section>
-  );
-}
-
-function Footer({ onBack }: { onBack: () => void }) {
-  return (
-    <div
-      style={{
-        borderTop: `2px solid ${T.ink}`,
-        paddingTop: 24,
-        marginTop: 48,
-        textAlign: 'center',
-      }}
-    >
-      <a
-        href="/"
-        onClick={(e) => {
-          e.preventDefault();
-          onBack();
-        }}
-        style={{
-          fontFamily: fonts.body,
-          fontSize: rem(13),
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          cursor: 'pointer',
-          padding: '10px 18px',
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          color: T.ink,
-          fontWeight: 600,
-          textDecoration: 'none',
-          display: 'inline-block',
-        }}
-      >
-        ← Back to the atlas
-      </a>
-    </div>
   );
 }

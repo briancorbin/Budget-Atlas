@@ -24,50 +24,29 @@ export const POLISH_LEVEL_DESCRIPTIONS: Record<PolishLevel, string> = {
 };
 
 /**
- * Compare-view granularity. Section is always available; Sentence is
- * available when a Section authors a sentences[] breakdown. Phrase is
- * reserved for future use (deeper recursion of the same shape).
- */
-export const GRANULARITIES = ['section', 'sentence'] as const;
-export type Granularity = (typeof GRANULARITIES)[number];
-
-export const GRANULARITY_LABELS: Record<Granularity, string> = {
-  section: 'Section',
-  sentence: 'Sentence',
-};
-
-/**
  * One unit of Editorial content at a given polish level. Sections are
  * the atomic unit of the compare view: hovering one highlights its
  * counterpart on the other pane.
  *
- *  - id         Stable semantic identifier (e.g. 'why-now', 'the-moment').
- *               Raw sections own the canonical IDs. Higher polish levels
- *               reference Raw IDs via mapsFrom.
- *  - mapsFrom   IDs from the Raw level whose substance this section
- *               transformed. Empty/absent at Raw itself. May contain
- *               multiple IDs when a higher-polish paragraph collapses
- *               several Raw chunks into one.
- *  - aiAdded    true when the paragraph has no Raw source at all (purely
- *               structural / editorial connective tissue Claude added).
- *               Visually flagged in the compare view.
- *  - content    The rendered paragraph(s) — used at Section granularity.
- *  - sentences  Optional sentence-level (or finer) breakdown of the same
- *               substance, recursively typed. When present, the compare
- *               view at Sentence granularity renders these instead of
- *               `content`. Each sentence has its own id + mapsFrom +
- *               aiAdded. mapsFrom IDs at sentence-level reference Raw
- *               sentence IDs (which Raw sections must also author for
- *               the mapping to work). When absent, the compare view at
- *               Sentence granularity falls back to rendering `content`
- *               and treats the whole section as the hover unit.
+ *  - id        Stable semantic identifier (e.g. 'why-now', 'the-moment').
+ *              Raw sections own the canonical IDs. Higher polish levels
+ *              reference Raw IDs via mapsFrom.
+ *  - mapsFrom  IDs from the Raw level whose substance this section
+ *              transformed. Empty/absent at Raw itself. May contain
+ *              multiple IDs when a higher-polish paragraph collapses
+ *              several Raw chunks into one.
+ *  - aiAdded   true when the paragraph has no Raw source at all (purely
+ *              structural / editorial connective tissue Claude added,
+ *              like "That's the why. The rest of Marginalia is the what.").
+ *              Visually flagged in the compare view so readers can see
+ *              what's invented vs. transformed.
+ *  - content   The rendered paragraph(s).
  */
 export type Section = {
   id: string;
   mapsFrom?: string[];
   aiAdded?: boolean;
   content: ReactNode;
-  sentences?: Section[];
 };
 
 /**

@@ -1,9 +1,8 @@
 import { Fragment, useEffect, useState } from 'react';
 import { theme, fonts, rem } from '../theme';
-import type { Granularity, Post, PolishLevel } from '../types';
+import type { Post, PolishLevel } from '../types';
 import { PolishSlider } from '../components/PolishSlider';
 import { CompareView } from '../components/CompareView';
-import { GranularityPicker } from '../components/GranularityPicker';
 import { Prose } from '../components/Prose';
 import { Link } from '../components/Link';
 import { TimeLogStrip } from '../components/TimeLogStrip';
@@ -11,7 +10,6 @@ import { TimeLogStrip } from '../components/TimeLogStrip';
 // Default landing position. Medium gives readers a friendly read while
 // signaling that other levels exist on either side.
 const DEFAULT_LEVEL: PolishLevel = 'medium';
-const DEFAULT_GRANULARITY: Granularity = 'section';
 
 // Compare view is desktop-only for v0 — side-by-side panes don't fit on
 // phones. Threshold matches a comfortable two-column layout.
@@ -32,7 +30,6 @@ function useIsWide() {
 export function PostPage({ post }: { post: Post }) {
   const [level, setLevel] = useState<PolishLevel>(DEFAULT_LEVEL);
   const [compareOn, setCompareOn] = useState(false);
-  const [granularity, setGranularity] = useState<Granularity>(DEFAULT_GRANULARITY);
   const isWide = useIsWide();
 
   const currentLevel = post.levels[level];
@@ -122,25 +119,11 @@ export function PostPage({ post }: { post: Post }) {
             <PolishSlider value={level} onChange={setLevel} />
           </div>
           {showCompareToggle && (
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                alignItems: 'stretch',
-                flexWrap: 'wrap',
-              }}
-            >
-              <CompareToggle
-                on={compareOn}
-                disabled={compareDisabled}
-                onChange={setCompareOn}
-              />
-              <GranularityPicker
-                value={granularity}
-                onChange={setGranularity}
-                disabled={!inCompare}
-              />
-            </div>
+            <CompareToggle
+              on={compareOn}
+              disabled={compareDisabled}
+              onChange={setCompareOn}
+            />
           )}
         </div>
 
@@ -150,7 +133,6 @@ export function PostPage({ post }: { post: Post }) {
               rawLevel={post.levels.raw}
               rightLevel={currentLevel}
               rightLabel={level}
-              granularity={granularity}
             />
           </Prose>
         ) : (

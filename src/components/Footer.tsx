@@ -1,6 +1,5 @@
 import { theme as T, fonts, rem } from '@/theme';
 import { navigate } from '@/lib/nav';
-import { marginaliaUrl } from '@/lib/cross-site';
 
 const navLinkStyle = {
   color: T.accent,
@@ -9,25 +8,6 @@ const navLinkStyle = {
   borderBottom: `1px solid ${T.border}`,
   paddingBottom: 1,
 } as const;
-
-function ExternalArrow() {
-  return (
-    <svg
-      aria-hidden
-      width="0.7em"
-      height="0.7em"
-      viewBox="0 0 10 10"
-      style={{ verticalAlign: 'baseline', marginLeft: 1 }}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="square"
-    >
-      <path d="M2.5 7.5 L7.5 2.5" />
-      <path d="M3.5 2.5 L7.5 2.5 L7.5 6.5" />
-    </svg>
-  );
-}
 
 /**
  * Page footer — masthead-style sign-off with full nav. Repeats the
@@ -108,9 +88,6 @@ export function Footer() {
             {label}
           </a>
         ))}
-        <a href={marginaliaUrl()} style={navLinkStyle}>
-          Marginalia <ExternalArrow />
-        </a>
       </nav>
       <div
         style={{

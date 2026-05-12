@@ -36,12 +36,9 @@ Things that don't work and shouldn't be asked:
 - "Was the Y refactor a good call?" (asks for ratification, not observation)
 - Bulleted lists of guesses about what the user might say.
 
-If the user offers substance, light copy-edit is fine. If they say "nothing," that's a complete answer — don't fish.
+If the user offers substance, capture it verbatim (see CLAUDE.md § AI process conventions — no copy-editing on initial capture). If they say "nothing," that's a complete answer — don't fish.
 
-The user-substance, when captured, can land in two places:
-
-- **Memory** (private; for shaping future Claude behavior on this project) — see step 4.
-- **Marginalia field notes** (public; weekly editorial synthesis at marginalia.thebudgetatlas.com) — only if the user routes it there. Never propose substance for Marginalia; the "human substance only" rule is strict.
+The user-substance lands in private notes the maintainer keeps outside the repo. Memory updates (step 4) are a separate, project-shaping concern — don't conflate the two.
 
 ## 4. Memory update pass
 

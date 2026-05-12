@@ -137,12 +137,8 @@ function Intro() {
         These terms apply to anyone who visits{' '}
         <a href="https://thebudgetatlas.com" style={linkStyle}>
           thebudgetatlas.com
-        </a>
-        , the companion site at{' '}
-        <a href="https://marginalia.thebudgetatlas.com" style={linkStyle}>
-          marginalia.thebudgetatlas.com
-        </a>
-        , or any other surface the project publishes.
+        </a>{' '}
+        or any other surface the project publishes.
       </p>
     </section>
   );
@@ -360,12 +356,9 @@ function IntellectualProperty() {
         >
           Privacy
         </a>
-        , this Terms page, the takeaway notes on each scenario, and the writing on{' '}
-        <a href="https://marginalia.thebudgetatlas.com" style={linkStyle}>
-          Marginalia
-        </a>{' '}
-        — is © Brian Corbin and is shared for personal reading and reasonable quotation with
-        attribution. If you want to republish a substantial passage, please ask.
+        , this Terms page, and the takeaway notes on each scenario — is © Brian Corbin and is shared
+        for personal reading and reasonable quotation with attribution. If you want to republish a
+        substantial passage, please ask.
       </p>
       <p style={proseStyle}>
         "The Budget Atlas" is the name and identity of this project. The wordmark, color palette,
